@@ -129,6 +129,24 @@ tfoot td{font-weight:700;border-top:2px solid var(--line);border-bottom:0;backgr
 @media (max-width:1000px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:860px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.grid2{grid-template-columns:minmax(0,1fr)}.banner h1{font-size:26px}}
 @media (prefers-reduced-motion:reduce){#tip{transition:none}}
+
+.kpi .ly{font-size:12px;color:var(--ink2)}
+.kpi .ly b.up,.tg-t b.up{color:var(--good)}.kpi .ly b.dn{color:var(--crit)}
+.kpi.hero .ly{color:rgba(255,255,255,.78)}.kpi.hero .ly b.up{color:#7ee0ab}.kpi.hero .ly b.dn{color:#ffa8a0}
+.part{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink2)}
+.tg-top{display:grid;grid-template-columns:minmax(0,1.5fr) repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.tg-main,.tg-t{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+.tg-top .l{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);font-weight:600}
+.tg-top .v{font-size:19px;font-weight:700;white-space:nowrap}
+.tg-top .s{font-size:12px;color:var(--ink2)}
+.tg-top .big{font-size:34px;font-weight:800;line-height:1.1}
+.big.good{color:var(--good)}.big.warn{color:var(--warn)}.big.crit{color:var(--crit)}
+.pbar{height:10px;background:var(--grid);border-radius:6px;overflow:hidden}
+.pbar i{display:block;height:100%;border-radius:6px;background:var(--accent)}
+.pbar i.good{background:var(--good)}.pbar i.warn{background:var(--warn)}.pbar i.crit{background:var(--crit)}
+.pill.crit{background:var(--crit-bg);color:var(--crit)}
+table.tgt{min-width:640px}
+@media (max-width:1000px){.tg-top{grid-template-columns:repeat(2,minmax(0,1fr))}.tg-main{grid-column:1/-1}}
 </style>
 </head>
 <body>
@@ -166,6 +184,7 @@ tfoot td{font-weight:700;border-top:2px solid var(--line);border-bottom:0;backgr
         <button type="button" class="chip" data-p="month" aria-pressed="false">Bulan terakhir</button>
       </div>
     </div>
+    <label class="part" id="partWrap" hidden><input type="checkbox" id="partChk"> <span id="partLbl"></span></label>
     <div class="up" id="upbox" hidden>
       <button type="button" class="btn primary" id="upBtn">Unggah database</button>
       <input type="file" id="file" accept=".xlsx,.xls" multiple hidden>
@@ -175,6 +194,13 @@ tfoot td{font-weight:700;border-top:2px solid var(--line);border-bottom:0;backgr
   <div id="msg" role="status" aria-live="polite" hidden></div>
 
   <section class="kpis" id="kpis" aria-label="Ringkasan utama"></section>
+  <div class="note" id="lyNote" hidden></div>
+
+  <section class="card">
+    <h2>Target vs actual</h2>
+    <p class="hint">Budget harian mengikuti persentase kontribusi harian dari file Budget. Actual per kategori dari laporan detail penjualan (exclude tax), sehingga totalnya bisa sedikit berbeda dari sales NAV.</p>
+    <div id="tg"></div>
+  </section>
 
   <section class="grid2">
     <div class="card chart">
