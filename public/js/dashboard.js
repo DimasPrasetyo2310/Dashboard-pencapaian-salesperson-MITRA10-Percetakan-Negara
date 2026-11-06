@@ -432,25 +432,25 @@ $('q').addEventListener('input',e=>{ S.q=e.target.value; renderTable(); });
 // ---- Screenshot tabel detail (PNG untuk dibagikan) ----
 function shotCanvas(){
   const rows = lastL, hasT = lastHasT, sd = lastSd;
-  const S2=Math.max(1,Math.min(2,12000/(150+36*(lastL.length+3)))), W=(hasT?1560:1080), padX=32, FONT="'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif", DISP="'Schibsted Grotesk','Public Sans',system-ui,sans-serif";
+  const S2=Math.max(1,Math.min(2,12000/(150+36*(lastL.length+3)))), W=(hasT?1700:1040), padX=32, FONT="'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif", DISP="'Schibsted Grotesk','Public Sans',system-ui,sans-serif";
   const cols = hasT
-    ? [['#',36,'r'],['Sales ID',150,'l'],['Salesperson',170,'l'],['Zonasi',70,'l'],['Jadwal '+shortD(sd),80,'l'],['Master brand',100,'l'],['Penjualan',120,'r'],['Penjualan master brand',150,'bt'],['Non master brand',110,'r'],['Target',100,'r'],['Pencapaian',130,'bar']]
+    ? [['#',40,'r'],['Sales ID',175,'l'],['Salesperson',210,'l'],['Zonasi',90,'l'],['Jadwal '+shortD(sd),100,'l'],['Master brand',150,'l'],['Penjualan',170,'r'],['Penjualan master brand',185,'bt'],['Non master brand',160,'r'],['Target',160,'r'],['Pencapaian',170,'bar']]
     : [['#',44,'r'],['Sales ID',150,'l'],['Salesperson',230,'l'],['Kategori utama',200,'l'],['Penjualan',170,'r'],['% total',100,'r'],['Struk',70,'r']];
   const tw = cols.reduce((a,c)=>a+c[1],0), scale=(W-padX*2)/tw; cols.forEach(c=>c[1]=c[1]*scale);
   const q = S.q.trim();
   const f = []; f.push(S.role==='all'?'Semua peran':S.role==='Kasir'?'Kasir':'Sales'); if(S.zona) f.push('Zonasi '+S.zona);
   if(lastHasT && !S.schSel.length) f.push('Tanggal jadwal '+shortD(sd)); if(S.schSel.length) f.push('Jadwal '+schLabel()+' ('+shortD(sd)+')'); if(lastDr) f.push((S.dMode==='mtd'?'MTD':'Rentang tabel')+' '+lastM.days+' hari'); if(q) f.push('Cari "'+q+'"');
   const period = lastM.from? (lastM.from===lastM.to? fd(lastM.from) : fd(lastM.from,{day:'numeric',month:'short'})+' sampai '+fd(lastM.to)) : '';
-  const headH=96, thH=34, rowH=36, footH=48, H=headH+thH+rowH*Math.max(rows.length,1)+footH;
+  const headH=116, thH=46, rowH=48, footH=58, H=headH+thH+rowH*Math.max(rows.length,1)+footH;
   const c=document.createElement('canvas'); c.width=W*S2; c.height=H*S2; const g=c.getContext('2d'); g.scale(S2,S2);
   g.fillStyle='#fff'; g.fillRect(0,0,W,H); g.textBaseline='middle';
   const fit=(t,w)=>{ t=String(t); if(g.measureText(t).width<=w) return t; while(t.length>1 && g.measureText(t+'…').width>w) t=t.slice(0,-1); return t+'…'; };
-  g.fillStyle='#0b0b0b'; g.font='700 22px '+DISP; g.textAlign='left'; g.fillText('Pencapaian Salesperson',padX,30);
-  g.fillStyle='#52514e'; g.font='400 13px '+FONT;
-  g.fillText(fit(D.store+' · '+period+' · penjualan tanpa PPN',W-padX*2),padX,56);
-  g.fillStyle='#7a7975'; g.fillText(fit('Filter: '+f.join(' · ')+' · '+rows.length+' orang',W-padX*2),padX,76);
+  g.fillStyle='#0b0b0b'; g.font='700 30px '+DISP; g.textAlign='left'; g.fillText('Pencapaian Salesperson',padX,34);
+  g.fillStyle='#52514e'; g.font='400 18px '+FONT;
+  g.fillText(fit(D.store+' · '+period+' · penjualan tanpa PPN',W-padX*2),padX,68);
+  g.fillStyle='#7a7975'; g.fillText(fit('Filter: '+f.join(' · ')+' · '+rows.length+' orang',W-padX*2),padX,95);
   let y=headH; g.fillStyle='#f6f6f5'; g.fillRect(padX,y,W-padX*2,thH);
-  g.font='500 11px '+FONT; g.fillStyle='#7a7975';
+  g.font='600 12px '+FONT; g.fillStyle='#7a7975';
   const cx=(i)=>padX+cols.slice(0,i).reduce((a,x)=>a+x[1],0);
   cols.forEach((k,i)=>{ const x=cx(i), w=k[1]; const l=k[2]==='l'||k[2]==='bar'; g.textAlign=l?'left':'right'; g.fillText(k[0].toUpperCase(),l?x+10:x+w-10,y+thH/2); });
   y+=thH; 
@@ -464,23 +464,23 @@ function shotCanvas(){
     cols.forEach((k,i)=>{
       const x=cx(i), w=k[1], mid=y+rowH/2;
       if(k[2]==='bar'){
-        const bw=w-20-44, bx=x+10;
+        const bw=w-20-62, bx=x+10;
         g.fillStyle='#ecedeb'; g.fillRect(bx,mid-4,bw,8);
-        if(a>=0){ g.fillStyle=a>=1?'#1f8a4c':'#2a78d6'; g.fillRect(bx,mid-4,Math.min(1,a)*bw,8); g.font='600 13px '+FONT; g.textAlign='right'; g.fillStyle=a>=1?'#1f8a4c':'#0b0b0b'; g.fillText(Math.round(a*100)+'%',x+w-10,mid); }
-        else { g.font='400 13px '+FONT; g.textAlign='right'; g.fillStyle='#7a7975'; g.fillText('–',x+w-10,mid); }
+        if(a>=0){ g.fillStyle=a>=1?'#1f8a4c':'#2a78d6'; g.fillRect(bx,mid-4,Math.min(1,a)*bw,8); g.font='600 18px '+FONT; g.textAlign='right'; g.fillStyle=a>=1?'#1f8a4c':'#0b0b0b'; g.fillText(Math.round(a*100)+'%',x+w-10,mid); }
+        else { g.font='400 18px '+FONT; g.textAlign='right'; g.fillStyle='#7a7975'; g.fillText('–',x+w-10,mid); }
         return;
       }
-      if(k[2]==='bt'){ g.textAlign='right'; if(cells[i]==null){ g.font='400 13px '+FONT; g.fillStyle='#7a7975'; g.fillText('–',x+w-10,mid); } else { g.font='400 13px '+FONT; g.fillStyle='#0b0b0b'; g.fillText(rp(cells[i]),x+w-10,mid-7); g.font='400 10.5px '+FONT; g.fillStyle='#7a7975'; g.fillText(fit(title(p.brand),w-20),x+w-10,mid+8); } return; }
+      if(k[2]==='bt'){ g.textAlign='right'; if(cells[i]==null){ g.font='400 18px '+FONT; g.fillStyle='#7a7975'; g.fillText('–',x+w-10,mid); } else { g.font='400 18px '+FONT; g.fillStyle='#0b0b0b'; g.fillText(rp(cells[i]),x+w-10,mid-7); g.font='400 10.5px '+FONT; g.fillStyle='#7a7975'; g.fillText(fit(title(p.brand),w-20),x+w-10,mid+8); } return; }
       const l=k[2]==='l'; g.textAlign=l?'left':'right';
-      g.font=(i===2?'500 ':'400 ')+(i===1?'11px ':'13px ')+FONT; g.fillStyle=(i===0||cells[i]==='–'||cells[i]==='tidak ada')?'#7a7975':'#0b0b0b';
+      g.font=(i===2?'500 ':'400 ')+(i===1?'14px ':'18px ')+FONT; g.fillStyle=(i===0||cells[i]==='–'||cells[i]==='tidak ada')?'#7a7975':'#0b0b0b';
       g.fillText(fit(cells[i],w-20),l?x+10:x+w-10,mid);
     });
     y+=rowH;
   });
-  if(!rows.length){ g.fillStyle='#7a7975'; g.textAlign='center'; g.font='400 13px '+FONT; g.fillText('Tidak ada orang yang cocok dengan filter.',W/2,y+rowH/2); y+=rowH; }
-  g.fillStyle='#7a7975'; g.font='400 11px '+FONT; g.textAlign='left';
+  if(!rows.length){ g.fillStyle='#7a7975'; g.textAlign='center'; g.font='400 18px '+FONT; g.fillText('Tidak ada orang yang cocok dengan filter.',W/2,y+rowH/2); y+=rowH; }
+  g.fillStyle='#7a7975'; g.font='400 14px '+FONT; g.textAlign='left';
   const now=new Date().toLocaleString('id-ID',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
-  g.fillText('Dibuat '+now+(hasT?' · target = TARGET/MONTH dibagi hari kerja jadwal':''),padX,y+footH/2+4);
+  g.fillText('Dibuat '+now+(hasT?' · target harian dari file jadwal':''),padX,y+footH/2+4);
   return c;
 }
 let toastT=0;
