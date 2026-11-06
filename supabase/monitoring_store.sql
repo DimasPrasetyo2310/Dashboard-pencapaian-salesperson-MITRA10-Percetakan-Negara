@@ -36,3 +36,7 @@ create policy store_cat_select on public.store_day_category for select to authen
 create policy store_cat_insert on public.store_day_category for insert to authenticated with check (public.app_role() in ('admin','editor'));
 create policy store_cat_update on public.store_day_category for update to authenticated using (public.app_role() in ('admin','editor')) with check (public.app_role() in ('admin','editor'));
 create policy store_cat_delete on public.store_day_category for delete to authenticated using (public.app_role() in ('admin','editor'));
+
+-- Budget bulanan per kategori dan persentase harian (sudah dibuat lewat migrasi monitoring_budget_tables):
+-- public.store_budget_monthly (store_code, year, month, category, budget, source)
+-- public.store_budget_phasing (store_code, phase_date, pct, source)

@@ -15,7 +15,9 @@ const fdy=iso=>fd(iso)+' '+iso.slice(0,4);
 const addDays=(iso,n)=>new Date(Date.parse(iso+'T00:00:00Z')+n*864e5).toISOString().slice(0,10);
 const title=s=>s.toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase());
 
-let DATA={D:[],C:[]};
+let DATA={D:[],C:[],B:[]};
+let LYD=new Map(), LYC=new Map(), PH=new Map(), BM=new Map();
+let skipPartial=false;
 let from='',to='';
 
 const allDates=()=>DATA.D.map(x=>x.d).sort();
@@ -50,7 +52,25 @@ function ring(pct){
   const r=20,c=2*Math.PI*r,o=c*(1-Math.max(0,Math.min(pct,1)));
   return `<svg class="ring" viewBox="0 0 52 52" width="52" height="52" aria-hidden="true"><circle cx="26" cy="26" r="${r}" fill="none" stroke="var(--grid)" stroke-width="6"/><circle cx="26" cy="26" r="${r}" fill="none" stroke="var(--accent)" stroke-width="6" stroke-linecap="round" stroke-dasharray="${c.toFixed(2)}" stroke-dashoffset="${o.toFixed(2)}" transform="rotate(-90 26 26)"/></svg>`;
 }
-const kpiHTML=k=>`<div class="kpi${k.hero?' hero':''}"><div class="kh">${ic(k.i)}<span class="l">${k.l}</span></div><div class="vrow"><span class="v">${k.v}</span>${k.extra||''}</div><span class="s">${k.s}</span>${k.sp?spark(k.sp):''}<div class="pk">${k.pk}</div></div>`;
+const kpiHTML=k=>`<div class="kpi${k.hero?' hero':''}"><div class="kh">${ic(k.i)}<span class="l">${k.l}</span></div><div class="vrow"><span class="v">${k.v}</span>${k.extra||''}</div><span class="s">${k.s}</span>${k.sp?spark(k.sp):''}${k.ly||''}<div class="pk">${k.pk}</div></div>`;
+
+/* ---------- Budget dan pembanding tahun lalu ---------- */
+const lyDate=d=>(+d.slice(0,4)-1)+d.slice(4);
+const dim=(y,m)=>new Date(Date.UTC(y,m,0)).getUTCDate();
+const monthBudget=(y,m,cat)=>{let t=0;BM.forEach((v,k)=>{const p=k.split('|');if(+p[0]===y&&+p[1]===m&&(!cat||p[2]===cat))t+=v});return t};
+function dayShare(d){
+  const p=PH.get(d); if(p!=null) return p;
+  const pre=d.slice(0,7); for(const k of PH.keys()) if(k.slice(0,7)===pre) return 0;
+  return 1/dim(+d.slice(0,4),+d.slice(5,7));
+}
+const budgetDay=(d,cat)=>monthBudget(+d.slice(0,4),+d.slice(5,7),cat)*dayShare(d);
+function dlt(c,l,o){
+  if(!l) return '';
+  o=o||{};
+  const v=o.pts?(c-l)*100:(c/l-1)*100, up=v>=0;
+  return `<div class="ly"><b class="${up?'up':'dn'}">${up?'▲':'▼'} ${dec(Math.abs(v),1)}${o.pts?' poin':'%'}</b> <span>vs ${lyYear(o.d)} · ${o.txt}</span></div>`;
+}
+const lyYear=d=>d?(+d.slice(0,4)-1):'';
 const peakOf=(rows,f)=>rows.reduce((b,r)=>f(r)>f(b)?r:b,rows[0]);
 const eff=r=>r.cin?r.tr/r.cin:0, bsk=r=>r.tr?r.nav/r.tr:0;
 
@@ -62,13 +82,21 @@ function renderKpis(rows){
   const n=rows.length, cin=sum(rows.map(d=>d.cin)), trn=sum(rows.map(d=>d.tr)), nav=sum(rows.map(d=>d.nav));
   const pc=peakOf(rows,r=>r.cin), pt=peakOf(rows,r=>r.tr), pe=peakOf(rows,eff), pb=peakOf(rows,bsk), ps=peakOf(rows,r=>r.nav);
   const e=cin?trn/cin:0;
+  const pr=rows.map(r=>[r,LYD.get(lyDate(r.d))]).filter(x=>x[1]);
+  let L=null;
+  if(pr.length){const c=pr.map(x=>x[0]),l=pr.map(x=>x[1]);
+    L={cin:[sum(c.map(x=>x.cin)),sum(l.map(x=>x.cin))],tr:[sum(c.map(x=>x.tr)),sum(l.map(x=>x.tr))],nav:[sum(c.map(x=>x.nav)),sum(l.map(x=>x.nav))],d:rows[0].d,full:pr.length===rows.length};
+    L.e=[L.cin[0]?L.tr[0]/L.cin[0]:0,L.cin[1]?L.tr[1]/L.cin[1]:0];L.b=[L.tr[0]?L.nav[0]/L.tr[0]:0,L.tr[1]?L.nav[1]/L.tr[1]:0];}
+  const D=(k,f,o)=>L?dlt(L[k][0],L[k][1],Object.assign({d:L.d,txt:f(L[k][1])},o||{})):'';
   $('kpis').innerHTML=[
-    {i:'traffic',l:'Traffic',v:nf.format(cin),s:'pengunjung masuk · rata-rata '+nf.format(Math.round(cin/n))+' per hari',sp:rows.map(d=>d.cin),pk:'Tertinggi '+fd(pc.d)+' · '+nf.format(pc.cin)},
-    {i:'invoice',l:'Invoice',v:nf.format(trn),s:'rata-rata '+nf.format(Math.round(trn/n))+' per hari',sp:rows.map(d=>d.tr),pk:'Tertinggi '+fd(pt.d)+' · '+nf.format(pt.tr)},
-    {i:'target',l:'Efektivitas traffic',v:cin?dec(e*100,1)+'%':'–',extra:ring(e),s:'invoice ÷ traffic',sp:rows.map(eff),pk:'Tertinggi '+fd(pe.d)+' · '+dec(eff(pe)*100,1)+'%'},
-    {i:'basket',l:'Basket size',v:trn?rp(nav/trn):'–',s:'sales ÷ invoice',sp:rows.map(bsk),pk:'Tertinggi '+fd(pb.d)+' · '+rp(bsk(pb))},
-    {hero:1,i:'sales',l:'Sales',v:rp(nav),s:'exclude tax · '+rp(nav/n)+' per hari',sp:rows.map(d=>d.nav),pk:'Tertinggi '+fd(ps.d)+' · '+rp(ps.nav)}
+    {i:'traffic',l:'Traffic',v:nf.format(cin),s:'pengunjung masuk · rata-rata '+nf.format(Math.round(cin/n))+' per hari',sp:rows.map(d=>d.cin),ly:D('cin',nf.format),pk:'Tertinggi '+fd(pc.d)+' · '+nf.format(pc.cin)},
+    {i:'invoice',l:'Invoice',v:nf.format(trn),s:'rata-rata '+nf.format(Math.round(trn/n))+' per hari',sp:rows.map(d=>d.tr),ly:D('tr',nf.format),pk:'Tertinggi '+fd(pt.d)+' · '+nf.format(pt.tr)},
+    {i:'target',l:'Efektivitas traffic',v:cin?dec(e*100,1)+'%':'–',extra:ring(e),s:'invoice ÷ traffic',sp:rows.map(eff),ly:D('e',v=>dec(v*100,1)+'%',{pts:1}),pk:'Tertinggi '+fd(pe.d)+' · '+dec(eff(pe)*100,1)+'%'},
+    {i:'basket',l:'Basket size',v:trn?rp(nav/trn):'–',s:'sales ÷ invoice',sp:rows.map(bsk),ly:D('b',rp),pk:'Tertinggi '+fd(pb.d)+' · '+rp(bsk(pb))},
+    {hero:1,i:'sales',l:'Sales',v:rp(nav),s:'exclude tax · '+rp(nav/n)+' per hari',sp:rows.map(d=>d.nav),ly:D('nav',rp),pk:'Tertinggi '+fd(ps.d)+' · '+rp(ps.nav)}
   ].map(kpiHTML).join('');
+  $('lyNote').hidden=!(L&&!L.full);
+  if(L&&!L.full)$('lyNote').textContent='Pembanding tahun lalu hanya tersedia untuk '+pr.length+' dari '+rows.length+' hari pada rentang ini; selisih dihitung untuk hari yang ada pembandingnya saja.';
 }
 function renderChart(rows){
   const byD=new Map(rows.map(r=>[r.d,r]));
@@ -130,6 +158,44 @@ function renderCats(){
   const mx=Math.max(...list.map(x=>x[1]),1), total=sum(list.map(x=>x[1]));
   $('cats').innerHTML=list.map(([k,v],i)=>`<div class="cat" data-tip="${esc(title(k)+' · '+rp(v))}"><div class="t"><span><span class="rk">${i+1}</span>${esc(title(k))}</span><span class="num">${jt(v)} · ${dec(v/total*100,0)}%</span></div><div class="b"><i style="width:${v/mx*100}%"></i></div></div>`).join('');
 }
+
+function renderTarget(rows){
+  const box=$('tg'), dates=rows.map(r=>r.d), set=new Set(dates);
+  const cats=[...new Set([...[...BM.keys()].map(k=>k.split('|')[2]),...DATA.C.filter(c=>set.has(c[0])).map(c=>c[1])])];
+  const bud={},act={},lyc={};
+  cats.forEach(c=>{bud[c]=0;act[c]=0;lyc[c]=0});
+  dates.forEach(d=>cats.forEach(c=>{bud[c]+=budgetDay(d,c)}));
+  DATA.C.forEach(c=>{if(set.has(c[0]))act[c[1]]=(act[c[1]]||0)+c[2]});
+  dates.forEach(d=>cats.forEach(c=>{lyc[c]+=LYC.get(lyDate(d)+'|'+c)||0}));
+  const bTot=sum(Object.values(bud));
+  if(!bTot){box.innerHTML='<div class="empty">Belum ada budget untuk bulan pada rentang ini. Unggah file Budget (sheet "budget 1 tahun" dan "budget daily").</div>';return}
+  const nav=sum(rows.map(r=>r.nav));
+  const last=dates[dates.length-1], y=+last.slice(0,4), m=+last.slice(5,7), mk=last.slice(0,7);
+  const mTarget=monthBudget(y,m);
+  const mtd=sum(DATA.D.filter(r=>r.d.slice(0,7)===mk&&r.d<=last).map(r=>r.nav));
+  const done=Math.max(...DATA.D.filter(r=>r.d.slice(0,7)===mk).map(r=>+r.d.slice(8)));
+  const left=dim(y,m)-done;
+  const ach=nav/bTot, cls=ach>=1?'good':ach>=.9?'warn':'crit';
+  const need=left>0&&mTarget>mtd?(mTarget-mtd)/left:0;
+  const lySum=sum(dates.map(d=>(LYD.get(lyDate(d))||{nav:0}).nav));
+  const tile=(l,v,s)=>`<div class="tg-t"><span class="l">${l}</span><span class="v">${v}</span><span class="s">${s}</span></div>`;
+  const list=cats.filter(c=>bud[c]>0||act[c]>0).sort((a,b)=>(bud[b]||act[b])-(bud[a]||act[a]));
+  const trs=list.map(c=>{
+    const a=act[c]||0,b=bud[c]||0,pc=b?a/b:null,cl=pc==null?'':pc>=1?'good':pc>=.9?'warn':'crit',l=lyc[c];
+    return `<tr><td>${esc(title(c))}</td><td class="r num">${b?jt(b):'–'}</td><td class="r num">${jt(a)}</td><td class="r num">${pc==null?'–':`<span class="pill ${cl}">${dec(pc*100,1)}%</span>`}</td><td class="r num">${b?jt(a-b):'–'}</td><td class="r num">${l?jt(l):'–'}</td><td class="r num">${l?(a/l-1>=0?'▲ ':'▼ ')+dec(Math.abs(a/l-1)*100,1)+'%':'–'}</td></tr>`}).join('');
+  const aT=sum(list.map(c=>act[c]||0)), bT=sum(list.map(c=>bud[c]||0)), lT=sum(list.map(c=>lyc[c]||0));
+  box.innerHTML=`<div class="tg-top">
+    <div class="tg-main"><span class="l">Pencapaian vs budget periode</span><span class="big ${cls}">${dec(ach*100,1)}%</span>
+      <div class="pbar" role="img" aria-label="Pencapaian ${dec(ach*100,1)} persen"><i class="${cls}" style="width:${Math.min(ach,1)*100}%"></i></div>
+      <span class="s">${rp(nav)} dari budget ${rp(bTot)} · ${ach>=1?'lebih':'kurang'} ${rp(Math.abs(nav-bTot))}</span></div>
+    ${tile('Target '+MON[m-1]+' '+y,rp(mTarget),'target bulan penuh, exclude tax')}
+    ${tile('Tercapai bulan ini',dec(mTarget?mtd/mTarget*100:0,1)+'%',rp(mtd)+' s/d '+fd(last))}
+    ${tile('Sisa target',mTarget>mtd?rp(mTarget-mtd):'Tercapai',left>0?(mTarget>mtd?rp(need)+' per hari untuk '+left+' hari lagi':left+' hari lagi'):'bulan sudah lewat')}
+    ${lySum?tile('Sales vs '+lyYear(dates[0]),(nav/lySum-1>=0?'▲ ':'▼ ')+dec(Math.abs(nav/lySum-1)*100,1)+'%',rp(lySum)+' tahun lalu'):''}
+  </div>
+  <div class="tbl"><table class="tgt"><thead><tr><th>Kategori</th><th class="r">Budget periode</th><th class="r">Actual</th><th class="r">Capaian</th><th class="r">Selisih</th><th class="r">Tahun lalu</th><th class="r">vs tahun lalu</th></tr></thead><tbody>${trs}</tbody>
+  <tfoot><tr><td>Total kategori</td><td class="r num">${jt(bT)}</td><td class="r num">${jt(aT)}</td><td class="r num">${bT?dec(aT/bT*100,1)+'%':'–'}</td><td class="r num">${jt(aT-bT)}</td><td class="r num">${lT?jt(lT):'–'}</td><td class="r num">${lT?(aT/lT-1>=0?'▲ ':'▼ ')+dec(Math.abs(aT/lT-1)*100,1)+'%':'–'}</td></tr></tfoot></table></div>`;
+}
 function renderRows(rows){
   $('rows').innerHTML=rows.map(d=>{
     const diff=d.nav-d.ffc, ok=Math.abs(diff)<1;
@@ -138,18 +204,21 @@ function renderRows(rows){
   $('foot').innerHTML=`<tr><td>Total</td><td class="r num">${nf.format(cin)}</td><td class="r num">${nf.format(sum(rows.map(d=>d.cout)))}</td><td class="r num">${nf.format(trn)}</td><td class="r num">${cin?dec(trn/cin*100,1)+'%':'–'}</td><td class="r num">${trn?jt(nav/trn):'–'}</td><td class="r num">${jt(nav)}</td><td class="r num">${jt(ffc)}</td><td></td></tr>`;
 }
 function render(){
-  const rows=DATA.D.filter(x=>x.d>=from&&x.d<=to).sort((a,b)=>a.d<b.d?-1:1);
+  let rows=DATA.D.filter(x=>x.d>=from&&x.d<=to).sort((a,b)=>a.d<b.d?-1:1);
+  const nPart=rows.filter(r=>Math.abs(r.nav-r.ffc)>=1).length;
+  if(skipPartial) rows=rows.filter(r=>Math.abs(r.nav-r.ffc)<1);
+  $('partWrap').hidden=!nPart&&!skipPartial;$('partLbl').textContent='Abaikan hari yang belum sinkron NAV dan FFC ('+nPart+' hari)';
   document.querySelectorAll('.chip').forEach(c=>{const r=presetRange(c.dataset.p);c.setAttribute('aria-pressed',String(r[0]===from&&r[1]===to))});
   const ds=allDates();
   if(ds.length){$('from').min=$('to').min=ds[0];$('from').max=$('to').max=ds[ds.length-1]}
   if(!rows.length){
     $('period').textContent='Tidak ada data pada rentang ini';
     $('kpis').innerHTML='<div class="card empty">Tidak ada data pada rentang tanggal ini. Ubah tanggal atau unggah database.</div>';
-    ['chart','chLegend','chNote','cats','rows','foot','tcChart','tcLegend','efList'].forEach(i=>$(i).innerHTML='');
+    ['chart','chLegend','chNote','cats','rows','foot','tcChart','tcLegend','efList','tg'].forEach(i=>$(i).innerHTML='');
     return;
   }
   $('period').textContent=`${fdy(rows[0].d)} – ${fdy(rows[rows.length-1].d)} · ${rows.length} hari`;
-  renderKpis(rows);renderChart(rows);renderTraffic(rows);renderEf(rows);renderCats();renderRows(rows);
+  renderKpis(rows);renderChart(rows);renderTraffic(rows);renderEf(rows);renderCats();renderTarget(rows);renderRows(rows);
 }
 
 /* ---------- Unggah database ke Supabase ---------- */
@@ -163,11 +232,9 @@ function toISO(v){
   }
   return null;
 }
-async function parseFile(f){
-  const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
-  const sh=wb.Sheets[wb.SheetNames[0]];
-  if(!sh) throw new Error('file kosong');
+function parseSheet(f,sh,sn){
   const rows=XLSX.utils.sheet_to_json(sh,{header:1,raw:true,defval:null});
+  const src=f.name+' / '+sn;
   let h=rows.findIndex(r=>r&&r[0]==='Date'&&r.some(x=>String(x).trim()==='Sales Exclude Tax (NAV)'));
   if(h>=0){
     const hd=rows[h].map(x=>String(x==null?'':x).trim());
@@ -176,9 +243,9 @@ async function parseFile(f){
     const is=hd.indexOf('Store No (NAV)'), out=[]; let other=0;
     rows.slice(h+1).forEach(r=>{const d=toISO(r[0]);if(!d||typeof r[c.nav]!=='number')return;
       if(is>=0&&r[is]!=null&&String(r[is]).trim()!==STORE){other++;return}
-      out.push({store_code:STORE,sale_date:d,nav_sales:Math.round(r[c.nav]),nav_trx:+r[c.tr]||0,ffc_sales:Math.round(+r[c.ffc]||0),ffc_trx:+r[c.ffct]||0,counter_in:+r[c.cin]||0,counter_out:+r[c.cout]||0,source:f.name})});
+      out.push({store_code:STORE,sale_date:d,nav_sales:Math.round(r[c.nav]),nav_trx:+r[c.tr]||0,ffc_sales:Math.round(+r[c.ffc]||0),ffc_trx:+r[c.ffct]||0,counter_in:+r[c.cin]||0,counter_out:+r[c.cout]||0,source:src})});
     if(!out.length) throw new Error(other?'file ini bukan untuk toko '+STORE:'tidak ada baris tanggal yang terbaca');
-    return {kind:'nav',name:f.name,rows:out};
+    return {kind:'nav',name:src,rows:out};
   }
   h=rows.findIndex(r=>r&&r[0]==='Receipt Date');
   if(h>=0){
@@ -190,9 +257,37 @@ async function parseFile(f){
       if(is>=0&&r[is]!=null&&String(r[is]).trim()!==STORE){other++;return}
       const k=d+'|'+r[ic];m.set(k,(m.get(k)||0)+r[ia]);n++});
     if(!n) throw new Error(other?'file ini bukan untuk toko '+STORE:'tidak ada baris penjualan yang terbaca');
-    return {kind:'detail',name:f.name,n,rows:[...m].map(([k,v])=>{const p=k.split('|');return {store_code:STORE,sale_date:p[0],category:p[1],sales:Math.round(v),source:f.name}})};
+    return {kind:'detail',name:src,n,rows:[...m].map(([k,v])=>{const p=k.split('|');return {store_code:STORE,sale_date:p[0],category:p[1],sales:Math.round(v),source:src}})};
+  }
+  const yr=(sn.match(/20\d\d/)||[String(new Date().getFullYear())])[0];
+  const MI=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'], ALT={MEI:'MAY',AGU:'AUG',AGS:'AUG',OKT:'OCT',DES:'DEC'};
+  const mon=v=>{const k=String(v==null?'':v).trim().toUpperCase().slice(0,3);return MI.indexOf(ALT[k]||k)};
+  h=rows.findIndex(r=>r&&String(r[0]||'').trim().toLowerCase()==='category'&&mon(r[1])===0);
+  if(h>=0){
+    const out=[];
+    rows.slice(h+1).forEach(r=>{const cat=String(r&&r[0]||'').trim().toUpperCase();if(!cat||/^TOTAL/.test(cat))return;
+      for(let m=0;m<12;m++){const v=r[1+m];if(typeof v==='number'&&v>0)out.push({store_code:STORE,year:+yr,month:m+1,category:cat,budget:Math.round(v),source:src})}});
+    if(!out.length) throw new Error('tidak ada angka budget yang terbaca');
+    return {kind:'budget',name:src,rows:out,year:+yr};
+  }
+  h=rows.findIndex(r=>r&&String(r[0]||'').trim().toUpperCase()==='CATEGORY'&&String(r[1]||'').trim().toLowerCase()==='tanggal');
+  if(h>=1&&mon(rows[h-1][0])>=0){
+    const m=mon(rows[h-1][0])+1, pr=rows.slice(h+1).find(r=>r&&String(r[1]||'').trim().toLowerCase()==='cont %');
+    if(!pr) throw new Error('baris "cont %" tidak ada');
+    const out=[];
+    rows[h].forEach((dv,i)=>{if(i>=2&&typeof dv==='number'&&typeof pr[i]==='number')out.push({store_code:STORE,phase_date:yr+'-'+pad(m)+'-'+pad(dv),pct:pr[i],source:src})});
+    if(!out.length) throw new Error('tidak ada persentase harian yang terbaca');
+    return {kind:'phasing',name:src,rows:out,month:MON[m-1]+' '+yr};
   }
   throw new Error('format tidak dikenali');
+}
+async function parseFile(f){
+  const wb=XLSX.read(await f.arrayBuffer(),{type:'array',cellDates:false});
+  const ok=[],bad=[];
+  wb.SheetNames.forEach(sn=>{try{ok.push(parseSheet(f,wb.Sheets[sn],sn))}catch(err){bad.push(sn+': '+explain(err))}});
+  if(!ok.length) throw new Error(bad.length===1?bad[0]:'tidak ada sheet yang dikenali ('+bad.join('; ')+')');
+  ok.skipped=bad;
+  return ok;
 }
 async function upsertChunks(table,rows,conflict){
   for(let i=0;i<rows.length;i+=500){
@@ -212,23 +307,26 @@ $('file').addEventListener('change',async e=>{
   if(!window.XLSX){showMsg('Pembaca Excel belum termuat. Muat ulang halaman lalu coba lagi.','err');return}
   showMsg('Membaca '+files.length+' file…','info');
   const ok=[],bad=[];
-  for(const f of files){try{ok.push(await parseFile(f))}catch(err){bad.push(f.name+': '+explain(err))}}
+  for(const f of files){try{const r=await parseFile(f);ok.push(...r);r.skipped.forEach(x=>bad.push(f.name+' / '+x))}catch(err){bad.push(f.name+': '+explain(err))}}
   const parts=[];
   for(const r of ok){
     try{
       if(r.kind==='nav'){await upsertChunks('store_daily',r.rows,'store_code,sale_date');parts.push('Report Compare FFC dan NAV: '+r.rows.length+' hari')}
-      else{await upsertChunks('store_day_category',r.rows,'store_code,sale_date,category');parts.push('Laporan detail: '+nf.format(r.n)+' baris, '+new Set(r.rows.map(x=>x.sale_date)).size+' hari')}
+      else if(r.kind==='budget'){await upsertChunks('store_budget_monthly',r.rows,'store_code,year,month,category');parts.push('Budget '+r.year+': '+r.rows.length+' angka bulanan')}
+      else if(r.kind==='phasing'){await upsertChunks('store_budget_phasing',r.rows,'store_code,phase_date');parts.push('Budget harian '+r.month+': '+r.rows.length+' hari')}
+      else{await upsertChunks('store_day_category',r.rows,'store_code,sale_date,category');parts.push('Detail penjualan: '+nf.format(r.n)+' baris, '+new Set(r.rows.map(x=>x.sale_date)).size+' hari')}
     }catch(err){bad.push(r.name+': '+explain(err))}
   }
   if(parts.length){await loadData();const r=presetRange('all');setRange(r[0],r[1])}
   if(parts.length&&!bad.length) showMsg('Berhasil disimpan. '+parts.join(' · ')+'. Data tanggal yang sama diganti dengan yang baru.','ok');
   else if(parts.length) showMsg('Sebagian disimpan. '+parts.join(' · ')+'. Gagal: '+bad.join('; '),'err');
-  else showMsg('Tidak ada yang tersimpan. '+bad.join('; ')+'. Gunakan Report Compare FFC and Nav atau Sales Detail Report.','err');
+  else showMsg('Tidak ada yang tersimpan. '+bad.join('; ')+'. Gunakan file Report Compare FFC and Nav, Sales Detail Report, atau file Budget.','err');
 });
 
 /* ---------- Filter tanggal ---------- */
 $('from').addEventListener('change',e=>{let a=e.target.value,b=$('to').value;if(!a)return;if(b&&a>b)b=a;setRange(a,b)});
 $('to').addEventListener('change',e=>{let b=e.target.value,a=$('from').value;if(!b)return;if(a&&b<a)a=b;setRange(a,b)});
+$('partChk').addEventListener('change',e=>{skipPartial=e.target.checked;render()});
 $('chips').addEventListener('click',e=>{const c=e.target.closest('.chip');if(!c)return;const r=presetRange(c.dataset.p);setRange(r[0],r[1])});
 
 const tip=$('tip');
@@ -254,13 +352,23 @@ async function fetchAll(table,cols,order){
   return out;
 }
 async function loadData(){
-  const [d,c]=await Promise.all([
+  const [d,c,b,p]=await Promise.all([
     fetchAll('store_daily','sale_date,nav_sales,nav_trx,ffc_sales,ffc_trx,counter_in,counter_out',['sale_date']),
-    fetchAll('store_day_category','sale_date,category,sales',['sale_date','category'])
+    fetchAll('store_day_category','sale_date,category,sales',['sale_date','category']),
+    fetchAll('store_budget_monthly','year,month,category,budget',['year','month']),
+    fetchAll('store_budget_phasing','phase_date,pct',['phase_date'])
   ]);
+  const D=d.map(r=>({d:r.sale_date,nav:+r.nav_sales,tr:+r.nav_trx,ffc:+r.ffc_sales,ffct:+r.ffc_trx,cin:+r.counter_in,cout:+r.counter_out}));
+  const yr=D.length?Math.max(...D.map(r=>+r.d.slice(0,4))):0;
+  LYD=new Map();LYC=new Map();PH=new Map();BM=new Map();
+  D.filter(r=>+r.d.slice(0,4)<yr).forEach(r=>LYD.set(r.d,r));
+  c.filter(r=>+r.sale_date.slice(0,4)<yr).forEach(r=>LYC.set(r.sale_date+'|'+r.category,(LYC.get(r.sale_date+'|'+r.category)||0)+ +r.sales));
+  b.forEach(r=>BM.set(r.year+'|'+r.month+'|'+r.category,+r.budget));
+  p.forEach(r=>PH.set(r.phase_date,+r.pct));
   DATA={
-    D:d.map(r=>({d:r.sale_date,nav:+r.nav_sales,tr:+r.nav_trx,ffc:+r.ffc_sales,ffct:+r.ffc_trx,cin:+r.counter_in,cout:+r.counter_out})),
-    C:c.map(r=>[r.sale_date,r.category,+r.sales])
+    D:D.filter(r=>+r.d.slice(0,4)===yr),
+    C:c.filter(r=>+r.sale_date.slice(0,4)===yr).map(r=>[r.sale_date,r.category,+r.sales]),
+    B:b
   };
 }
 const signOut=async()=>{try{if(SB)await SB.auth.signOut()}catch(e){}location.replace('index.html')};
