@@ -31,6 +31,7 @@ build-config.js     menulis public/config.js dari environment variables
    - Vercel atau Netlify: hubungkan folder ini, isi environment variable
      `NEXT_PUBLIC_SUPABASE_URL` dan `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
      Build command `node build-config.js`, publish directory `public` (sudah diatur di vercel.json dan netlify.toml).
+   - Cloudflare Pages (gratis): Workers & Pages, Create, Pages, Connect to Git, pilih repo ini. Framework preset `None`, build command dikosongkan, build output directory `public`. `public/config.js` sudah berisi alamat dan kunci publik Supabase, jadi environment variable tidak perlu diisi. Setelah alamat baru jadi, tambahkan alamat itu di Supabase, Authentication, URL Configuration (Site URL dan Redirect URLs).
    - Tanpa build: edit `public/config.js` lalu unggah folder `public` ke hosting statis apa pun.
 5. Buka situs, masuk sebagai admin, lalu unggah file penjualan (misalnya salesperson_mtd.xlsx) dan file jadwal (SCHEDULE_NOV_SALES.xlsx).
 
