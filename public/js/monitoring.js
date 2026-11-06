@@ -71,6 +71,8 @@ function dlt(c,l,o){
   return `<div class="ly"><b class="${up?'up':'dn'}">${up?'▲':'▼'} ${dec(Math.abs(v),1)}${o.pts?' poin':'%'}</b> <span>vs ${lyYear(o.d)} · ${o.txt}</span></div>`;
 }
 const lyYear=d=>d?(+d.slice(0,4)-1):'';
+const ZONA={'FLOORING AND WALL':1,'APPLIANCES':3,'BATHROOM':3,'ELECTRICAL AND LIGHTING':3,'HOUSEWARE & HOBBIES':3,'KITCHEN':3,'MISCELLANEOUS':3,'BUILDING MATERIAL':4,'DOORS AND WINDOWS':4,'HARDWARE':4,'PAINT AND SUNDRIES':5,'PLUMBING':5,'TOOLS':5};
+const zn=c=>ZONA[String(c).toUpperCase()]||99;
 const peakOf=(rows,f)=>rows.reduce((b,r)=>f(r)>f(b)?r:b,rows[0]);
 const eff=r=>r.cin?r.tr/r.cin:0, bsk=r=>r.tr?r.nav/r.tr:0;
 
@@ -179,10 +181,10 @@ function renderTarget(rows){
   const need=left>0&&mTarget>mtd?(mTarget-mtd)/left:0;
   const lySum=sum(dates.map(d=>(LYD.get(lyDate(d))||{nav:0}).nav));
   const tile=(l,v,s)=>`<div class="tg-t"><span class="l">${l}</span><span class="v">${v}</span><span class="s">${s}</span></div>`;
-  const list=cats.filter(c=>bud[c]>0||act[c]>0).sort((a,b)=>(bud[b]||act[b])-(bud[a]||act[a]));
+  const list=cats.filter(c=>bud[c]>0||act[c]>0).sort((a,b)=>zn(a)-zn(b)||(bud[b]||act[b])-(bud[a]||act[a]));
   const trs=list.map(c=>{
     const a=act[c]||0,b=bud[c]||0,pc=b?a/b:null,cl=pc==null?'':pc>=1?'good':pc>=.9?'warn':'crit',l=lyc[c];
-    return `<tr><td>${esc(title(c))}</td><td class="r num">${b?jt(b):'–'}</td><td class="r num">${jt(a)}</td><td class="r num">${pc==null?'–':`<span class="pill ${cl}">${dec(pc*100,1)}%</span>`}</td><td class="r num">${b?jt(a-b):'–'}</td><td class="r num">${l?jt(l):'–'}</td><td class="r num">${l?(a/l-1>=0?'▲ ':'▼ ')+dec(Math.abs(a/l-1)*100,1)+'%':'–'}</td></tr>`}).join('');
+    return `<tr><td>${zn(c)<99?'Zona '+zn(c):'–'}</td><td>${esc(title(c))}</td><td class="r num">${b?jt(b):'–'}</td><td class="r num">${jt(a)}</td><td class="r num">${pc==null?'–':`<span class="pill ${cl}">${dec(pc*100,1)}%</span>`}</td><td class="r num">${b?jt(a-b):'–'}</td><td class="r num">${l?jt(l):'–'}</td><td class="r num">${l?(a/l-1>=0?'▲ ':'▼ ')+dec(Math.abs(a/l-1)*100,1)+'%':'–'}</td></tr>`}).join('');
   const aT=sum(list.map(c=>act[c]||0)), bT=sum(list.map(c=>bud[c]||0)), lT=sum(list.map(c=>lyc[c]||0));
   box.innerHTML=`<div class="tg-top">
     <div class="tg-main"><span class="l">Pencapaian vs budget periode</span><span class="big ${cls}">${dec(ach*100,1)}%</span>
@@ -193,8 +195,8 @@ function renderTarget(rows){
     ${tile('Sisa target',mTarget>mtd?rp(mTarget-mtd):'Tercapai',left>0?(mTarget>mtd?rp(need)+' per hari untuk '+left+' hari lagi':left+' hari lagi'):'bulan sudah lewat')}
     ${lySum?tile('Sales vs '+lyYear(dates[0]),(nav/lySum-1>=0?'▲ ':'▼ ')+dec(Math.abs(nav/lySum-1)*100,1)+'%',rp(lySum)+' tahun lalu'):''}
   </div>
-  <div class="tbl"><table class="tgt"><thead><tr><th>Kategori</th><th class="r">Budget periode</th><th class="r">Actual</th><th class="r">Capaian</th><th class="r">Selisih</th><th class="r">Tahun lalu</th><th class="r">vs tahun lalu</th></tr></thead><tbody>${trs}</tbody>
-  <tfoot><tr><td>Total kategori</td><td class="r num">${jt(bT)}</td><td class="r num">${jt(aT)}</td><td class="r num">${bT?dec(aT/bT*100,1)+'%':'–'}</td><td class="r num">${jt(aT-bT)}</td><td class="r num">${lT?jt(lT):'–'}</td><td class="r num">${lT?(aT/lT-1>=0?'▲ ':'▼ ')+dec(Math.abs(aT/lT-1)*100,1)+'%':'–'}</td></tr></tfoot></table></div>`;
+  <div class="tbl"><table class="tgt"><thead><tr><th>Zonasi</th><th>Kategori</th><th class="r">Budget periode</th><th class="r">Actual</th><th class="r">Capaian</th><th class="r">Selisih</th><th class="r">Tahun lalu</th><th class="r">vs tahun lalu</th></tr></thead><tbody>${trs}</tbody>
+  <tfoot><tr><td></td><td>Total kategori</td><td class="r num">${jt(bT)}</td><td class="r num">${jt(aT)}</td><td class="r num">${bT?dec(aT/bT*100,1)+'%':'–'}</td><td class="r num">${jt(aT-bT)}</td><td class="r num">${lT?jt(lT):'–'}</td><td class="r num">${lT?(aT/lT-1>=0?'▲ ':'▼ ')+dec(Math.abs(aT/lT-1)*100,1)+'%':'–'}</td></tr></tfoot></table></div>`;
 }
 function renderRows(rows){
   $('rows').innerHTML=rows.map(d=>{
