@@ -720,7 +720,7 @@ const CFG = window.APP_CONFIG || {};
 const SB = (window.supabase && CFG.SUPABASE_URL && CFG.SUPABASE_PUBLISHABLE_KEY && !/YOUR-/.test(CFG.SUPABASE_URL)) ? window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_PUBLISHABLE_KEY) : null;
 const bootEl=$('boot'), appEl=$('app');
 const bootMsg=(t,showOut)=>{ $('boot-msg').textContent=t; $('boot-out').hidden=!showOut; bootEl.hidden=false; appEl.hidden=true; $('psdock').hidden=true; };
-const toLogin=()=>{ location.replace('login.html'); };
+const toLogin=()=>{ location.replace('login.html?next=dashboard.html'); };
 async function loadAll(){
   if(!SB) return;
   const [d,s]=await Promise.all([
@@ -756,7 +756,7 @@ async function boot(){
   document.addEventListener('visibilitychange',refresh);
   addEventListener('focus',refresh);
 }
-const signOut=async()=>{ try{ if(SB) await SB.auth.signOut(); }catch(e){} toLogin(); };
+const signOut=async()=>{ try{ if(SB) await SB.auth.signOut(); }catch(e){} location.replace('index.html'); };
 $('logout').addEventListener('click',signOut); $('boot-out').addEventListener('click',signOut);
 boot().catch(e=>bootMsg('Gagal memulai: '+(e&&e.message||e),true));
 

@@ -1,7 +1,9 @@
 const CFG = window.APP_CONFIG || {};
 const SUPABASE_URL = CFG.SUPABASE_URL;
 const SUPABASE_KEY = CFG.SUPABASE_PUBLISHABLE_KEY;
-const DASHBOARD_URL = 'dashboard.html';
+const NEXT_ALLOWED = ['dashboard.html', 'monitoring.html'];
+const nextParam = new URLSearchParams(window.location.search).get('next');
+const DASHBOARD_URL = NEXT_ALLOWED.indexOf(nextParam) >= 0 ? nextParam : 'dashboard.html';
 
 const form = document.getElementById('login-form');
 const emailInput = document.getElementById('email');

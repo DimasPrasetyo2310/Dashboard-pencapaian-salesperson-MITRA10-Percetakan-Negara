@@ -240,7 +240,7 @@ const CFG=window.APP_CONFIG||{};
 const SB=(window.supabase&&CFG.SUPABASE_URL&&CFG.SUPABASE_PUBLISHABLE_KEY&&!/YOUR-/.test(CFG.SUPABASE_URL))?window.supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_PUBLISHABLE_KEY):null;
 let canWrite=false;
 const bootMsg=(t,showOut)=>{$('boot-msg').textContent=t;$('boot-out').hidden=!showOut;$('boot').hidden=false;$('app').hidden=true};
-const toLogin=()=>location.replace('login.html');
+const toLogin=()=>location.replace('login.html?next=monitoring.html');
 async function fetchAll(table,cols,order){
   const out=[];
   for(let from0=0;;from0+=1000){
@@ -263,7 +263,7 @@ async function loadData(){
     C:c.map(r=>[r.sale_date,r.category,+r.sales])
   };
 }
-const signOut=async()=>{try{if(SB)await SB.auth.signOut()}catch(e){}toLogin()};
+const signOut=async()=>{try{if(SB)await SB.auth.signOut()}catch(e){}location.replace('index.html')};
 $('logout').addEventListener('click',signOut);$('boot-out').addEventListener('click',signOut);
 (async function boot(){
   if(!SB){bootMsg('Konfigurasi belum lengkap: isi SUPABASE_URL dan SUPABASE_PUBLISHABLE_KEY di public/config.js.',false);return}
