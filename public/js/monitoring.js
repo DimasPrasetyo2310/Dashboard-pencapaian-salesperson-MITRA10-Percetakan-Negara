@@ -71,7 +71,7 @@ function dlt(c,l,o){
   return `<div class="ly"><b class="${up?'up':'dn'}">${up?'▲':'▼'} ${dec(Math.abs(v),1)}${o.pts?' poin':'%'}</b> <span>vs ${lyYear(o.d)} · ${o.txt}</span></div>`;
 }
 const lyYear=d=>d?(+d.slice(0,4)-1):'';
-const ZONA={'FLOORING AND WALL':1,'APPLIANCES':3,'BATHROOM':3,'ELECTRICAL AND LIGHTING':3,'HOUSEWARE & HOBBIES':3,'KITCHEN':3,'BUILDING MATERIAL':4,'DOORS AND WINDOWS':4,'HARDWARE':4,'PAINT AND SUNDRIES':5,'PLUMBING':5,'TOOLS':5};
+const ZONA={'FLOORING AND WALL':1,'APPLIANCES':3,'BATHROOM':3,'ELECTRICAL AND LIGHTING':3,'HOUSEWARE & HOBBIES':3,'KITCHEN':3,'MISCELLANEOUS':3,'BUILDING MATERIAL':4,'DOORS AND WINDOWS':4,'HARDWARE':4,'PAINT AND SUNDRIES':5,'PLUMBING':5,'TOOLS':5};
 const zn=c=>ZONA[String(c).toUpperCase()]||99;
 const peakOf=(rows,f)=>rows.reduce((b,r)=>f(r)>f(b)?r:b,rows[0]);
 const eff=r=>r.cin?r.tr/r.cin:0, bsk=r=>r.tr?r.nav/r.tr:0;
