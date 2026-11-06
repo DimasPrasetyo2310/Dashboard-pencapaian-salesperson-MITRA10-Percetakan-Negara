@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monitoring Sales Bulanan</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: filter tanggal + unggah, KPI strip (Traffic, Invoice, Efektivitas Traffic, Basket Size, Sales), lalu tren harian + kategori, lalu rekap harian. */
+:root{
+  --bg:#f6f7f8; --surface:#ffffff; --ink:#14181d; --ink2:#4d5661; --ink3:#78828e; --line:#e3e6ea; --grid:#eceef1;
+  --accent:#2a78d6; --accent-soft:#e6f0fc; --accent-ink:#184f95; --btn:#1c5cab; --btn-ink:#ffffff;
+  --good:#17784a; --good-bg:#e4f4ec; --warn:#8f5b00; --warn-bg:#fcf0d6; --crit:#b42626; --crit-bg:#fbe7e7;
+  --f-body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-num:'IBM Plex Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1317; --surface:#171c22; --ink:#eef0f2; --ink2:#b4bcc6; --ink3:#8a949f; --line:#262d35; --grid:#20262d;
+  --accent:#3987e5; --accent-soft:#1a2a40; --accent-ink:#9ec5f4; --btn:#2a78d6; --btn-ink:#ffffff;
+  --good:#58c08a; --good-bg:#15291f; --warn:#e5b347; --warn-bg:#2d2512; --crit:#f08080; --crit-bg:#341a1a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1317; --surface:#171c22; --ink:#eef0f2; --ink2:#b4bcc6; --ink3:#8a949f; --line:#262d35; --grid:#20262d;
+  --accent:#3987e5; --accent-soft:#1a2a40; --accent-ink:#9ec5f4; --btn:#2a78d6; --btn-ink:#ffffff;
+  --good:#58c08a; --good-bg:#15291f; --warn:#e5b347; --warn-bg:#2d2512; --crit:#f08080; --crit-bg:#341a1a; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5;
+  padding-block:20px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+h1{font-size:22px;font-weight:600;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.sub{color:var(--ink2);margin:2px 0 0}
+.controls{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;justify-content:space-between;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 16px}
+.dates{display:flex;flex-wrap:wrap;gap:10px 12px;align-items:flex-end;min-width:0}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3)}
+input[type=date]{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 10px;min-width:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--bg);color:var(--ink2);border-radius:99px;padding:6px 12px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent-ink);border-color:var(--accent)}
+.up{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{font:inherit;border:0;border-radius:6px;padding:8px 14px;cursor:pointer;background:var(--accent-soft);color:var(--accent-ink)}
+.btn.primary{background:var(--btn);color:var(--btn-ink);font-weight:500}
+.btn.ghost{background:transparent;color:var(--ink2);padding:8px 6px;text-decoration:underline}
+input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.msg{font-size:13px;padding:8px 12px;border-radius:6px}
+.msg.ok{background:var(--good-bg);color:var(--good)}.msg.err{background:var(--crit-bg);color:var(--crit)}
+.msg.info{background:var(--accent-soft);color:var(--accent-ink)}
+.note{background:var(--warn-bg);color:var(--warn);border-radius:6px;padding:8px 12px;font-size:13px}
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.kpi .l{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3)}
+.kpi .v{font-family:var(--f-num);font-variant-numeric:tabular-nums;font-size:26px;font-weight:500;letter-spacing:-.02em;line-height:1.2;overflow-wrap:anywhere}
+.kpi .s{font-size:12px;color:var(--ink2)}
+.kpi svg{width:100%;height:34px;margin-top:6px;display:block}
+.grid2{align-items:start;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;min-width:0}
+.card h2{font-size:14px;font-weight:600;margin:0 0 2px}
+.card .hint{font-size:12px;color:var(--ink3);margin:0 0 12px}
+.chart svg{width:100%;height:auto;display:block}
+.chart text{font-family:var(--f-num);font-size:10.5px;fill:var(--ink3)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.cats{display:flex;flex-direction:column;gap:9px}
+.cat .t{display:flex;justify-content:space-between;gap:8px;font-size:12px}
+.cat .t span:first-child{overflow-wrap:anywhere}
+.cat .b{height:8px;background:var(--grid);border-radius:4px;margin-top:3px;overflow:hidden}
+.cat .b i{display:block;height:100%;background:var(--accent);border-radius:0 4px 4px 0}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:760px}
+th{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);font-weight:500;text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+td{padding:9px 10px;border-bottom:1px solid var(--grid);vertical-align:middle}
+th.r,td.r{text-align:right}
+tfoot td{font-weight:500;border-top:1px solid var(--line);border-bottom:0}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;padding:2px 9px;border-radius:99px;white-space:nowrap}
+.pill.good{background:var(--good-bg);color:var(--good)}.pill.warn{background:var(--warn-bg);color:var(--warn)}
+.empty{color:var(--ink3);padding:16px 0}
+#tip{position:fixed;z-index:20;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;padding:6px 9px;border-radius:6px;opacity:0;transition:opacity .08s;max-width:240px}
+[data-tip]{cursor:default}
+@media (max-width:1000px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:860px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.grid2{grid-template-columns:minmax(0,1fr)}}
+@media (prefers-reduced-motion:reduce){#tip{transition:none}}
+
+[hidden]{display:none!important}
+.gate{min-height:60vh;display:grid;place-items:center}
+.gate-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:28px 32px;max-width:420px;display:flex;flex-direction:column;gap:8px}
+.gate-card h1{font-size:20px}
+.top{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-start;justify-content:space-between}
+.who{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;font-size:13px;color:var(--ink2)}
+.who a{color:var(--accent-ink)}
+.rolechip{display:inline-block;padding:1px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);font-weight:600;font-size:11.5px;margin-left:6px}
+.btn.sm{padding:4px 10px;font-size:12px}
+.hint2{font-size:12px;color:var(--ink3)}
+</style>
+</head>
+<body>
+
+<div class="gate" id="boot">
+  <div class="gate-card">
+    <h1>Monitoring Sales Bulanan</h1>
+    <p class="sub" id="boot-msg" role="status">Memeriksa akun…</p>
+    <div><button type="button" class="btn sm" id="boot-out" hidden>Keluar</button></div>
+  </div>
+</div>
+
+<div class="wrap" id="app" hidden>
+  <header class="top">
+    <div>
+      <h1>Monitoring Sales Bulanan</h1>
+      <p class="sub" id="period">MITRA10 Percetakan Negara (10005)</p>
+    </div>
+    <div class="who">
+      <a href="dashboard.html">Pencapaian Salesperson</a>
+      <span><b id="who-name"></b><span id="who-role" class="rolechip"></span></span>
+      <button type="button" class="btn sm" id="logout">Keluar</button>
+    </div>
+  </header>
+
+  <section class="controls" aria-label="Filter dan unggah data">
+    <div class="dates">
+      <div class="field"><label for="from">Dari tanggal</label><input type="date" id="from"></div>
+      <div class="field"><label for="to">Sampai tanggal</label><input type="date" id="to"></div>
+      <div class="chips" id="chips">
+        <button type="button" class="chip" data-p="all" aria-pressed="false">Semua data</button>
+        <button type="button" class="chip" data-p="7" aria-pressed="false">7 hari terakhir</button>
+        <button type="button" class="chip" data-p="month" aria-pressed="false">Bulan terakhir</button>
+      </div>
+    </div>
+    <div class="up" id="upbox" hidden>
+      <button type="button" class="btn primary" id="upBtn">Unggah database</button>
+      <input type="file" id="file" accept=".xlsx,.xls" multiple hidden>
+      <span class="hint2">Tersimpan di Supabase, dilihat seluruh tim.</span>
+    </div>
+  </section>
+  <div id="msg" role="status" aria-live="polite" hidden></div>
+
+  <section class="kpis" id="kpis" aria-label="Ringkasan utama"></section>
+
+  <section class="grid2">
+    <div class="card chart">
+      <h2>Sales harian toko</h2>
+      <p class="hint" id="chHint"></p>
+      <div id="chart"></div>
+      <div class="legend" id="chLegend"></div>
+      <div id="chNote"></div>
+    </div>
+    <div class="card">
+      <h2>Sales per kategori</h2>
+      <p class="hint">Dari laporan detail penjualan, exclude tax. Totalnya bisa sedikit berbeda dari sales NAV.</p>
+      <div class="cats" id="cats"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Rekap harian</h2>
+    <p class="hint">Gabungan laporan NAV dan FFC. Selisih bukan nol berarti kedua sistem belum sama.</p>
+    <div class="tbl"><table>
+      <thead><tr><th>Tanggal</th><th class="r">Traffic masuk</th><th class="r">Traffic keluar</th><th class="r">Invoice</th><th class="r">Efektivitas traffic</th><th class="r">Basket size</th><th class="r">Sales NAV</th><th class="r">Sales FFC</th><th>Status</th></tr></thead>
+      <tbody id="rows"></tbody>
+      <tfoot id="foot"></tfoot>
+    </table></div>
+  </section>
+</div>
+<div id="tip" role="tooltip"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="js/monitoring.js"></script>
+</body>
+</html>
