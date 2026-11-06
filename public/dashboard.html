@@ -83,6 +83,12 @@ table.mg th:nth-child(2){text-align:right}
 .kpi.hero .v{font-size:34px;white-space:nowrap}
 .kpi .d{color:var(--ink2);font-size:12.5px;margin-top:4px}
 .grid2{display:grid;grid-template-columns:1fr 1.2fr;gap:16px;align-items:start}
+.stack{display:grid;gap:16px;min-width:0}
+table.pt{width:100%;border-collapse:collapse;font-size:13px}
+table.pt th{text-align:left;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink3);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface)}
+table.pt td{padding:8px 10px;border-bottom:1px solid var(--grid)}
+table.pt .r{text-align:right}table.pt .mut{color:var(--ink3);width:32px}
+table.pt tfoot td{font-weight:700;border-top:2px solid var(--ink);border-bottom:0}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;min-width:0;box-shadow:var(--shadow)}
 .card h2{font-family:var(--font-display);font-size:18px;margin:0;font-weight:700;letter-spacing:-.005em}
 .card .hd{display:flex;flex-wrap:wrap;gap:8px 12px;justify-content:space-between;align-items:center;margin-bottom:12px}
@@ -236,6 +242,7 @@ table.mt .ok{color:var(--good);font-weight:600}
   </section>
 
   <section class="grid2">
+    <div class="stack">
     <div class="card">
       <div class="hd">
         <div><h2 id="rank-title">Peringkat penjualan</h2><p class="hint" id="rank-hint"></p></div>
@@ -252,6 +259,13 @@ table.mt .ok{color:var(--good);font-weight:600}
       </div>
       <div class="scroll" style="max-height:640px"><div class="rows" id="rows"></div></div>
       <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><div><h2>Penjualan Mitra10 Proteksi</h2><p class="hint" id="prot-sub"></p></div></div>
+      <div class="scroll" style="max-height:420px"><div id="prot-body"></div></div>
+      <p class="note" id="prot-note" hidden></p>
+    </div>
     </div>
 
     <div class="card">

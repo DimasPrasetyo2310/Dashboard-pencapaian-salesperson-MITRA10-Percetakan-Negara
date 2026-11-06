@@ -63,10 +63,15 @@ function parseReport(XLSX, buf, storeCode){
     if(!date){ if(r.some(c=>String(c).trim()!=='')) skippedRows++; continue; }
     const store = String(get(r,'store no')).trim();
     if(storeCode && store && store!==String(storeCode)){ skippedStore++; continue; }
-    const d = days[date] || (days[date]={tot:0,rec:new Set(),lines:0,unS:0,unL:0,unRec:new Set(),people:{},hours:{}});
+    const d = days[date] || (days[date]={tot:0,rec:new Set(),lines:0,unS:0,unL:0,unRec:new Set(),people:{},hours:{},prot:{}});
     const amt = num(get(r,'amount exclude sales')), inc = num(get(r,'amount include sales')), rn = String(get(r,'receipt no')).trim();
     let sid = String(get(r,'salescode id')).trim(); if(/^(null|none|nan|n\/a|-)$/i.test(sid)) sid='';
     d.tot += amt; d.rec.add(rn); d.lines++; used++;
+    if(/^bca$/i.test(String(get(r,'master brand')).trim())){
+      const pk=sid||'-'; const pr=d.prot[pk]||(d.prot[pk]={id:sid,name:'',q:0,s:0});
+      pr.q+=num(get(r,'qty')); pr.s+=amt;
+      if(!pr.name && sid){ const nm0=clean(get(r,'salescode name')); if(nm0 && !/^(null|none|nan)$/i.test(nm0)) pr.name=nm0; }
+    }
     const hr = hourOf(get(r,'time')); if(hr!==null) d.hours[hr] = (d.hours[hr]||0)+amt;
     if(!sid){ d.unS += amt; d.unL++; d.unRec.add(rn); continue; }
     const p = d.people[sid] || (d.people[sid]={id:sid,name:'',sales:0,incl:0,qty:0,rec:new Set(),lines:0,disc:0,cats:{},brands:{},pb:0});
@@ -91,6 +96,7 @@ function parseReport(XLSX, buf, storeCode){
         const brands = {}; for(const b in p.brands){ const v=Math.round(p.brands[b]); if(v) brands[b]=v; }
         return {id:p.id,name:nm,role:/KASIR/i.test(nm)?'Kasir':'Sales',sales:Math.round(p.sales),incl:Math.round(p.incl),qty:Math.round(p.qty),receipts:p.rec.size,lines:p.lines,disc:Math.round(p.disc),cats,brands,pb:Math.round(p.pb)};
       }),
+      prot:Object.values(d.prot).map(x=>({id:x.id,name:x.name||x.id,q:Math.round(x.q),s:Math.round(x.s)})),
       hours:Object.keys(d.hours).map(h=>({h:+h,sales:Math.round(d.hours[h])})).sort((a,b)=>a.h-b.h)
     };
   }
@@ -165,11 +171,13 @@ function applyTargets(sel){
 }
 function aggregate(from,to){
   const sel = dates.filter(d=>d>=from&&d<=to);
-  const m = {total:0,receipts:0,lines:0,unSales:0,unLines:0,unReceipts:0,days:sel.length,from:sel[0],to:sel[sel.length-1]};
+  const m = {total:0,receipts:0,lines:0,unSales:0,unLines:0,unReceipts:0,prot:{},protMiss:0,days:sel.length,from:sel[0],to:sel[sel.length-1]};
   const map = {}, hrs = {};
   sel.forEach(d=>{ const x=days[d];
     for(const k of ['total','receipts','lines','unSales','unLines','unReceipts']) m[k]+=x.meta[k];
     x.hours.forEach(h=>{hrs[h.h]=(hrs[h.h]||0)+h.sales;});
+    if(!Array.isArray(x.prot)) m.protMiss++;
+    else x.prot.forEach(q=>{ const k=q.id||'-'; const a=m.prot[k]||(m.prot[k]={id:q.id,name:q.name,q:0,s:0}); a.q+=q.q; a.s+=q.s; if(q.name) a.name=q.name; });
     x.people.forEach(p=>{
       const a = map[p.id] || (map[p.id]={id:p.id,name:p.name,role:p.role,sales:0,excl:0,qty:0,receipts:0,lines:0,disc:0,cats:{},brands:{},pb:0});
       for(const k of ['sales','excl','qty','receipts','lines','disc','pb']) a[k]+=(p[k]||0);
@@ -396,7 +404,16 @@ function renderFoot(){ return; // catatan data disembunyikan
    '<b>Target.</b> Target harian diambil dari kolom TARGET/DAY di file jadwal, dicocokkan lewat Sales ID. Target MTD atau target satu rentang tanggal adalah target harian dikali jumlah hari kerja yang sudah berjalan dalam rentang itu. Hari kerja adalah tanggal berkode S, P, atau M (termasuk P/JKP dan S/JKS). Kode OFF, CT, L, MT, OT, dan OUTING tidak punya target. Hari setelah tanggal akhir rentang belum dihitung. Penjualan di hari tanpa target tetap dihitung sebagai penjualan.'+(noSch?' '+noSch+' orang bertransaksi tetapi tidak ada di file jadwal, jadi ditampilkan tanpa target.':'');
 }
 
-function all(){ renderSub(); renderKPI(); renderRank(); renderMPP(); renderTable(); renderFoot(); }
+function renderProt(){
+  const rows=Object.values(M.prot||{}).sort((a,b)=>b.s-a.s);
+  const tq=rows.reduce((s,r)=>s+r.q,0), ts=rows.reduce((s,r)=>s+r.s,0);
+  $('prot-sub').textContent=(M.from&&M.to? (M.from===M.to? fd(M.from,{day:'numeric',month:'short'}) : fd(M.from,{day:'numeric',month:'short'})+' – '+fd(M.to,{day:'numeric',month:'short'}))+' · ' : '')+'master brand BCA · exclude PPN';
+  const t=$('prot-body');
+  if(!rows.length){ t.innerHTML='<p class="note">Belum ada penjualan Mitra10 Proteksi pada rentang ini.</p>'; }
+  else t.innerHTML='<table class="pt"><thead><tr><th>#</th><th>Salesperson</th><th class="r">Qty</th><th class="r">Value penjualan</th></tr></thead><tbody>'+rows.map((r,i)=>'<tr><td class="num mut">'+(i+1)+'</td><td>'+(r.id? esc(r.name||r.id):'<i>Tanpa kode sales</i>')+'</td><td class="num r">'+fmtN.format(r.q)+'</td><td class="num r">'+rp(r.s)+'</td></tr>').join('')+'</tbody><tfoot><tr><td></td><td>Total</td><td class="num r">'+fmtN.format(tq)+'</td><td class="num r">'+rp(ts)+'</td></tr></tfoot></table>';
+  const n=$('prot-note'); n.hidden=!M.protMiss; n.textContent=M.protMiss? M.protMiss+' tanggal belum memuat data proteksi. Unggah ulang laporan tanggal tersebut agar ikut terhitung.':'';
+}
+function all(){ renderSub(); renderKPI(); renderRank(); renderProt(); renderMPP(); renderTable(); renderFoot(); }
 document.querySelectorAll('[data-role]').forEach(b=>b.addEventListener('click',()=>{ S.role=b.dataset.role; document.querySelectorAll('[data-role]').forEach(x=>x.setAttribute('aria-pressed',x===b)); all(); }));
 document.querySelectorAll('[data-m]').forEach(b=>b.addEventListener('click',()=>{ S.m=b.dataset.m; document.querySelectorAll('[data-m]').forEach(x=>x.setAttribute('aria-pressed',x===b)); renderRank(); }));
 $('topn').addEventListener('change',e=>{ S.topn=parseInt(e.target.value,10); renderRank(); });
