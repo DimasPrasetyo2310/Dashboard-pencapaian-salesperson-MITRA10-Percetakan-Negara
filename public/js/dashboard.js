@@ -287,9 +287,9 @@ function renderMPP(){
   }
 
 const COLS = [
-  ['rank','#'],['name','Salesperson'],['zona','Zonasi'],['code','Jadwal'],['cat','Kategori utama'],['sales','Penjualan'],['brand','Penjualan master brand'],['nonbrand','Penjualan non master brand'],['target','Target'],['ach','Pencapaian'],['wd','Hari kerja'],['share','% total'],['receipts','Struk'],['qty','Qty'],['avg','Rata-rata / struk']
+  ['rank','#'],['id','Sales ID'],['name','Salesperson'],['zona','Zonasi'],['code','Jadwal'],['cat','Kategori utama'],['mbrand','Master brand'],['sales','Penjualan'],['brand','Penjualan master brand'],['nonbrand','Penjualan non master brand'],['target','Target'],['ach','Pencapaian'],['wd','Hari kerja'],['share','% total'],['receipts','Struk'],['qty','Qty'],['avg','Rata-rata / struk']
 ];
-const TXT = new Set(['name','cat','zona','code']);
+const TXT = new Set(['id','name','cat','zona','code','mbrand']);
 const CODE_ORDER = ['S','P','M','P/JKP','P.JKP','S/JKS','S.JKS','OFF','CT','L','MT','OT','OUTING'];
 const codeOn = (id,d) => { const e=SCHM[id]; return e? (e.by[d]||'') : ''; };
 function schDate(){ const d = S.schDate || M.to; return SCH.dates.includes(d)? d : (SCH.dates[0]||''); }
@@ -340,7 +340,7 @@ function renderTableInner(dr){
   lastM=M; lastDr=dr; syncRange(dr);
   const hasT = P.some(p=>p.hasSch);
   renderSchFilter();
-  const cols = COLS.filter(c=>hasT || !['zona','code','wd','brand','nonbrand','target','ach'].includes(c[0]));
+  const cols = COLS.filter(c=>hasT || !['zona','code','wd','mbrand','brand','nonbrand','target','ach'].includes(c[0]));
   const sd = schDate();
   $('thead').innerHTML = cols.map(c=>{
     const act = S.sort===c[0];
@@ -355,14 +355,14 @@ function renderTableInner(dr){
     base = base.filter(p=>schMatch(codeOn(p.id,sd)));
   }
   const ratio = p => p.target>0 ? p.sales/p.target : -1;
-  const val = (p,k)=> k==='share'?p.sales : k==='brand'?brandSales(p) : k==='nonbrand'?nonBrand(p) : k==='ach'?ratio(p) : k==='target'?(p.target==null?-1:p.target) : k==='code'?codeOn(p.id,sd) : k==='rank'?(p.rank==null?1e9:p.rank) : TXT.has(k)?String(p[k]||'').toLowerCase() : p[k];
+  const val = (p,k)=> k==='share'?p.sales : k==='brand'?brandSales(p) : k==='nonbrand'?nonBrand(p) : k==='mbrand'?String(p.brand||'').toLowerCase() : k==='id'?String(p.id||'').toLowerCase() : k==='ach'?ratio(p) : k==='target'?(p.target==null?-1:p.target) : k==='code'?codeOn(p.id,sd) : k==='rank'?(p.rank==null?1e9:p.rank) : TXT.has(k)?String(p[k]||'').toLowerCase() : p[k];
   const L = base.filter(p=>!q||p.name.toLowerCase().includes(q)).sort((a,b)=>{
     const x=val(a,S.sort), y=val(b,S.sort); return (x<y?-1:x>y?1:0)*S.dir; });
   const mx = Math.max(1,...P.map(p=>p.sales));
   lastL=L; lastHasT=hasT; lastSd=sd;
   $('tbody').innerHTML = L.map(p=>{
     const a=ratio(p), cd=codeOn(p.id,sd);
-    let t='<tr><td class="rk num">'+(p.rank==null?'–':p.rank)+'</td><td class="l">'+esc(p.name)+(p.role==='Kasir'?'<span class="chip">Kasir</span>':'')+'</td>'+(hasT?'<td class="l">'+(p.zona?esc(p.zona):'–')+'</td><td class="l">'+(cd?esc(cd):'–')+'</td>':'')+'<td class="l">'+(p.cat?esc(title(p.cat)):'–')+'</td>'+
+    let t='<tr><td class="rk num">'+(p.rank==null?'–':p.rank)+'</td><td class="l" style="font-size:12px;color:var(--ink2);white-space:nowrap">'+esc(p.id)+'</td><td class="l">'+esc(p.name)+(p.role==='Kasir'?'<span class="chip">Kasir</span>':'')+'</td>'+(hasT?'<td class="l">'+(p.zona?esc(p.zona):'–')+'</td><td class="l">'+(cd?esc(cd):'–')+'</td>':'')+'<td class="l">'+(p.cat?esc(title(p.cat)):'–')+'</td>'+(hasT?'<td class="l">'+(p.brand?esc(title(p.brand)):'–')+'</td>':'')+
       '<td class="num"><div class="cell"><span class="mini"><i style="width:'+Math.max(0,p.sales/mx*100)+'%"></i></span><span style="min-width:100px;display:inline-block;text-align:right">'+rp(p.sales)+'</span></div></td>'+(hasT?'<td class="num" title="'+esc(brandTip(p))+'">'+(p.brand?rp(brandSales(p))+'<span class="bn">'+esc(title(p.brand))+'</span>':'–')+'</td><td class="num">'+(p.brand?rp(nonBrand(p)):'–')+'</td>':'');
     if(hasT){
       t+='<td class="num">'+(p.target==null?'–':p.target===0?'<span style="color:var(--ink3)">tidak ada</span>':rp(p.target))+'</td>'+
@@ -371,7 +371,7 @@ function renderTableInner(dr){
     }
     t+='<td class="num">'+pct(p.sales/(M.total||1))+'</td><td class="num">'+p.receipts+'</td><td class="num">'+fmtN.format(p.qty)+'</td><td class="num">'+(p.lines?rp(p.avg):'–')+'</td>';
     return t+'</tr>';
-  }).join('') || '<tr><td colspan="15" style="text-align:center;color:var(--ink3)">Tidak ada orang yang cocok dengan filter.</td></tr>';
+  }).join('') || '<tr><td colspan="17" style="text-align:center;color:var(--ink3)">Tidak ada orang yang cocok dengan filter.</td></tr>';
   $('tbl-hint').textContent = L.length+' orang'+(dr? ' · '+(S.dMode==='mtd'?'MTD ':'')+shortD(dr.from)+(dr.to!==dr.from?' sampai '+fd(dr.to,{day:'numeric',month:'short',year:'numeric'}):'')+' ('+M.days+' hari)' : '')+(S.schSel.length? ' · jadwal '+schLabel()+' pada '+shortD(sd) : '')+' · klik judul kolom untuk mengurutkan';
   $('thead').querySelectorAll('button').forEach(bt=>bt.addEventListener('click',()=>{
     const k=bt.dataset.s; if(S.sort===k) S.dir*=-1; else {S.sort=k; S.dir=TXT.has(k)?1:-1;} renderTable(); }));
@@ -404,10 +404,10 @@ $('q').addEventListener('input',e=>{ S.q=e.target.value; renderTable(); });
 // ---- Screenshot tabel detail (PNG untuk dibagikan) ----
 function shotCanvas(){
   const rows = lastL, hasT = lastHasT, sd = lastSd;
-  const S2=Math.max(1,Math.min(2,12000/(150+36*(lastL.length+3)))), W=1080, padX=32, FONT="'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif", DISP="'Schibsted Grotesk','Public Sans',system-ui,sans-serif";
+  const S2=Math.max(1,Math.min(2,12000/(150+36*(lastL.length+3)))), W=(hasT?1560:1080), padX=32, FONT="'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif", DISP="'Schibsted Grotesk','Public Sans',system-ui,sans-serif";
   const cols = hasT
-    ? [['#',44,'r'],['Salesperson',220,'l'],['Zonasi',90,'l'],['Jadwal '+shortD(sd),80,'l'],['Penjualan',130,'r'],['Penjualan master brand',160,'bt'],['Non master brand',130,'r'],['Target',120,'r'],['Pencapaian',150,'bar']]
-    : [['#',44,'r'],['Salesperson',280,'l'],['Kategori utama',220,'l'],['Penjualan',170,'r'],['% total',100,'r'],['Struk',70,'r']];
+    ? [['#',36,'r'],['Sales ID',150,'l'],['Salesperson',170,'l'],['Zonasi',70,'l'],['Jadwal '+shortD(sd),80,'l'],['Master brand',100,'l'],['Penjualan',120,'r'],['Penjualan master brand',150,'bt'],['Non master brand',110,'r'],['Target',100,'r'],['Pencapaian',130,'bar']]
+    : [['#',44,'r'],['Sales ID',150,'l'],['Salesperson',230,'l'],['Kategori utama',200,'l'],['Penjualan',170,'r'],['% total',100,'r'],['Struk',70,'r']];
   const tw = cols.reduce((a,c)=>a+c[1],0), scale=(W-padX*2)/tw; cols.forEach(c=>c[1]=c[1]*scale);
   const q = S.q.trim();
   const f = []; f.push(S.role==='all'?'Semua peran':S.role==='Kasir'?'Kasir':'Sales'); if(S.zona) f.push('Zonasi '+S.zona);
@@ -431,8 +431,8 @@ function shotCanvas(){
     if(r%2) { g.fillStyle='#fafafa'; g.fillRect(padX,y,W-padX*2,rowH); }
     g.fillStyle='#ecedeb'; g.fillRect(padX,y+rowH-1,W-padX*2,1);
     const cells = hasT
-      ? [p.rank==null?'–':p.rank, p.name, p.zona||'–', cd||'–', rp(p.sales), p.brand?brandSales(p):null, p.brand?rp(nonBrand(p)):'–', p.target==null?'–':p.target===0?'tidak ada':rp(p.target), null]
-      : [p.rank==null?'–':p.rank, p.name, p.cat?title(p.cat):'–', rp(p.sales), pct(p.sales/(lastM.total||1)), p.receipts];
+      ? [p.rank==null?'–':p.rank, p.id, p.name, p.zona||'–', cd||'–', p.brand?title(p.brand):'–', rp(p.sales), p.brand?brandSales(p):null, p.brand?rp(nonBrand(p)):'–', p.target==null?'–':p.target===0?'tidak ada':rp(p.target), null]
+      : [p.rank==null?'–':p.rank, p.id, p.name, p.cat?title(p.cat):'–', rp(p.sales), pct(p.sales/(lastM.total||1)), p.receipts];
     cols.forEach((k,i)=>{
       const x=cx(i), w=k[1], mid=y+rowH/2;
       if(k[2]==='bar'){
@@ -444,7 +444,7 @@ function shotCanvas(){
       }
       if(k[2]==='bt'){ g.textAlign='right'; if(cells[i]==null){ g.font='400 13px '+FONT; g.fillStyle='#7a7975'; g.fillText('–',x+w-10,mid); } else { g.font='400 13px '+FONT; g.fillStyle='#0b0b0b'; g.fillText(rp(cells[i]),x+w-10,mid-7); g.font='400 10.5px '+FONT; g.fillStyle='#7a7975'; g.fillText(fit(title(p.brand),w-20),x+w-10,mid+8); } return; }
       const l=k[2]==='l'; g.textAlign=l?'left':'right';
-      g.font=(i===1?'500 ':'400 ')+'13px '+FONT; g.fillStyle=(i===0||cells[i]==='–'||cells[i]==='tidak ada')?'#7a7975':'#0b0b0b';
+      g.font=(i===2?'500 ':'400 ')+(i===1?'11px ':'13px ')+FONT; g.fillStyle=(i===0||cells[i]==='–'||cells[i]==='tidak ada')?'#7a7975':'#0b0b0b';
       g.fillText(fit(cells[i],w-20),l?x+10:x+w-10,mid);
     });
     y+=rowH;
