@@ -284,8 +284,7 @@ function renderMPP(){
   const mem=P.filter(p=>p.hasSch && p.target>0);
   $('mpp-sub').textContent = (M.days? (M.days===1? 'Daily · '+fd(M.from,{day:'numeric',month:'short',year:'numeric'}) : fd(M.from,{day:'numeric',month:'short'})+' sampai '+fd(M.to,{day:'numeric',month:'short',year:'numeric'})+' · '+M.days+' hari') : 'tidak ada data')+' · berdasarkan achievement penjualan';
   body.innerHTML = mppTable('Summary all salesperson, all staff (PB & eksternal)','#f0a500',mem)+mppTable('Summary all salesperson, Private Brand only','#2a9de0',mem.filter(p=>String(p.brand||'').toUpperCase()==='PRIVATE BRAND'));
-  $('mpp-note').textContent='Actual MPP = jumlah salesperson yang punya hari kerja (target) pada rentang tanggal. Salper = jumlah orang dengan achievement (penjualan ÷ target) di atas atau di bawah batas itu, Cont = persen dari MPP. IPD = rata-rata invoice (struk) yang dihasilkan per salesperson per hari kerja. BZ = rata-rata nilai penjualan per struk; arti BZ saya baca dari contoh Anda, jadi koreksi bila berbeda.';
-}
+  }
 
 const COLS = [
   ['rank','#'],['name','Salesperson'],['zona','Zonasi'],['code','Jadwal'],['cat','Kategori utama'],['sales','Penjualan'],['brand','Penjualan master brand'],['nonbrand','Penjualan non master brand'],['target','Target'],['ach','Pencapaian'],['wd','Hari kerja'],['share','% total'],['receipts','Struk'],['qty','Qty'],['avg','Rata-rata / struk']
