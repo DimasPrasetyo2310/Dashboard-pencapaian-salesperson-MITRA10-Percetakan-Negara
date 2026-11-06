@@ -75,7 +75,7 @@ function parseReport(XLSX, buf, storeCode){
     }
     const hr = hourOf(get(r,'time')); if(hr!==null) d.hours[hr] = (d.hours[hr]||0)+amt;
     if(!sid){ d.unS += amt; d.unL++; d.unRec.add(rn); continue; }
-    const p = d.people[sid] || (d.people[sid]={id:sid,name:'',sales:0,incl:0,qty:0,rec:new Set(),lines:0,disc:0,cats:{},brands:{},pb:0});
+    const p = d.people[sid] || (d.people[sid]={id:sid,name:'',sales:0,incl:0,qty:0,rec:new Set(),lines:0,disc:0,cats:{},brands:{},pb:0,it:{}});
     if(!p.name){ const nm=clean(get(r,'salescode name')); if(nm && !/^(null|none|nan)$/i.test(nm)) p.name=nm; }
     p.sales += amt; p.incl += inc; p.qty += num(get(r,'qty'));
     p.rec.add(rn); p.lines++; p.disc += num(get(r,'dicount amount'));
@@ -83,6 +83,7 @@ function parseReport(XLSX, buf, storeCode){
     p.cats[cat] = (p.cats[cat]||0)+amt;
     const mb = String(get(r,'master brand')).trim().toUpperCase() || 'LAINNYA';
     p.brands[mb] = (p.brands[mb]||0)+amt;
+    { const ino=String(get(r,'item no')).trim(), idesc=clean(get(r,'item name')), ik=ino||idesc; const ie=p.it[ik]||(p.it[ik]=[cat,mb,ino,idesc,0,0]); ie[4]+=num(get(r,'qty')); ie[5]+=amt; }
     if(/^private brand$/i.test(String(get(r,'master type brand')).trim())) p.pb += amt;
   }
   const out = {};
@@ -95,7 +96,7 @@ function parseReport(XLSX, buf, storeCode){
         const nm = p.name || p.id;
         const cats = {}; for(const c in p.cats) cats[c]=Math.round(p.cats[c]);
         const brands = {}; for(const b in p.brands){ const v=Math.round(p.brands[b]); if(v) brands[b]=v; }
-        return {id:p.id,name:nm,role:/KASIR/i.test(nm)?'Kasir':'Sales',sales:Math.round(p.sales),incl:Math.round(p.incl),qty:Math.round(p.qty),receipts:p.rec.size,lines:p.lines,disc:Math.round(p.disc),cats,brands,pb:Math.round(p.pb)};
+        return {id:p.id,name:nm,role:/KASIR/i.test(nm)?'Kasir':'Sales',sales:Math.round(p.sales),incl:Math.round(p.incl),qty:Math.round(p.qty),receipts:p.rec.size,lines:p.lines,disc:Math.round(p.disc),cats,brands,pb:Math.round(p.pb),it:Object.values(p.it).map(e=>[e[0],e[1],e[2],e[3],Math.round(e[4]*100)/100,Math.round(e[5])])};
       }),
       mb:Object.fromEntries(Object.entries(d.mb).map(([k,v])=>[k,{q:Math.round(v.q),s:Math.round(v.s)}])),
       prot:Object.values(d.prot).map(x=>({id:x.id,name:x.name||x.id,q:Math.round(x.q),s:Math.round(x.s)})),
@@ -186,6 +187,7 @@ function aggregate(from,to){
       for(const k of ['sales','excl','qty','receipts','lines','disc','pb']) a[k]+=(p[k]||0);
       for(const b in (p.brands||{})) a.brands[b]=(a.brands[b]||0)+p.brands[b];
       a.name=p.name; for(const c in p.cats) a.cats[c]=(a.cats[c]||0)+p.cats[c];
+      if(Array.isArray(p.it)){ const im=a.it||(a.it={}); p.it.forEach(e=>{ const k=e[2]||e[3]; const t=im[k]||(im[k]=[e[0],e[1],e[2],e[3],0,0]); t[4]+=e[4]; t[5]+=e[5]; }); } else a.itMiss=(a.itMiss||0)+1;
     });
   });
   P = Object.values(map).map(a=>{ a.cat=Object.entries(a.cats).sort((x,y)=>y[1]-x[1])[0][0]; return a; }).sort((a,b)=>b.sales-a.sales);
@@ -371,9 +373,10 @@ function renderTableInner(dr){
     const x=val(a,S.sort), y=val(b,S.sort); return (x<y?-1:x>y?1:0)*S.dir; });
   const mx = Math.max(1,...P.map(p=>p.sales));
   lastL=L; lastHasT=hasT; lastSd=sd;
+  rowMap=Object.fromEntries(L.map(p=>[p.id,p])); popPer=M.days? (M.from===M.to? shortD(M.from) : shortD(M.from)+' – '+shortD(M.to)) : '';
   $('tbody').innerHTML = L.map(p=>{
     const a=ratio(p), cd=codeOn(p.id,sd);
-    let t='<tr><td class="rk num">'+(p.rank==null?'–':p.rank)+'</td><td class="l" style="font-size:12px;color:var(--ink2);white-space:nowrap">'+esc(p.id)+'</td><td class="l">'+esc(p.name)+(p.role==='Kasir'?'<span class="chip">Kasir</span>':'')+'</td>'+(hasT?'<td class="l">'+(p.zona?esc(p.zona):'–')+'</td><td class="l">'+(cd?esc(cd):'–')+'</td>':'')+'<td class="l">'+(p.cat?esc(title(p.cat)):'–')+'</td>'+(hasT?'<td class="l">'+(p.brand?esc(title(p.brand)):'–')+'</td>':'')+
+    let t='<tr data-id="'+esc(p.id)+'" tabindex="0"><td class="rk num">'+(p.rank==null?'–':p.rank)+'</td><td class="l" style="font-size:12px;color:var(--ink2);white-space:nowrap">'+esc(p.id)+'</td><td class="l">'+esc(p.name)+(p.role==='Kasir'?'<span class="chip">Kasir</span>':'')+'</td>'+(hasT?'<td class="l">'+(p.zona?esc(p.zona):'–')+'</td><td class="l">'+(cd?esc(cd):'–')+'</td>':'')+'<td class="l">'+(p.cat?esc(title(p.cat)):'–')+'</td>'+(hasT?'<td class="l">'+(p.brand?esc(title(p.brand)):'–')+'</td>':'')+
       '<td class="num"><div class="cell"><span class="mini"><i style="width:'+Math.max(0,p.sales/mx*100)+'%"></i></span><span style="min-width:100px;display:inline-block;text-align:right">'+rp(p.sales)+'</span></div></td>'+(hasT?'<td class="num" title="'+esc(brandTip(p))+'">'+(p.brand?rp(brandSales(p))+'<span class="bn">'+esc(title(p.brand))+'</span>':'–')+'</td><td class="num">'+(p.brand?rp(nonBrand(p)):'–')+'</td>':'');
     if(hasT){
       t+='<td class="num">'+(p.target==null?'–':p.target===0?'<span style="color:var(--ink3)">tidak ada</span>':rp(p.target))+'</td>'+
@@ -407,6 +410,25 @@ function renderFoot(){ return; // catatan data disembunyikan
    '<b>Target.</b> Target harian diambil dari kolom TARGET/DAY di file jadwal, dicocokkan lewat Sales ID. Target MTD atau target satu rentang tanggal adalah target harian dikali jumlah hari kerja yang sudah berjalan dalam rentang itu. Hari kerja adalah tanggal berkode S, P, atau M (termasuk P/JKP dan S/JKS). Kode OFF, CT, L, MT, OT, dan OUTING tidak punya target. Hari setelah tanggal akhir rentang belum dihitung. Penjualan di hari tanpa target tetap dihitung sebagai penjualan.'+(noSch?' '+noSch+' orang bertransaksi tetapi tidak ada di file jadwal, jadi ditampilkan tanpa target.':'');
 }
 
+let rowMap={}, popPer='', popLast=null;
+function closePop(){ const o=$('pop'); if(o.hidden) return; o.hidden=true; document.documentElement.style.overflow=''; if(popLast&&popLast.focus) popLast.focus(); }
+function openPerson(p, from){
+  popLast=from||null;
+  $('pop-id').textContent=p.id; $('pop-name').textContent=p.name; $('pop-name2').textContent=p.name; $('pop-zona').textContent=p.zona||'–'; $('pop-val').textContent=rp(p.sales);
+  $('pop-per').textContent=(popPer?popPer+' · ':'')+'sales exclude PPN';
+  const items=Object.values(p.it||{}).sort((a,b)=>b[5]-a[5]);
+  const tq=items.reduce((s,e)=>s+e[4],0), ts=items.reduce((s,e)=>s+e[5],0);
+  const body=$('pop-body');
+  if(!items.length) body.innerHTML='<p class="note" style="padding:14px 4px">'+(p.sales>0?'Detail item belum tersimpan untuk orang ini.':'Belum ada penjualan pada rentang ini.')+'</p>';
+  else body.innerHTML='<table class="pt"><thead><tr><th>Category</th><th>Master brand</th><th>No Item</th><th>Deskripsi</th><th class="rt">Qty</th><th class="rt">Total value</th></tr></thead><tbody>'+items.map(e=>'<tr><td>'+esc(title(e[0]))+'</td><td>'+esc(title(e[1]))+'</td><td class="num">'+esc(e[2])+'</td><td>'+esc(e[3])+'</td><td class="num rt">'+fmtN.format(e[4])+'</td><td class="num rt">'+rp(e[5])+'</td></tr>').join('')+'</tbody><tfoot><tr><td colspan="4">Total · '+items.length+' item</td><td class="num rt">'+fmtN.format(tq)+'</td><td class="num rt">'+rp(ts)+'</td></tr></tfoot></table>';
+  const n=$('pop-note'); n.hidden=!p.itMiss; n.textContent=p.itMiss? p.itMiss+' tanggal belum memuat detail item. Unggah ulang laporan tanggal tersebut agar daftar item lengkap.':'';
+  const o=$('pop'); o.hidden=false; document.documentElement.style.overflow='hidden'; $('pop-x').focus(); $('pop-body').scrollTop=0;
+}
+$('pop-x').addEventListener('click',closePop);
+$('pop').addEventListener('click',e=>{ if(e.target===$('pop')) closePop(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closePop(); });
+$('tbody').addEventListener('click',e=>{ const tr=e.target.closest('tr[data-id]'); if(!tr||e.target.closest('button,a')) return; const p=rowMap[tr.dataset.id]; if(p) openPerson(p,tr); });
+$('tbody').addEventListener('keydown',e=>{ if(e.key!=='Enter') return; const tr=e.target.closest('tr[data-id]'); if(!tr) return; const p=rowMap[tr.dataset.id]; if(p) openPerson(p,tr); });
 function renderProt(){
   const rows=Object.values(M.prot||{}).sort((a,b)=>b.s-a.s);
   const tq=rows.reduce((s,r)=>s+r.q,0), ts=rows.reduce((s,r)=>s+r.s,0);

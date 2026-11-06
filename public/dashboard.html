@@ -183,6 +183,21 @@ table.mt .ok{color:var(--good);font-weight:600}
 .gate-team{font-size:13px;color:var(--ink2)}
 .gate-team summary{cursor:pointer;color:var(--ink)}
 .gate-team ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+#tbody tr[data-id]{cursor:pointer}
+#tbody tr[data-id]:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
+.ovl{position:fixed;inset:0;background:rgba(10,20,40,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:60}
+.pop{background:var(--surface);border-radius:16px;max-width:1020px;width:100%;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 60px -20px rgba(10,20,40,.6)}
+.pop-hd{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;padding:18px 22px;background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;border-bottom:4px solid var(--amber)}
+.pop-hd h2{font-family:var(--font-display);font-size:20px;margin:0}
+.pop-hd .per{color:#c7d4ea;font-size:12.5px;margin-top:2px}
+.pop-x{background:rgba(255,255,255,.14);color:#fff;border:0;border-radius:9px;width:34px;height:34px;font-size:20px;line-height:1;cursor:pointer;flex:none}
+.pop-x:hover{background:rgba(255,255,255,.26)}
+.pinfo{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px 18px;padding:16px 22px;border-bottom:1px solid var(--line);background:var(--soft)}
+.pinfo span{display:block;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);font-weight:600}
+.pinfo b{display:block;font-size:16px;margin-top:2px}
+.pop-body{overflow:auto;padding:4px 22px 16px;min-height:120px}
+.pop-body table.pt{min-width:640px}
+@media (max-width:640px){.pop-hd,.pinfo{padding-left:14px;padding-right:14px}.pop-body{padding:4px 14px 14px}}
 </style>
 </head>
 <body>
@@ -325,6 +340,19 @@ table.mt .ok{color:var(--good);font-weight:600}
   <button type="button" class="psdl" id="ps-dl" title="Simpan gambar tabel sebagai file PNG">Unduh PNG</button>
 </div>
 
+<div class="ovl" id="pop" hidden role="dialog" aria-modal="true" aria-labelledby="pop-name">
+  <div class="pop">
+    <div class="pop-hd"><div><h2 id="pop-name"></h2><div class="per" id="pop-per"></div></div><button type="button" class="pop-x" id="pop-x" aria-label="Tutup">×</button></div>
+    <div class="pinfo">
+      <div><span>Sales ID</span><b id="pop-id"></b></div>
+      <div><span>Nama</span><b id="pop-name2"></b></div>
+      <div><span>Zonasi</span><b id="pop-zona"></b></div>
+      <div><span>Total value</span><b id="pop-val"></b></div>
+    </div>
+    <div class="pop-body" id="pop-body"></div>
+    <p class="note" id="pop-note" hidden style="padding:0 22px 14px"></p>
+  </div>
+</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
