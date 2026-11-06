@@ -277,8 +277,8 @@ const ZLAB={'1':'Flooring and wall','2':'Bathroom & Plumbing','3':'App, Kitchen 
 function mppSummary(list){
   const zs=[...new Set(SCH.people.map(e=>e.zona).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'id',{numeric:true}));
   const agg=l=>{ const n=l.length, s=l.reduce((a,p)=>a+p.sales,0), tg=l.reduce((a,p)=>a+p.target,0), rc=l.reduce((a,p)=>a+p.receipts,0), wd=l.reduce((a,p)=>a+(p.wd||0),0);
-    const hi=l.filter(p=>p.sales/p.target>=1).length, lo=l.filter(p=>p.sales/p.target<.75).length;
-    return {n,hi,lo,hiP:n?hi/n:0,loP:n?lo/n:0,ipd:wd?rc/wd:0,bz:rc?s/rc:0}; };
+    const hi=l.filter(p=>p.sales/p.target>=1).length, lo=l.filter(p=>p.sales/p.target<.75).length, mid=n-hi-lo;
+    return {n,hi,mid,lo,hiP:n?hi/n:0,midP:n?mid/n:0,loP:n?lo/n:0,ipd:wd?rc/wd:0,bz:rc?s/rc:0}; };
   const rows=zs.map(z=>{ const num=(z.match(/\d+/)||[''])[0]; const l=list.filter(p=>p.zona===z);
     const cats=[...new Set(SCH.people.filter(e=>e.zona===z).map(e=>title(e.cat||'')).filter(Boolean))];
     return Object.assign({z:num||z, cat:ZLAB[num]||cats.join(', ')}, agg(l)); });
@@ -286,8 +286,8 @@ function mppSummary(list){
 }
 function mppTable(name,color,list){
   const {rows,tot}=mppSummary(list), pc=v=>Math.round(v*100)+'%', ip=v=>v?v.toFixed(2).replace('.',','):'0', bz=v=>v?fmtN.format(Math.round(v)):'0';
-  const tr=r=>'<td class="num">'+r.n+'</td><td class="num '+(r.hi?'ok':'')+'">'+r.hi+'</td><td class="num g">'+pc(r.hiP)+'</td><td class="num">'+r.lo+'</td><td class="num r">'+pc(r.loP)+'</td><td class="num">'+ip(r.ipd)+'</td><td class="num">'+bz(r.bz)+'</td>';
-  return '<div class="mpp"><div class="mpph"><i style="background:'+color+'"></i>'+esc(name)+'</div><div class="scroll" style="max-height:none"><table class="mt"><thead><tr><th class="l">Zona</th><th class="l">Category</th><th>Actual MPP</th><th>Salper ≥100%</th><th>Cont</th><th>Salper &lt;75%</th><th>Cont</th><th>IPD</th><th>BZ</th></tr></thead><tbody>'+
+  const tr=r=>'<td class="num">'+r.n+'</td><td class="num '+(r.hi?'ok':'')+'">'+r.hi+'</td><td class="num g">'+pc(r.hiP)+'</td><td class="num">'+r.mid+'</td><td class="num a">'+pc(r.midP)+'</td><td class="num">'+r.lo+'</td><td class="num r">'+pc(r.loP)+'</td><td class="num">'+ip(r.ipd)+'</td><td class="num">'+bz(r.bz)+'</td>';
+  return '<div class="mpp"><div class="mpph"><i style="background:'+color+'"></i>'+esc(name)+'</div><div class="scroll" style="max-height:none"><table class="mt"><thead><tr><th class="l">Zona</th><th class="l">Category</th><th>Actual MPP</th><th>Salper ≥100%</th><th>Cont</th><th>Salper 75–99%</th><th>Cont</th><th>Salper &lt;75%</th><th>Cont</th><th>IPD</th><th>BZ</th></tr></thead><tbody>'+
     rows.map(r=>'<tr><td class="l">'+esc(r.z)+'</td><td class="l cat">'+esc(r.cat)+'</td>'+tr(r)+'</tr>').join('')+
     '<tr class="tot"><td class="l" colspan="2">Total</td>'+tr(tot)+'</tr></tbody></table></div></div>';
 }
@@ -515,7 +515,7 @@ const shotBlob=async()=>{ try{ await document.fonts.ready; }catch(e){} return to
 function mppCanvas(){
   const mem=P.filter(p=>p.hasSch && p.target>0), sets=[['Summary all salesperson, all staff (PB & eksternal)','#f5a800','#2a1d00',mem],['Summary all salesperson, Private Brand only','#2a9de0','#ffffff',mem.filter(p=>String(p.brand||'').toUpperCase()==='PRIVATE BRAND')]];
   const FONT="'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif", DISP="'Schibsted Grotesk','Public Sans',system-ui,sans-serif";
-  const W=1080, px=32, S2=2, cols=[['Zona',56,'c'],['Category',330,'l'],['Actual\nMPP',90,'r'],['Salper\n≥100%',96,'r'],['Cont',70,'r'],['Salper\n<75%',96,'r'],['Cont',70,'r'],['IPD',70,'r'],['BZ',138,'r']];
+  const W=1200, px=32, S2=2, cols=[['Zona',56,'c'],['Category',280,'l'],['Actual\nMPP',90,'r'],['Salper\n≥100%',96,'r'],['Cont',70,'r'],['Salper\n75–99%',96,'r'],['Cont',70,'r'],['Salper\n<75%',96,'r'],['Cont',70,'r'],['IPD',70,'r'],['BZ',138,'r']];
   const pc=v=>Math.round(v*100)+'%', ip=v=>v?v.toFixed(2).replace('.',','):'0', bz=v=>v?fmtN.format(Math.round(v)):'0';
   const data=sets.map(s=>mppSummary(s[3]));
   const tblH=30+40+30*data[0].rows.length+34, H=100+tblH*2+16+44;
@@ -534,10 +534,10 @@ function mppCanvas(){
     const line=(r,isTot,label)=>{
       if(isTot){ g.fillStyle='#ffe29a'; g.fillRect(px,y,W-px*2,34); } else { g.fillStyle='#e3e8f1'; g.fillRect(px,y+29,W-px*2,1); }
       const h=isTot?34:30, mid=y+h/2;
-      const vals=isTot?['Total','',r.n,r.hi,pc(r.hiP),r.lo,pc(r.loP),ip(r.ipd),bz(r.bz)]:[r.z,r.cat,r.n,r.hi,pc(r.hiP),r.lo,pc(r.loP),ip(r.ipd),bz(r.bz)];
+      const vals=isTot?['Total','',r.n,r.hi,pc(r.hiP),r.mid,pc(r.midP),r.lo,pc(r.loP),ip(r.ipd),bz(r.bz)]:[r.z,r.cat,r.n,r.hi,pc(r.hiP),r.mid,pc(r.midP),r.lo,pc(r.loP),ip(r.ipd),bz(r.bz)];
       let x=px; cols.forEach((k,i)=>{
         g.font=(isTot?'700 ':'400 ')+'13px '+FONT; g.fillStyle='#0e1a2b';
-        if(i===4&&!isTot) g.fillStyle='#0e6b49'; if(i===6&&!isTot) g.fillStyle='#b4271c';
+        if(i===4&&!isTot) g.fillStyle='#0e6b49'; if(i===6&&!isTot) g.fillStyle='#a86a00'; if(i===8&&!isTot) g.fillStyle='#b4271c';
         g.textAlign=k[2]==='l'?'left':k[2]==='c'?'center':'right';
         if(isTot&&i===0){ g.textAlign='left'; g.fillText('Total',x+10,mid); }
         else if(!(isTot&&i===1)) g.fillText(String(vals[i]),k[2]==='l'?x+10:k[2]==='c'?x+k[1]/2:x+k[1]-10,mid);
