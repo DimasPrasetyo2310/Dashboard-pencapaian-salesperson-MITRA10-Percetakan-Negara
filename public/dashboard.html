@@ -87,7 +87,7 @@ table.mg th:nth-child(2){text-align:right}
 table.pt{width:100%;border-collapse:collapse;font-size:13px}
 table.pt th{text-align:left;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink3);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface)}
 table.pt td{padding:8px 10px;border-bottom:1px solid var(--grid)}
-table.pt .r{text-align:right}table.pt .mut{color:var(--ink3);width:32px}
+table.pt th,table.pt td{text-align:left}table.pt td.rt,table.pt th.rt{text-align:right}table.pt .mut{color:var(--ink3);width:32px}
 table.pt tfoot td{font-weight:700;border-top:2px solid var(--ink);border-bottom:0}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;min-width:0;box-shadow:var(--shadow)}
 .card h2{font-family:var(--font-display);font-size:18px;margin:0;font-weight:700;letter-spacing:-.005em}
@@ -268,11 +268,19 @@ table.mt .ok{color:var(--good);font-weight:600}
     </div>
     </div>
 
+    <div class="stack">
     <div class="card">
       <div class="hd"><div><h2>Summary pencapaian per MPP</h2><p class="hint" id="mpp-sub"></p></div>
         <div class="ctl"><button type="button" class="btn sm" id="mpp-copy" title="Salin gambar summary ke clipboard, lalu tempel di WhatsApp">Print Screen</button><button type="button" class="btn sm" id="mpp-dl">Unduh PNG</button></div></div>
       <div id="mpp-body"></div>
       <p class="note" id="mpp-note" hidden></p>
+    </div>
+
+    <div class="card">
+      <div class="hd"><div><h2>TOP 10 Master brand</h2><p class="hint" id="tb-sub"></p></div></div>
+      <div id="tb-body"></div>
+      <p class="note" id="tb-note" hidden></p>
+    </div>
     </div>
   </section>
 
