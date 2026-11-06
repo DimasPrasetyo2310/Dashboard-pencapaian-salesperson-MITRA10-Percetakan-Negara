@@ -206,7 +206,7 @@ function showTip(html,e){ tip.innerHTML=html; tip.style.opacity=1; const w=tip.o
 function hideTip(){ tip.style.opacity=0; }
 function tipHTML(p){
   let h='<b>'+esc(p.name)+'</b>Rank #'+p.rank+' dari '+P.length+'<br>Penjualan '+rp(p.sales)+' ('+pct(p.sales/(M.total||1))+' toko)<br>'+p.receipts+' struk · '+p.qty+' qty · '+p.lines+' baris item';
-  if(p.lines) h+='<br>Rata-rata '+rp(p.avg)+' / struk';
+  if(p.lines) h+='<br>Basket size '+rp(p.avg);
   if(P.some(x=>x.disc>0)) h+='<br>Diskon '+rp(p.disc);
   if(p.cat) h+='<br>Kategori utama: '+esc(title(p.cat));
   if(p.hasSch){
@@ -298,7 +298,7 @@ function renderMPP(){
   }
 
 const COLS = [
-  ['rank','#'],['id','Sales ID'],['name','Salesperson'],['zona','Zonasi'],['code','Jadwal'],['cat','Kategori utama'],['mbrand','Master brand'],['sales','Penjualan'],['brand','Penjualan master brand'],['nonbrand','Penjualan non master brand'],['target','Target'],['ach','Pencapaian'],['wd','Hari kerja'],['share','% total'],['receipts','Struk'],['qty','Qty'],['avg','Rata-rata / struk']
+  ['rank','#'],['id','Sales ID'],['name','Salesperson'],['zona','Zonasi'],['code','Jadwal'],['cat','Kategori utama'],['mbrand','Master brand'],['sales','Penjualan'],['brand','Penjualan master brand'],['nonbrand','Penjualan non master brand'],['target','Target'],['ach','Pencapaian'],['wd','Hari kerja'],['share','% total'],['receipts','Struk'],['avg','Basket Size']
 ];
 const TXT = new Set(['id','name','cat','zona','code','mbrand']);
 const CODE_ORDER = ['S','P','M','P/JKP','P.JKP','S/JKS','S.JKS','OFF','CT','L','MT','OT','OUTING'];
@@ -380,9 +380,9 @@ function renderTableInner(dr){
         '<td class="num">'+(p.target>0? '<span class="pill '+(a>=1?'hi':a>=.75?'mid':'lo')+'">'+(a>=1?'✓ ':'')+Math.round(a*100)+'%</span>' : '–')+'</td>'+
         '<td class="num">'+(p.hasSch&&p.cov? p.wd : '–')+'</td>';
     }
-    t+='<td class="num">'+pct(p.sales/(M.total||1))+'</td><td class="num">'+p.receipts+'</td><td class="num">'+fmtN.format(p.qty)+'</td><td class="num">'+(p.lines?rp(p.avg):'–')+'</td>';
+    t+='<td class="num">'+pct(p.sales/(M.total||1))+'</td><td class="num">'+p.receipts+'</td><td class="num">'+(p.lines?rp(p.avg):'–')+'</td>';
     return t+'</tr>';
-  }).join('') || '<tr><td colspan="17" style="text-align:center;color:var(--ink3)">Tidak ada orang yang cocok dengan filter.</td></tr>';
+  }).join('') || '<tr><td colspan="16" style="text-align:center;color:var(--ink3)">Tidak ada orang yang cocok dengan filter.</td></tr>';
   $('tbl-hint').textContent = L.length+' orang'+(dr? ' · '+(S.dMode==='mtd'?'MTD ':'')+shortD(dr.from)+(dr.to!==dr.from?' sampai '+fd(dr.to,{day:'numeric',month:'short',year:'numeric'}):'')+' ('+M.days+' hari)' : '')+(S.schSel.length? ' · jadwal '+schLabel()+' pada '+shortD(sd) : '')+' · klik judul kolom untuk mengurutkan';
   $('thead').querySelectorAll('button').forEach(bt=>bt.addEventListener('click',()=>{
     const k=bt.dataset.s; if(S.sort===k) S.dir*=-1; else {S.sort=k; S.dir=TXT.has(k)?1:-1;} renderTable(); }));
