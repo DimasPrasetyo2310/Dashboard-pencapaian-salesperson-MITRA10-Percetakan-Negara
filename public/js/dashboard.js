@@ -439,6 +439,7 @@ function renderProt(){
   const n=$('prot-note'); n.hidden=!M.protMiss; n.textContent=M.protMiss? M.protMiss+' tanggal belum memuat data proteksi. Unggah ulang laporan tanggal tersebut agar ikut terhitung.':'';
 }
 function renderTopBrand(){
+  return; // tabel TOP 10 Master brand dihapus
   const rows=Object.entries(M.mb||{}).map(([k,v])=>({k,q:v.q,s:v.s})).sort((a,b)=>b.s-a.s).slice(0,10);
   $('tb-sub').textContent=(M.from&&M.to? (M.from===M.to? fd(M.from,{day:'numeric',month:'short'}) : fd(M.from,{day:'numeric',month:'short'})+' – '+fd(M.to,{day:'numeric',month:'short'}))+' · ' : '')+'sales exclude PPN per master brand';
   const t=$('tb-body');
