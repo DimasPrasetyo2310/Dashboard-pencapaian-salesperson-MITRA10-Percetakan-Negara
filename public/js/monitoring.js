@@ -182,9 +182,11 @@ function renderTarget(rows){
   const lySum=sum(dates.map(d=>(LYD.get(lyDate(d))||{nav:0}).nav));
   const tile=(l,v,s)=>`<div class="tg-t"><span class="l">${l}</span><span class="v">${v}</span><span class="s">${s}</span></div>`;
   const list=cats.filter(c=>bud[c]>0||act[c]>0).sort((a,b)=>zn(a)-zn(b)||(bud[b]||act[b])-(bud[a]||act[a]));
+  const zcount={};list.forEach(c=>{zcount[zn(c)]=(zcount[zn(c)]||0)+1});let zprev=null;
   const trs=list.map(c=>{
+    const first=zn(c)!==zprev;zprev=zn(c);
     const a=act[c]||0,b=bud[c]||0,pc=b?a/b:null,cl=pc==null?'':pc>=1?'good':pc>=.9?'warn':'crit',l=lyc[c];
-    return `<tr><td>${zn(c)<99?'Zona '+zn(c):'–'}</td><td>${esc(title(c))}</td><td class="r num">${b?jt(b):'–'}</td><td class="r num">${jt(a)}</td><td class="r num">${pc==null?'–':`<span class="pill ${cl}">${dec(pc*100,1)}%</span>`}</td><td class="r num">${b?jt(a-b):'–'}</td><td class="r num">${l?jt(l):'–'}</td><td class="r num">${l?(a/l-1>=0?'▲ ':'▼ ')+dec(Math.abs(a/l-1)*100,1)+'%':'–'}</td></tr>`}).join('');
+    return `<tr${first?' class="zs"':''}>${first?`<td class="zona z${zn(c)}" rowspan="${zcount[zn(c)]}">${zn(c)<99?'Zona '+zn(c):'–'}</td>`:''}<td>${esc(title(c))}</td><td class="r num">${b?jt(b):'–'}</td><td class="r num">${jt(a)}</td><td class="r num">${pc==null?'–':`<span class="pill ${cl}">${dec(pc*100,1)}%</span>`}</td><td class="r num">${b?jt(a-b):'–'}</td><td class="r num">${l?jt(l):'–'}</td><td class="r num">${l?(a/l-1>=0?'▲ ':'▼ ')+dec(Math.abs(a/l-1)*100,1)+'%':'–'}</td></tr>`}).join('');
   const aT=sum(list.map(c=>act[c]||0)), bT=sum(list.map(c=>bud[c]||0)), lT=sum(list.map(c=>lyc[c]||0));
   box.innerHTML=`<div class="tg-top">
     <div class="tg-main"><span class="l">Pencapaian vs budget periode</span><span class="big ${cls}">${dec(ach*100,1)}%</span>
@@ -196,7 +198,7 @@ function renderTarget(rows){
     ${lySum?tile('Sales vs '+lyYear(dates[0]),(nav/lySum-1>=0?'▲ ':'▼ ')+dec(Math.abs(nav/lySum-1)*100,1)+'%',rp(lySum)+' tahun lalu'):''}
   </div>
   <div class="tbl"><table class="tgt"><thead><tr><th>Zonasi</th><th>Kategori</th><th class="r">Budget periode</th><th class="r">Actual</th><th class="r">Capaian</th><th class="r">Selisih</th><th class="r">Tahun lalu</th><th class="r">vs tahun lalu</th></tr></thead><tbody>${trs}</tbody>
-  <tfoot><tr><td></td><td>Total kategori</td><td class="r num">${jt(bT)}</td><td class="r num">${jt(aT)}</td><td class="r num">${bT?dec(aT/bT*100,1)+'%':'–'}</td><td class="r num">${jt(aT-bT)}</td><td class="r num">${lT?jt(lT):'–'}</td><td class="r num">${lT?(aT/lT-1>=0?'▲ ':'▼ ')+dec(Math.abs(aT/lT-1)*100,1)+'%':'–'}</td></tr></tfoot></table></div>`;
+  <tfoot><tr><td colspan="2">Total kategori</td><td class="r num">${jt(bT)}</td><td class="r num">${jt(aT)}</td><td class="r num">${bT?dec(aT/bT*100,1)+'%':'–'}</td><td class="r num">${jt(aT-bT)}</td><td class="r num">${lT?jt(lT):'–'}</td><td class="r num">${lT?(aT/lT-1>=0?'▲ ':'▼ ')+dec(Math.abs(aT/lT-1)*100,1)+'%':'–'}</td></tr></tfoot></table></div>`;
 }
 function renderRows(rows){
   $('rows').innerHTML=rows.map(d=>{
