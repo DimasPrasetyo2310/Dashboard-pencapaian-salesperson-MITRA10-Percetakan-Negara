@@ -449,8 +449,8 @@ function shotCanvas(){
   g.fillStyle='#52514e'; g.font='400 18px '+FONT;
   g.fillText(fit(D.store+' · '+period+' · penjualan tanpa PPN',W-padX*2),padX,68);
   g.fillStyle='#7a7975'; g.fillText(fit('Filter: '+f.join(' · ')+' · '+rows.length+' orang',W-padX*2),padX,95);
-  let y=headH; g.fillStyle='#f6f6f5'; g.fillRect(padX,y,W-padX*2,thH);
-  g.font='600 12px '+FONT; g.fillStyle='#7a7975';
+  let y=headH; g.fillStyle='#0f2547'; g.fillRect(padX,y,W-padX*2,thH); g.fillStyle='#f5a800'; g.fillRect(padX,y+thH-3,W-padX*2,3);
+  g.font='700 12px '+FONT; g.fillStyle='#ffffff';
   const cx=(i)=>padX+cols.slice(0,i).reduce((a,x)=>a+x[1],0);
   cols.forEach((k,i)=>{ const x=cx(i), w=k[1]; const l=k[2]==='l'||k[2]==='bar'; g.textAlign=l?'left':'right'; g.fillText(k[0].toUpperCase(),l?x+10:x+w-10,y+thH/2); });
   y+=thH; 
