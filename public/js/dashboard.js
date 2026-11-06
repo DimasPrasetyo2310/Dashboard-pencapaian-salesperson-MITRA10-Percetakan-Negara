@@ -390,7 +390,7 @@ $('t-follow').addEventListener('click',()=>{ S.dMode=''; renderTable(); });
 $('sch-date').addEventListener('change',e=>{ if(e.target.value) S.schDate=e.target.value; renderTable(); });
 $('sch-follow').addEventListener('click',()=>{ S.schDate=''; renderTable(); });
 
-function renderFoot(){
+function renderFoot(){ return; // catatan data disembunyikan
   const noSch = P.filter(p=>p.lines>0 && !p.hasSch).length;
   $('foot').innerHTML = '<b>Catatan data.</b> '+fmtN.format(M.unLines)+' baris item ('+fmtN.format(M.unReceipts)+' struk, '+rp(M.unSales)+', '+pct(M.unSales/(M.total||1))+' dari total) tidak memiliki kode sales, jadi tidak masuk peringkat tetapi tetap dihitung di total toko. Nilai penjualan memakai kolom Amount Exclude Sales. Penjualan master brand adalah jumlah penjualan barang (rincian item) yang dijual salesperson itu dan masuk master brand yang tertulis di file jadwal; untuk Private Brand dipakai penanda Master Type Brand = Private Brand. Satu orang bisa muncul di beberapa struk yang sama dengan orang lain, sehingga jumlah struk per orang tidak dijumlahkan ke total. '+
    '<b>Target.</b> Target harian diambil dari kolom TARGET/DAY di file jadwal, dicocokkan lewat Sales ID. Target MTD atau target satu rentang tanggal adalah target harian dikali jumlah hari kerja yang sudah berjalan dalam rentang itu. Hari kerja adalah tanggal berkode S, P, atau M (termasuk P/JKP dan S/JKS). Kode OFF, CT, L, MT, OT, dan OUTING tidak punya target. Hari setelah tanggal akhir rentang belum dihitung. Penjualan di hari tanpa target tetap dihitung sebagai penjualan.'+(noSch?' '+noSch+' orang bertransaksi tetapi tidak ada di file jadwal, jadi ditampilkan tanpa target.':'');
