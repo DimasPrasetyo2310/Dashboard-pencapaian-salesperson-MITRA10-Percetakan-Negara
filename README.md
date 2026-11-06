@@ -10,6 +10,8 @@ public/
   config.js         URL dan publishable key Supabase
   js/login.js
   js/dashboard.js
+  monitoring.html   monitoring sales bulanan level toko (traffic, invoice, basket size, sales)
+  js/monitoring.js
 supabase/schema.sql tabel dan aturan akses (sudah dijalankan di proyek Anda)
 build-config.js     menulis public/config.js dari environment variables
 ```
@@ -33,3 +35,7 @@ build-config.js     menulis public/config.js dari environment variables
 5. Buka situs, masuk sebagai admin, lalu unggah file penjualan (misalnya salesperson_mtd.xlsx) dan file jadwal (SCHEDULE_NOV_SALES.xlsx).
 
 Mencoba di komputer sendiri: isi `public/config.js`, lalu `npx serve public` dan buka alamat yang ditampilkan.
+
+## Monitoring sales bulanan (level toko)
+Halaman `monitoring.html` memakai login dan peran yang sama. Datanya dari tabel `store_daily` dan `store_day_category` (lihat `supabase/monitoring_store.sql`).
+Admin dan editor mengunggah dua file: Report Compare FFC and Nav (traffic, invoice, sales NAV dan FFC) dan Sales Detail Report (sales per kategori). Data pada tanggal yang sama diganti.
