@@ -79,6 +79,8 @@ input:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(-
 .kpi.hero .ic{background:rgba(255,255,255,.12);color:var(--amber)}
 .kpi.hero .dot{box-shadow:0 0 0 3px var(--navy2)}
 .kpi.hero .pk{border-top-color:rgba(255,255,255,.18)}
+.dimgrid{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}
+table.dimt{min-width:640px}table.dimt th,table.dimt td{white-space:nowrap}
 .grid2{align-items:start;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:18px}
 .chart svg{width:100%;height:auto;display:block}
 .chart text{font-family:var(--f-body);font-size:10.5px;fill:var(--ink3);font-variant-numeric:tabular-nums}
@@ -251,19 +253,9 @@ tr[data-cat]:focus-visible{outline:2px solid var(--accent,#1f5fbf);outline-offse
     <div id="tg"></div>
   </section>
 
-  <section class="grid2">
-    <div class="card chart">
-      <h2>Sales harian toko</h2>
-      <p class="hint" id="chHint"></p>
-      <div id="chart"></div>
-      <div class="legend" id="chLegend"></div>
-      <div id="chNote"></div>
-    </div>
-    <div class="card">
-      <h2>Sales per kategori</h2>
-      <p class="hint">Dari laporan detail penjualan, exclude tax. Totalnya bisa sedikit berbeda dari sales NAV.</p>
-      <div class="cats" id="cats"></div>
-    </div>
+  <section class="dimgrid">
+    <div class="card"><h2>Pencapaian per Source Type Name</h2><p class="hint">Sales exclude tax dari laporan detail penjualan, dibanding tahun lalu (tanggal yang sama).</p><div id="dimSrc"></div></div>
+    <div class="card"><h2>Pencapaian per Master Type Brand</h2><p class="hint">Sales exclude tax dari laporan detail penjualan, dibanding tahun lalu (tanggal yang sama).</p><div id="dimTb"></div></div>
   </section>
 
   <section class="grid2">

@@ -104,36 +104,6 @@ function renderKpis(rows){
   $('lyNote').hidden=!(L&&!L.full);
   if(L&&!L.full)$('lyNote').textContent='Pembanding tahun lalu hanya tersedia untuk '+pr.length+' dari '+rows.length+' hari pada rentang ini; selisih dihitung untuk hari yang ada pembandingnya saja.';
 }
-function renderChart(rows){
-  const byD=new Map(rows.map(r=>[r.d,r]));
-  const months=new Set(rows.map(r=>r.d.slice(0,7))), monthView=months.size===1;
-  let slots;
-  if(monthView){const p=rows[0].d.split('-').map(Number);const dim=new Date(Date.UTC(p[0],p[1],0)).getUTCDate();slots=Array.from({length:dim},(_,i)=>`${p[0]}-${pad(p[1])}-${pad(i+1)}`)}
-  else slots=rows.map(r=>r.d);
-  const avg=sum(rows.map(r=>r.sx))/rows.length;
-  const [mx,step]=niceMax(Math.max(...rows.map(r=>r.sx))*1.12);
-  const W=720,H=270,L=44,R=10,T=24,B=28,iw=W-L-R,ih=H-T-B,slot=iw/slots.length,bw=Math.min(slot*0.62,46);
-  const y=v=>T+ih-(v/mx)*ih;
-  let g='<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="var(--accent-soft)"/><line x1="0" y1="0" x2="0" y2="6" stroke="var(--accent)" stroke-width="3"/></pattern></defs>';
-  for(let v=0;v<=mx+1;v+=step){g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)"/><text x="${L-6}" y="${y(v)+3.5}" text-anchor="end">${Math.round(v/1e6)}</text>`}
-  const every=monthView?5:Math.ceil(slots.length/8), labels=rows.length<=12;
-  slots.forEach((dt,i)=>{
-    const show=monthView?(i===0||(i+1)%5===0):(i%every===0);
-    if(show) g+=`<text x="${L+(i+0.5)*slot}" y="${H-8}" text-anchor="middle">${monthView?i+1:fd(dt)}</text>`;
-    const r=byD.get(dt); if(!r) return;
-    const x=L+i*slot+(slot-bw)/2, top=y(r.sx), h=Math.max(T+ih-top,0), bad=Math.abs(r.nav-r.ffc)>=1;
-    const tip=`${fdy(dt)} · ${rp(r.sx)} · ${r.tr} invoice`+(bad?' (NAV dan FFC belum sama)':'');
-    g+=`<path data-tip="${esc(tip)}" d="${roundTop(x,top,bw,h,4)}" fill="${bad?'url(#hatch)':'var(--accent)'}"${bad?' stroke="var(--accent)" stroke-width="1.2"':''}/>`;
-    if(labels) g+=`<text class="vl" x="${x+bw/2}" y="${top-6}" text-anchor="middle">${Math.round(r.sx/1e6)}</text>`;
-    g+=`<rect data-tip="${esc(tip)}" x="${L+i*slot}" y="${T}" width="${slot}" height="${ih}" fill="transparent"/>`;
-  });
-  g+=`<line x1="${L}" x2="${W-R}" y1="${y(avg)}" y2="${y(avg)}" stroke="var(--amber)" stroke-width="1.8" stroke-dasharray="6 4"/><text class="av" x="${W-R}" y="${y(avg)-6}" text-anchor="end">rata-rata ${Math.round(avg/1e6)}</text>`;
-  $('chart').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Grafik sales harian">${g}</svg>`;
-  $('chHint').textContent='Rp juta per hari, exclude tax. '+(monthView?'Sumbu bawah: tanggal.':'Sumbu bawah: tanggal dan bulan.');
-  const bads=rows.filter(r=>Math.abs(r.nav-r.ffc)>=1);
-  $('chLegend').innerHTML=`<span><i style="background:var(--accent)"></i>Sales NAV</span>`+(bads.length?`<span><i style="background:var(--accent-soft);border:1.5px solid var(--accent)"></i>NAV dan FFC belum sama</span>`:'')+`<span><i style="background:var(--amber)"></i>Rata-rata harian</span>`;
-  $('chNote').innerHTML=bads.length?`<div class="note" style="margin-top:12px">Selisih NAV dan FFC: ${bads.slice(0,4).map(r=>`${fd(r.d)} (${rp(r.nav-r.ffc)}, ${r.tr-r.ffct} invoice)`).join('; ')}${bads.length>4?` dan ${bads.length-4} tanggal lain`:''}. Biasanya data hari berjalan belum sinkron.</div>`:'';
-}
 function renderTraffic(rows){
   const n=rows.length, [mx,step]=niceCount(Math.max(...rows.map(r=>r.cin))*1.12);
   const W=720,H=250,L=44,R=10,T=18,B=28,iw=W-L-R,ih=H-T-B,slot=iw/n,gw=Math.min(slot*0.72,76),bw=gw/2-1.5;
@@ -156,13 +126,20 @@ function renderEf(rows){
   const cin=sum(rows.map(r=>r.cin)), avg=cin?sum(rows.map(r=>r.tr))/cin:0;
   $('efList').innerHTML=rows.map(r=>{const e=eff(r);return `<div class="ef" data-tip="${esc(fdy(r.d)+' · '+nf.format(r.tr)+' invoice dari '+nf.format(r.cin)+' pengunjung')}"><span class="d num">${fd(r.d)}</span><div class="b"><i style="width:${Math.min(e,1)*100}%"></i><u style="left:${Math.min(avg,1)*100}%"></u></div><span class="p">${dec(e*100,1)}%</span></div>`}).join('');
 }
-function renderCats(){
-  const m=new Map();
-  DATA.C.forEach(c=>{if(c[0]>=from&&c[0]<=to)m.set(c[1],(m.get(c[1])||0)+c[2])});
-  const list=[...m].sort((a,b)=>b[1]-a[1]);
-  if(!list.length){$('cats').innerHTML='<div class="empty">Belum ada data kategori pada rentang ini. Unggah laporan detail penjualan untuk menampilkannya.</div>';return}
-  const mx=Math.max(...list.map(x=>x[1]),1), total=sum(list.map(x=>x[1]));
-  $('cats').innerHTML=list.map(([k,v],i)=>`<div class="cat" data-tip="${esc(title(k)+' · '+rp(v))}"><div class="t"><span><span class="rk">${i+1}</span>${esc(title(k))}</span><span class="num">${jt(v)} · ${dec(v/total*100,0)}%</span></div><div class="b"><i style="width:${v/mx*100}%"></i></div></div>`).join('');
+const DIMS=[['source','dimSrc','Source Type Name'],['typebrand','dimTb','Master Type Brand']];
+let DIMD=[];
+function renderDims(rows){
+  const set=new Set(rows.map(r=>r.d)), lyset=new Set(rows.map(r=>lyDate(r.d)));
+  DIMS.forEach(([dim,id,label])=>{
+    const cur={},ly={};
+    DIMD.forEach(r=>{if(r.dim!==dim)return;if(set.has(r.d))cur[r.v]=(cur[r.v]||0)+r.s;else if(lyset.has(r.d))ly[r.v]=(ly[r.v]||0)+r.s});
+    const ks=[...new Set([...Object.keys(cur),...Object.keys(ly)])].map(k=>({k,a:cur[k]||0,l:ly[k]||0})).filter(x=>Math.round(x.a)||Math.round(x.l)).sort((x,y)=>y.a-x.a||y.l-x.l);
+    if(!ks.length){$(id).innerHTML='<div class="empty">Belum ada data. Unggah laporan detail penjualan (periode ini dan tahun lalu) lewat tombol Unggah.</div>';return}
+    const A=sum(ks.map(x=>x.a)),L=sum(ks.map(x=>x.l));
+    const gr=(x,y)=>y?lyp(x,y):(x?'<span class="posbox">Baru</span>':'–');
+    const trs=ks.map(x=>`<tr><td>${esc(x.k)}</td><td class="r num">${fu(x.a)}</td><td class="r num">${A?dec(x.a/A*100,1)+'%':'–'}</td><td class="r num">${x.l?fu(x.l):'–'}</td><td class="r num">${L?dec(x.l/L*100,1)+'%':'–'}</td><td class="r num">${sel(x.a-x.l)}</td><td class="r num">${gr(x.a,x.l)}</td></tr>`).join('');
+    $(id).innerHTML=`<div class="tbl"><table class="tgt dimt"><thead><tr><th>${label}</th><th class="r">Actual</th><th class="r">Kontribusi</th><th class="r">Tahun lalu</th><th class="r">Kontribusi LY</th><th class="r">Selisih</th><th class="r">Growth</th></tr></thead><tbody>${trs}</tbody><tfoot><tr><td>Total</td><td class="r num">${fu(A)}</td><td class="r num">100%</td><td class="r num">${L?fu(L):'–'}</td><td class="r num">${L?'100%':'–'}</td><td class="r num">${L?sel(A-L):'–'}</td><td class="r num">${L?lyp(A,L):'–'}</td></tr></tfoot></table></div>`;
+  });
 }
 
 function renderTarget(rows){
@@ -239,11 +216,11 @@ function render(){
   if(!rows.length){
     $('period').textContent='Tidak ada data pada rentang ini';
     $('kpis').innerHTML='<div class="card empty">Tidak ada data pada rentang tanggal ini. Ubah tanggal atau unggah database.</div>';
-    ['chart','chLegend','chNote','cats','rows','foot','tcChart','tcLegend','efList'].forEach(i=>$(i).innerHTML='');
+    ['dimSrc','dimTb','rows','foot','tcChart','tcLegend','efList'].forEach(i=>$(i).innerHTML='');
     return;
   }
   $('period').textContent=`${fdy(rows[0].d)} – ${fdy(rows[rows.length-1].d)} · ${rows.length} hari`;
-  renderKpis(rows);renderChart(rows);renderTraffic(rows);renderEf(rows);renderCats();renderRows(rows);
+  renderKpis(rows);renderDims(rows);renderTraffic(rows);renderEf(rows);renderRows(rows);
 }
 
 /* ---------- Unggah database ke Supabase ---------- */
@@ -275,15 +252,16 @@ function parseSheet(f,sh,sn){
   h=rows.findIndex(r=>r&&r[0]==='Receipt Date');
   if(h>=0){
     const hd=rows[h].map(x=>String(x==null?'':x).trim());
-    const ic=hd.indexOf('Category'), ia=hd.indexOf('Amount Exclude Sales'), is=hd.indexOf('Store No'), ib=hd.indexOf('Master Brand');
+    const ic=hd.indexOf('Category'), ia=hd.indexOf('Amount Exclude Sales'), is=hd.indexOf('Store No'), ib=hd.indexOf('Master Brand'), isr=hd.indexOf('Source Type Name'), itb=hd.indexOf('Master Type Brand');
     if(ic<0||ia<0) throw new Error('kolom Category atau Amount Exclude Sales tidak ada');
-    const m=new Map(), bm=new Map(); let n=0,other=0;
+    const m=new Map(), bm=new Map(), dmap=new Map(); let n=0,other=0;
     rows.slice(h+1).forEach(r=>{const d=toISO(r[0]);if(!d||typeof r[ia]!=='number'||!r[ic])return;
       if(is>=0&&r[is]!=null&&String(r[is]).trim()!==STORE){other++;return}
       const k=d+'|'+r[ic];m.set(k,(m.get(k)||0)+r[ia]);n++;
+      const addD=(dim,ix)=>{if(ix<0)return;const dk=d+'|'+dim+'|'+(String(r[ix]==null?'':r[ix]).trim()||'Lainnya');dmap.set(dk,(dmap.get(dk)||0)+r[ia])};addD('source',isr);addD('typebrand',itb);
       if(ib>=0){const bk=k+'|'+(String(r[ib]==null?'':r[ib]).trim().toUpperCase()||'LAINNYA');bm.set(bk,(bm.get(bk)||0)+r[ia])}});
     if(!n) throw new Error(other?'file ini bukan untuk toko '+STORE:'tidak ada baris penjualan yang terbaca');
-    return {kind:'detail',name:src,n,brands:[...bm].map(([k,v])=>{const p=k.split('|');return {store_code:STORE,sale_date:p[0],category:p[1],master_brand:p[2],sales:Math.round(v),source:src}}),rows:[...m].map(([k,v])=>{const p=k.split('|');return {store_code:STORE,sale_date:p[0],category:p[1],sales:Math.round(v),source:src}})};
+    return {kind:'detail',name:src,n,dims:[...dmap].map(([k,v])=>{const p=k.split('|');return {store_code:STORE,sale_date:p[0],dim:p[1],dim_value:p[2],sales:Math.round(v),source:src}}),brands:[...bm].map(([k,v])=>{const p=k.split('|');return {store_code:STORE,sale_date:p[0],category:p[1],master_brand:p[2],sales:Math.round(v),source:src}}),rows:[...m].map(([k,v])=>{const p=k.split('|');return {store_code:STORE,sale_date:p[0],category:p[1],sales:Math.round(v),source:src}})};
   }
   const yr=(sn.match(/20\d\d/)||[String(new Date().getFullYear())])[0];
   const MI=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'], ALT={MEI:'MAY',AGU:'AUG',AGS:'AUG',OKT:'OCT',DES:'DEC'};
@@ -341,6 +319,7 @@ $('file').addEventListener('change',async e=>{
       else if(r.kind==='budget'){await upsertChunks('store_budget_monthly',r.rows,'store_code,year,month,category');parts.push('Budget '+r.year+': '+r.rows.length+' angka bulanan')}
       else if(r.kind==='phasing'){await upsertChunks('store_budget_phasing',r.rows,'store_code,phase_date');parts.push('Budget harian '+r.month+': '+r.rows.length+' hari')}
       else{await upsertChunks('store_day_category',r.rows,'store_code,sale_date,category');parts.push('Detail penjualan: '+nf.format(r.n)+' baris, '+new Set(r.rows.map(x=>x.sale_date)).size+' hari');
+        if(r.dims&&r.dims.length){await upsertChunks('store_day_dim',r.dims,'store_code,sale_date,dim,dim_value');parts.push('Source type dan master type brand: '+nf.format(r.dims.length)+' data')}
         if(r.brands&&r.brands.length){await upsertChunks('store_day_brand',r.brands,'store_code,sale_date,category,master_brand');parts.push('Master brand: '+nf.format(r.brands.length)+' data')}}
     }catch(err){bad.push(r.name+': '+explain(err))}
   }
@@ -501,12 +480,14 @@ async function fetchAll(table,cols,order){
   return out;
 }
 async function loadData(){
-  const [d,c,b,p]=await Promise.all([
+  const [d,c,b,p,dm]=await Promise.all([
     fetchAll('store_daily','sale_date,nav_sales,nav_trx,ffc_sales,ffc_trx,counter_in,counter_out',['sale_date']),
     fetchAll('store_day_category','sale_date,category,sales',['sale_date','category']),
     fetchAll('store_budget_monthly','year,month,category,budget',['year','month']),
-    fetchAll('store_budget_phasing','phase_date,pct',['phase_date'])
+    fetchAll('store_budget_phasing','phase_date,pct',['phase_date']),
+    fetchAll('store_day_dim','sale_date,dim,dim_value,sales',['sale_date','dim','dim_value'])
   ]);
+  DIMD=dm.map(r=>({d:r.sale_date,dim:r.dim,v:r.dim_value,s:+r.sales}));
   const DS=new Map();c.forEach(r=>DS.set(r.sale_date,(DS.get(r.sale_date)||0)+ +r.sales));
   const D=d.map(r=>({d:r.sale_date,sx:DS.has(r.sale_date)?DS.get(r.sale_date):+r.nav_sales,nav:+r.nav_sales,tr:+r.nav_trx,ffc:+r.ffc_sales,ffct:+r.ffc_trx,cin:+r.counter_in,cout:+r.counter_out}));
   const yr=D.length?Math.max(...D.map(r=>+r.d.slice(0,4))):0;
