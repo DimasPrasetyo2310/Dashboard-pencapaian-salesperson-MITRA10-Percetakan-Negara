@@ -180,6 +180,13 @@ tr[data-cat]:focus-visible{outline:2px solid var(--accent,#1f5fbf);outline-offse
 .br-panel.shot .br-body{overflow:visible;max-height:none}
 .brtbl thead th{position:sticky;top:0;z-index:1}
 @media (max-width:900px){.br-kpi{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.shot-host{position:fixed;left:-20000px;top:0;pointer-events:none;background:#fff}
+.shot-host .br-panel{width:100%;max-height:none;box-shadow:none;display:block}
+.shot-host .br-body,.shot-host .tbl{overflow:visible;max-height:none}
+.shot-host .br-kpi{grid-template-columns:repeat(6,minmax(0,1fr))}
+.shot-host .tg-top{grid-template-columns:minmax(0,1.5fr) repeat(4,minmax(0,1fr))}
+.shot-host .tg-main{grid-column:auto}
+.shot-host .tg-head{flex-wrap:nowrap}
 @media (max-width:1000px){.tg-top{grid-template-columns:repeat(2,minmax(0,1fr))}.tg-main{grid-column:1/-1}}
 </style>
 </head>
