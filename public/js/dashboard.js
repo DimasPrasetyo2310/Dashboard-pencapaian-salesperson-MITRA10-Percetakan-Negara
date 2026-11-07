@@ -720,7 +720,7 @@ const CFG = window.APP_CONFIG || {};
 const SB = (window.supabase && CFG.SUPABASE_URL && CFG.SUPABASE_PUBLISHABLE_KEY && !/YOUR-/.test(CFG.SUPABASE_URL)) ? window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_PUBLISHABLE_KEY) : null;
 const bootEl=$('boot'), appEl=$('app');
 const bootMsg=(t,showOut)=>{ $('boot-msg').textContent=t; $('boot-out').hidden=!showOut; bootEl.hidden=false; appEl.hidden=true; $('psdock').hidden=true; };
-const toLogin=()=>{ location.replace('login.html?next=dashboard.html'); };
+const toLogin=()=>{ try{sessionStorage.setItem('mitra10_next','dashboard.html')}catch(e){} location.replace('login.html?next=dashboard.html'); };
 async function loadAll(){
   if(!SB) return;
   const [d,s]=await Promise.all([
