@@ -20,7 +20,7 @@ const title=s=>s.toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase());
 
 let DATA={D:[],C:[],B:[]};
 let LYD=new Map(), LYC=new Map(), PH=new Map(), BM=new Map();
-let skipPartial=false; let BRD=null, LASTTG=null;
+let skipPartial=false; let BRD=null, LASTTG=null, LASTK=[];
 let from='',to='';
 
 const allDates=()=>DATA.D.map(x=>x.d).sort();
@@ -55,7 +55,7 @@ function ring(pct){
   const r=20,c=2*Math.PI*r,o=c*(1-Math.max(0,Math.min(pct,1)));
   return `<svg class="ring" viewBox="0 0 52 52" width="52" height="52" aria-hidden="true"><circle cx="26" cy="26" r="${r}" fill="none" stroke="var(--grid)" stroke-width="6"/><circle cx="26" cy="26" r="${r}" fill="none" stroke="var(--accent)" stroke-width="6" stroke-linecap="round" stroke-dasharray="${c.toFixed(2)}" stroke-dashoffset="${o.toFixed(2)}" transform="rotate(-90 26 26)"/></svg>`;
 }
-const kpiHTML=k=>`<div class="kpi${k.hero?' hero':''}"><div class="kh">${ic(k.i)}<span class="l">${k.l}</span></div><div class="vrow"><span class="v">${k.v}</span>${k.extra||''}</div><span class="s">${k.s}</span>${k.sp?spark(k.sp):''}${k.ly||''}<div class="pk">${k.pk}</div></div>`;
+const kpiHTML=k=>`<div class="kpi${k.hero?' hero':''}" data-kpi="${k.key}" tabindex="0" title="Klik untuk rincian per hari"><div class="kh">${ic(k.i)}<span class="l">${k.l}</span></div><div class="vrow"><span class="v">${k.v}</span>${k.extra||''}</div><span class="s">${k.s}</span>${k.sp?spark(k.sp):''}${k.ly||''}<div class="pk">${k.pk}</div></div>`;
 
 /* ---------- Budget dan pembanding tahun lalu ---------- */
 const lyDate=d=>(+d.slice(0,4)-1)+d.slice(4);
@@ -84,6 +84,7 @@ function niceCount(v){for(const s of [10,20,50,100,200,500,1000,2000,5000,10000]
 const roundTop=(x,y,w,h,r)=>{r=Math.min(r,h/2,w/2);return `M${x},${y+h}V${y+r}Q${x},${y} ${x+r},${y}H${x+w-r}Q${x+w},${y} ${x+w},${y+r}V${y+h}Z`};
 
 function renderKpis(rows){
+  LASTK=rows;
   const n=rows.length, cin=sum(rows.map(d=>d.cin)), trn=sum(rows.map(d=>d.tr)), nav=sum(rows.map(d=>d.nav));
   const pc=peakOf(rows,r=>r.cin), pt=peakOf(rows,r=>r.tr), pe=peakOf(rows,eff), pb=peakOf(rows,bsk), ps=peakOf(rows,r=>r.nav);
   const e=cin?trn/cin:0;
@@ -94,11 +95,11 @@ function renderKpis(rows){
     L.e=[L.cin[0]?L.tr[0]/L.cin[0]:0,L.cin[1]?L.tr[1]/L.cin[1]:0];L.b=[L.tr[0]?L.nav[0]/L.tr[0]:0,L.tr[1]?L.nav[1]/L.tr[1]:0];}
   const D=(k,f,o)=>L?dlt(L[k][0],L[k][1],Object.assign({d:L.d,txt:f(L[k][1])},o||{})):'';
   $('kpis').innerHTML=[
-    {i:'traffic',l:'Traffic',v:nf.format(cin),s:'pengunjung masuk · rata-rata '+nf.format(Math.round(cin/n))+' per hari',sp:rows.map(d=>d.cin),ly:D('cin',nf.format),pk:'Tertinggi '+fd(pc.d)+' · '+nf.format(pc.cin)},
-    {i:'invoice',l:'Invoice',v:nf.format(trn),s:'rata-rata '+nf.format(Math.round(trn/n))+' per hari',sp:rows.map(d=>d.tr),ly:D('tr',nf.format),pk:'Tertinggi '+fd(pt.d)+' · '+nf.format(pt.tr)},
-    {i:'target',l:'Efektivitas traffic',v:cin?dec(e*100,1)+'%':'–',extra:ring(e),s:'invoice ÷ traffic',sp:rows.map(eff),ly:D('e',v=>dec(v*100,1)+'%',{pts:1}),pk:'Tertinggi '+fd(pe.d)+' · '+dec(eff(pe)*100,1)+'%'},
-    {i:'basket',l:'Basket size',v:trn?rp(nav/trn):'–',s:'sales ÷ invoice',sp:rows.map(bsk),ly:D('b',rp),pk:'Tertinggi '+fd(pb.d)+' · '+rp(bsk(pb))},
-    {hero:1,i:'sales',l:'Sales',v:rp(nav),s:'exclude tax · '+rp(nav/n)+' per hari',sp:rows.map(d=>d.nav),ly:D('nav',rp),pk:'Tertinggi '+fd(ps.d)+' · '+rp(ps.nav)}
+    {key:'cin',i:'traffic',l:'Traffic',v:nf.format(cin),s:'pengunjung masuk · rata-rata '+nf.format(Math.round(cin/n))+' per hari',sp:rows.map(d=>d.cin),ly:D('cin',nf.format),pk:'Tertinggi '+fd(pc.d)+' · '+nf.format(pc.cin)},
+    {key:'tr',i:'invoice',l:'Invoice',v:nf.format(trn),s:'rata-rata '+nf.format(Math.round(trn/n))+' per hari',sp:rows.map(d=>d.tr),ly:D('tr',nf.format),pk:'Tertinggi '+fd(pt.d)+' · '+nf.format(pt.tr)},
+    {key:'e',i:'target',l:'Efektivitas traffic',v:cin?dec(e*100,1)+'%':'–',extra:ring(e),s:'invoice ÷ traffic',sp:rows.map(eff),ly:D('e',v=>dec(v*100,1)+'%',{pts:1}),pk:'Tertinggi '+fd(pe.d)+' · '+dec(eff(pe)*100,1)+'%'},
+    {key:'b',i:'basket',l:'Basket size',v:trn?rp(nav/trn):'–',s:'sales ÷ invoice',sp:rows.map(bsk),ly:D('b',rp),pk:'Tertinggi '+fd(pb.d)+' · '+rp(bsk(pb))},
+    {key:'nav',hero:1,i:'sales',l:'Sales',v:rp(nav),s:'exclude tax · '+rp(nav/n)+' per hari',sp:rows.map(d=>d.nav),ly:D('nav',rp),pk:'Tertinggi '+fd(ps.d)+' · '+rp(ps.nav)}
   ].map(kpiHTML).join('');
   $('lyNote').hidden=!(L&&!L.full);
   if(L&&!L.full)$('lyNote').textContent='Pembanding tahun lalu hanya tersedia untuk '+pr.length+' dari '+rows.length+' hari pada rentang ini; selisih dihitung untuk hari yang ada pembandingnya saja.';
@@ -436,6 +437,40 @@ async function openBrand(cat){
 function closeBrand(){$('brOv').hidden=true;document.body.style.overflow='';brCat=null}
 $('tg').addEventListener('click',e=>{const r=e.target.closest('tr[data-cat]');if(r)openBrand(r.dataset.cat)});
 $('tg').addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const r=e.target.closest('tr[data-cat]');if(r){e.preventDefault();openBrand(r.dataset.cat)}});
+
+/* Popup rincian per hari untuk kartu KPI */
+const KM={
+  cin:{l:'Traffic',f:r=>r.cin,agg:a=>sum(a.map(r=>r.cin)),fmt:v=>nf.format(Math.round(v)),per:'Total'},
+  tr:{l:'Invoice',f:r=>r.tr,agg:a=>sum(a.map(r=>r.tr)),fmt:v=>nf.format(Math.round(v)),per:'Total'},
+  e:{l:'Efektivitas traffic',f:r=>r.cin?r.tr/r.cin:0,agg:a=>{const c=sum(a.map(r=>r.cin));return c?sum(a.map(r=>r.tr))/c:0},fmt:v=>dec(v*100,1)+'%',pts:1,per:'Periode'},
+  b:{l:'Basket size',f:r=>r.tr?r.nav/r.tr:0,agg:a=>{const t=sum(a.map(r=>r.tr));return t?sum(a.map(r=>r.nav))/t:0},fmt:v=>fu(v),per:'Periode'},
+  nav:{l:'Sales (exclude tax)',f:r=>r.nav,agg:a=>sum(a.map(r=>r.nav)),fmt:v=>fu(v),per:'Total'}
+};
+const HARI=['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+const hari=d=>HARI[new Date(d+'T00:00:00Z').getUTCDay()];
+const pil=(v,t)=>Math.round(v*10)/10<0?'<span class="negbox">−'+t+'</span>':Math.round(v*10)/10>0?'<span class="posbox">▲ '+t+'</span>':t;
+function openKpi(key){
+  const m=KM[key], rows=LASTK; if(!m||!rows.length) return;
+  brCat='kpi-'+key; $('brOv').hidden=false; document.body.style.overflow='hidden';
+  $('brTitle').textContent=m.l+' per hari';
+  $('brPeriod').textContent=fdy(rows[0].d)+' – '+fdy(rows[rows.length-1].d)+' · '+rows.length+' hari · dibanding '+lyYear(rows[0].d)+' (tanggal yang sama)';
+  const pr=rows.filter(r=>LYD.get(lyDate(r.d))), cur=m.agg(pr.length?pr:rows), ly=pr.length?m.agg(pr.map(r=>LYD.get(lyDate(r.d)))):0;
+  const all=m.agg(rows), hi=peakOf(rows,m.f), lo=rows.reduce((q,r)=>m.f(r)<m.f(q)?r:q,rows[0]);
+  const gv=ly?(m.pts?(cur-ly)*100:(cur/ly-1)*100):0, gt=m.pts?dec(Math.abs(gv),1)+' poin':dec(Math.abs(gv),1)+'%';
+  const t=(k,v)=>`<div class="tg-t"><span class="l">${k}</span><span class="v">${v}</span></div>`;
+  $('brKpi').innerHTML=t(m.per==='Total'?'Total periode':'Periode',m.fmt(all))+t('Tahun lalu',ly?m.fmt(ly):'–')+t(m.pts?'Selisih':'Growth',ly?pil(gv,gt):'–')+t('Tertinggi',m.fmt(m.f(hi))+'<span class="s">'+fd(hi.d)+'</span>')+t('Terendah',m.fmt(m.f(lo))+'<span class="s">'+fd(lo.d)+'</span>')+t('Rata-rata per hari',m.fmt(key==='cin'||key==='tr'||key==='nav'?all/rows.length:all));
+  const trs=rows.map(r=>{
+    const v=m.f(r), q=LYD.get(lyDate(r.d)), l=q?m.f(q):0, has=!!q&&l>0;
+    const dv=has?(m.pts?(v-l)*100:v-l):0, gr=has?(m.pts?dv:(v/l-1)*100):0;
+    const selTxt=has?(m.pts?dec(Math.abs(dv),1)+' poin':fu(Math.abs(dv))):'';
+    const grTxt=has?(m.pts?'':dec(Math.abs(gr),1)+'%'):'';
+    return `<tr><td>${hari(r.d)}, ${fdy(r.d)}</td><td class="r num">${m.fmt(v)}</td><td class="r num">${has?m.fmt(l)+' <span class="mut">('+fd(lyDate(r.d))+')</span>':'–'}</td><td class="r num">${has?pil(dv,selTxt):'–'}</td>${m.pts?'':`<td class="r num">${has?pil(gr,grTxt):'–'}</td>`}</tr>`}).join('');
+  const tfoot=`<tr><td>${m.per}</td><td class="r num">${m.fmt(all)}</td><td class="r num">${ly?m.fmt(ly):'–'}</td><td class="r num">${ly?pil(m.pts?(cur-ly)*100:cur-ly,m.pts?dec(Math.abs(gv),1)+' poin':fu(Math.abs(cur-ly))):'–'}</td>${m.pts?'':`<td class="r num">${ly?pil(gv,gt):'–'}</td>`}</tr>`;
+  const note=key==='nav'?'<p class="hint">Sales diambil dari Report Compare FFC dan NAV kolom Sales Exclude Tax (NAV). Angka ini bisa sedikit berbeda dari total laporan detail penjualan di tabel Target vs actual.</p>':'';
+  $('brBody').innerHTML=note+`<div class="tbl brtbl"><table class="tgt"><thead><tr><th>Tanggal</th><th class="r">${m.l}</th><th class="r">Tahun lalu</th><th class="r">Selisih</th>${m.pts?'':'<th class="r">Growth</th>'}</tr></thead><tbody>${trs}</tbody><tfoot>${tfoot}</tfoot></table></div>`;
+}
+$('kpis').addEventListener('click',e=>{const k=e.target.closest('.kpi[data-kpi]');if(k)openKpi(k.dataset.kpi)});
+$('kpis').addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const k=e.target.closest('.kpi[data-kpi]');if(k){e.preventDefault();openKpi(k.dataset.kpi)}});
 $('brClose').addEventListener('click',closeBrand);
 $('brOv').addEventListener('click',e=>{if(e.target===$('brOv'))closeBrand()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('brOv').hidden)closeBrand()});
