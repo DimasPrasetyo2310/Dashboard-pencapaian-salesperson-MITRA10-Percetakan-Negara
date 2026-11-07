@@ -142,6 +142,13 @@ tfoot td{font-weight:700;border-top:2px solid var(--frame);border-bottom:0;backg
 .pbar i.good{background:var(--good)}.pbar i.warn{background:var(--warn)}.pbar i.crit{background:var(--crit)}
 .pill.crit{background:var(--crit-bg);color:var(--crit)}
 table.tgt{min-width:640px}
+.tg-head{display:flex;flex-wrap:wrap;gap:12px 20px;justify-content:space-between;align-items:flex-end;margin-bottom:8px}
+.tg-period{font-size:13px;color:var(--ink2);margin-top:2px}
+.tg-tools{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.tg-tools label{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);font-weight:600}
+.tg-tools .btn,.tg-tools .chip{height:36px;white-space:nowrap}
+#tgCard.shot .no-shot{display:none!important}
+#tgCard.shot{box-shadow:none}
 td.zona{text-align:center;vertical-align:middle;font-weight:700;color:var(--navy);background:var(--accent-soft);border-right:1px solid var(--frame);width:84px}
 td.zona.z1{background:#e3f1e8}td.zona.z2{background:#efe7fa}td.zona.z3{background:#e8effc}td.zona.z4{background:#fff2cf}td.zona.z5{background:#fbe6df}
 tr.zt td{font-weight:700;background:var(--tint);color:var(--navy);border-top:1px solid var(--frame)}
@@ -199,9 +206,17 @@ table.tgt tbody tr:hover td.zona{background:inherit}
   <section class="kpis" id="kpis" aria-label="Ringkasan utama"></section>
   <div class="note" id="lyNote" hidden></div>
 
-  <section class="card">
-    <h2>Target vs actual</h2>
-    <p class="hint">Budget harian mengikuti persentase kontribusi harian dari file Budget. Actual per kategori dari laporan detail penjualan (exclude tax), sehingga totalnya bisa sedikit berbeda dari sales NAV.</p>
+  <section class="card" id="tgCard">
+    <div class="tg-head">
+      <div><h2>Target vs actual · MITRA10 Percetakan Negara</h2><p class="tg-period" id="tgPeriod"></p></div>
+      <div class="tg-tools no-shot">
+        <div class="field"><label for="tgFrom">Dari</label><input type="date" id="tgFrom"></div>
+        <div class="field"><label for="tgTo">Sampai</label><input type="date" id="tgTo"></div>
+        <button type="button" class="chip" id="tgSync" hidden>Ikuti filter atas</button>
+        <button type="button" class="btn primary" id="tgShot">Salin gambar</button>
+      </div>
+    </div>
+    <p class="hint no-shot">Budget harian mengikuti persentase kontribusi harian dari file Budget. Actual per kategori dari laporan detail penjualan (exclude tax), sehingga totalnya bisa sedikit berbeda dari sales NAV.</p>
     <div id="tg"></div>
   </section>
 
