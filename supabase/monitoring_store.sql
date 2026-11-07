@@ -40,3 +40,6 @@ create policy store_cat_delete on public.store_day_category for delete to authen
 -- Budget bulanan per kategori dan persentase harian (sudah dibuat lewat migrasi monitoring_budget_tables):
 -- public.store_budget_monthly (store_code, year, month, category, budget, source)
 -- public.store_budget_phasing (store_code, phase_date, pct, source)
+
+-- Rincian master brand per hari per kategori (migrasi store_day_brand):
+-- public.store_day_brand (store_code, sale_date, category, master_brand, sales, source), RLS sama seperti store_day_category
