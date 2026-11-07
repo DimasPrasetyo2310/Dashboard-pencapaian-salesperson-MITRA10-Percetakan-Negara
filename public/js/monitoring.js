@@ -254,14 +254,18 @@ function parseSheet(f,sh,sn){
     const hd=rows[h].map(x=>String(x==null?'':x).trim());
     const ic=hd.indexOf('Category'), ia=hd.indexOf('Amount Exclude Sales'), is=hd.indexOf('Store No'), ib=hd.indexOf('Master Brand'), isr=hd.indexOf('Source Type Name'), itb=hd.indexOf('Master Type Brand');
     if(ic<0||ia<0) throw new Error('kolom Category atau Amount Exclude Sales tidak ada');
-    const m=new Map(), bm=new Map(), dmap=new Map(); let n=0,other=0;
+    const m=new Map(), bm=new Map(), dmap=new Map(), cube=new Map();
+    const hx=(...ns)=>{for(const n of ns){const i=hd.indexOf(n);if(i>=0)return i}return -1};
+    const iSub=hx('Sub Category'), iFn=hx('Function'), iSf=hx('Sub Function'), iBr=hx('Brand'), iQty=hx('Qty','Quantity'), iInc=hx('Amount Include Sales','Amount Inculde Sales');
+    const tx=(r,i)=>i<0||r[i]==null?'':String(r[i]).trim(); let n=0,other=0;
     rows.slice(h+1).forEach(r=>{const d=toISO(r[0]);if(!d||typeof r[ia]!=='number'||!r[ic])return;
       if(is>=0&&r[is]!=null&&String(r[is]).trim()!==STORE){other++;return}
       const k=d+'|'+r[ic];m.set(k,(m.get(k)||0)+r[ia]);n++;
+      {const ck=JSON.stringify([d,tx(r,ic),tx(r,iSub),tx(r,iFn),tx(r,iSf),tx(r,ib),tx(r,iBr),tx(r,isr),tx(r,itb)]);let e=cube.get(ck);if(!e){e={s:0,i:0,q:0,n:0};cube.set(ck,e)}e.s+=r[ia];e.i+=(iInc>=0&&typeof r[iInc]==='number')?r[iInc]:0;e.q+=(iQty>=0&&typeof r[iQty]==='number')?r[iQty]:0;e.n++}
       const addD=(dim,ix)=>{if(ix<0)return;const dk=d+'|'+dim+'|'+(String(r[ix]==null?'':r[ix]).trim()||'Lainnya');dmap.set(dk,(dmap.get(dk)||0)+r[ia])};addD('source',isr);addD('typebrand',itb);
       if(ib>=0){const bk=k+'|'+(String(r[ib]==null?'':r[ib]).trim().toUpperCase()||'LAINNYA');bm.set(bk,(bm.get(bk)||0)+r[ia])}});
     if(!n) throw new Error(other?'file ini bukan untuk toko '+STORE:'tidak ada baris penjualan yang terbaca');
-    return {kind:'detail',name:src,n,dims:[...dmap].map(([k,v])=>{const p=k.split('|');return {store_code:STORE,sale_date:p[0],dim:p[1],dim_value:p[2],sales:Math.round(v),source:src}}),brands:[...bm].map(([k,v])=>{const p=k.split('|');return {store_code:STORE,sale_date:p[0],category:p[1],master_brand:p[2],sales:Math.round(v),source:src}}),rows:[...m].map(([k,v])=>{const p=k.split('|');return {store_code:STORE,sale_date:p[0],category:p[1],sales:Math.round(v),source:src}})};
+    return {kind:'detail',name:src,n,cube:[...cube].map(([k,e])=>{const a=JSON.parse(k);return {store_code:STORE,sale_date:a[0],category:a[1],sub_category:a[2],func:a[3],sub_func:a[4],master_brand:a[5],brand:a[6],source_type:a[7],master_type_brand:a[8],sales:Math.round(e.s),sales_incl:Math.round(e.i),qty:Math.round(e.q*100)/100,lines:e.n,source:src}}),dims:[...dmap].map(([k,v])=>{const p=k.split('|');return {store_code:STORE,sale_date:p[0],dim:p[1],dim_value:p[2],sales:Math.round(v),source:src}}),brands:[...bm].map(([k,v])=>{const p=k.split('|');return {store_code:STORE,sale_date:p[0],category:p[1],master_brand:p[2],sales:Math.round(v),source:src}}),rows:[...m].map(([k,v])=>{const p=k.split('|');return {store_code:STORE,sale_date:p[0],category:p[1],sales:Math.round(v),source:src}})};
   }
   const yr=(sn.match(/20\d\d/)||[String(new Date().getFullYear())])[0];
   const MI=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'], ALT={MEI:'MAY',AGU:'AUG',AGS:'AUG',OKT:'OCT',DES:'DEC'};
@@ -319,6 +323,7 @@ $('file').addEventListener('change',async e=>{
       else if(r.kind==='budget'){await upsertChunks('store_budget_monthly',r.rows,'store_code,year,month,category');parts.push('Budget '+r.year+': '+r.rows.length+' angka bulanan')}
       else if(r.kind==='phasing'){await upsertChunks('store_budget_phasing',r.rows,'store_code,phase_date');parts.push('Budget harian '+r.month+': '+r.rows.length+' hari')}
       else{await upsertChunks('store_day_category',r.rows,'store_code,sale_date,category');parts.push('Detail penjualan: '+nf.format(r.n)+' baris, '+new Set(r.rows.map(x=>x.sale_date)).size+' hari');
+        if(r.cube&&r.cube.length){await upsertChunks('store_day_detail',r.cube,'store_code,sale_date,category,sub_category,func,sub_func,master_brand,brand,source_type,master_type_brand');parts.push('Arsip detail lengkap: '+nf.format(r.cube.length)+' data')}
         if(r.dims&&r.dims.length){await upsertChunks('store_day_dim',r.dims,'store_code,sale_date,dim,dim_value');parts.push('Source type dan master type brand: '+nf.format(r.dims.length)+' data')}
         if(r.brands&&r.brands.length){await upsertChunks('store_day_brand',r.brands,'store_code,sale_date,category,master_brand');parts.push('Master brand: '+nf.format(r.brands.length)+' data')}}
     }catch(err){bad.push(r.name+': '+explain(err))}

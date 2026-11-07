@@ -46,3 +46,6 @@ create policy store_cat_delete on public.store_day_category for delete to authen
 
 -- Sales per Source Type Name dan Master Type Brand per hari (migrasi store_day_dim):
 -- public.store_day_dim (store_code, sale_date, dim ['source'|'typebrand'], dim_value, sales, source), RLS sama
+
+-- Arsip detail penjualan lengkap per hari (migrasi store_day_detail): kategori, sub kategori, function, sub function,
+-- master brand, brand, source type, master type brand + sales (exclude/include), qty, jumlah baris. Dipakai agar fitur baru tidak butuh unggah ulang.
