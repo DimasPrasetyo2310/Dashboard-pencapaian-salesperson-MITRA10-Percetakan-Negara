@@ -77,7 +77,7 @@ const lyYear=d=>d?(+d.slice(0,4)-1):'';
 const ZONA={'FLOORING AND WALL':1,'APPLIANCES':3,'BATHROOM':2,'ELECTRICAL AND LIGHTING':3,'HOUSEWARE & HOBBIES':3,'KITCHEN':3,'MISCELLANEOUS':3,'BUILDING MATERIAL':4,'DOORS AND WINDOWS':4,'HARDWARE':4,'PAINT AND SUNDRIES':5,'PLUMBING':2,'TOOLS':5};
 const zn=c=>ZONA[String(c).toUpperCase()]||99;
 const peakOf=(rows,f)=>rows.reduce((b,r)=>f(r)>f(b)?r:b,rows[0]);
-const eff=r=>r.cin?r.tr/r.cin:0, bsk=r=>r.tr?r.nav/r.tr:0;
+const eff=r=>r.cin?r.tr/r.cin:0, bsk=r=>r.tr?r.sx/r.tr:0;
 
 function niceMax(v){const st=[10,20,25,50,100,200,250,500,1000].map(x=>x*1e6);for(const s of st){if(v<=s*5)return [Math.ceil(v/s)*s,s]}return [Math.ceil(v/1e9)*1e9,1e9]}
 function niceCount(v){for(const s of [10,20,50,100,200,500,1000,2000,5000,10000]){if(v/s<=5)return [Math.ceil(v/s)*s,s]}return [Math.ceil(v/10000)*10000,10000]}
@@ -85,13 +85,13 @@ const roundTop=(x,y,w,h,r)=>{r=Math.min(r,h/2,w/2);return `M${x},${y+h}V${y+r}Q$
 
 function renderKpis(rows){
   LASTK=rows;
-  const n=rows.length, cin=sum(rows.map(d=>d.cin)), trn=sum(rows.map(d=>d.tr)), nav=sum(rows.map(d=>d.nav));
-  const pc=peakOf(rows,r=>r.cin), pt=peakOf(rows,r=>r.tr), pe=peakOf(rows,eff), pb=peakOf(rows,bsk), ps=peakOf(rows,r=>r.nav);
+  const n=rows.length, cin=sum(rows.map(d=>d.cin)), trn=sum(rows.map(d=>d.tr)), nav=sum(rows.map(d=>d.sx));
+  const pc=peakOf(rows,r=>r.cin), pt=peakOf(rows,r=>r.tr), pe=peakOf(rows,eff), pb=peakOf(rows,bsk), ps=peakOf(rows,r=>r.sx);
   const e=cin?trn/cin:0;
   const pr=rows.map(r=>[r,LYD.get(lyDate(r.d))]).filter(x=>x[1]);
   let L=null;
   if(pr.length){const c=pr.map(x=>x[0]),l=pr.map(x=>x[1]);
-    L={cin:[sum(c.map(x=>x.cin)),sum(l.map(x=>x.cin))],tr:[sum(c.map(x=>x.tr)),sum(l.map(x=>x.tr))],nav:[sum(c.map(x=>x.nav)),sum(l.map(x=>x.nav))],d:rows[0].d,full:pr.length===rows.length};
+    L={cin:[sum(c.map(x=>x.cin)),sum(l.map(x=>x.cin))],tr:[sum(c.map(x=>x.tr)),sum(l.map(x=>x.tr))],nav:[sum(c.map(x=>x.sx)),sum(l.map(x=>x.sx))],d:rows[0].d,full:pr.length===rows.length};
     L.e=[L.cin[0]?L.tr[0]/L.cin[0]:0,L.cin[1]?L.tr[1]/L.cin[1]:0];L.b=[L.tr[0]?L.nav[0]/L.tr[0]:0,L.tr[1]?L.nav[1]/L.tr[1]:0];}
   const D=(k,f,o)=>L?dlt(L[k][0],L[k][1],Object.assign({d:L.d,txt:f(L[k][1])},o||{})):'';
   $('kpis').innerHTML=[
@@ -99,7 +99,7 @@ function renderKpis(rows){
     {key:'tr',i:'invoice',l:'Invoice',v:nf.format(trn),s:'rata-rata '+nf.format(Math.round(trn/n))+' per hari',sp:rows.map(d=>d.tr),ly:D('tr',nf.format),pk:'Tertinggi '+fd(pt.d)+' · '+nf.format(pt.tr)},
     {key:'e',i:'target',l:'Efektivitas traffic',v:cin?dec(e*100,1)+'%':'–',extra:ring(e),s:'invoice ÷ traffic',sp:rows.map(eff),ly:D('e',v=>dec(v*100,1)+'%',{pts:1}),pk:'Tertinggi '+fd(pe.d)+' · '+dec(eff(pe)*100,1)+'%'},
     {key:'b',i:'basket',l:'Basket size',v:trn?rp(nav/trn):'–',s:'sales ÷ invoice',sp:rows.map(bsk),ly:D('b',rp),pk:'Tertinggi '+fd(pb.d)+' · '+rp(bsk(pb))},
-    {key:'nav',hero:1,i:'sales',l:'Sales',v:rp(nav),s:'exclude tax · '+rp(nav/n)+' per hari',sp:rows.map(d=>d.nav),ly:D('nav',rp),pk:'Tertinggi '+fd(ps.d)+' · '+rp(ps.nav)}
+    {key:'nav',hero:1,i:'sales',l:'Sales',v:rp(nav),s:'exclude tax · '+rp(nav/n)+' per hari',sp:rows.map(d=>d.sx),ly:D('nav',rp),pk:'Tertinggi '+fd(ps.d)+' · '+rp(ps.sx)}
   ].map(kpiHTML).join('');
   $('lyNote').hidden=!(L&&!L.full);
   if(L&&!L.full)$('lyNote').textContent='Pembanding tahun lalu hanya tersedia untuk '+pr.length+' dari '+rows.length+' hari pada rentang ini; selisih dihitung untuk hari yang ada pembandingnya saja.';
@@ -110,8 +110,8 @@ function renderChart(rows){
   let slots;
   if(monthView){const p=rows[0].d.split('-').map(Number);const dim=new Date(Date.UTC(p[0],p[1],0)).getUTCDate();slots=Array.from({length:dim},(_,i)=>`${p[0]}-${pad(p[1])}-${pad(i+1)}`)}
   else slots=rows.map(r=>r.d);
-  const avg=sum(rows.map(r=>r.nav))/rows.length;
-  const [mx,step]=niceMax(Math.max(...rows.map(r=>r.nav))*1.12);
+  const avg=sum(rows.map(r=>r.sx))/rows.length;
+  const [mx,step]=niceMax(Math.max(...rows.map(r=>r.sx))*1.12);
   const W=720,H=270,L=44,R=10,T=24,B=28,iw=W-L-R,ih=H-T-B,slot=iw/slots.length,bw=Math.min(slot*0.62,46);
   const y=v=>T+ih-(v/mx)*ih;
   let g='<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="var(--accent-soft)"/><line x1="0" y1="0" x2="0" y2="6" stroke="var(--accent)" stroke-width="3"/></pattern></defs>';
@@ -121,10 +121,10 @@ function renderChart(rows){
     const show=monthView?(i===0||(i+1)%5===0):(i%every===0);
     if(show) g+=`<text x="${L+(i+0.5)*slot}" y="${H-8}" text-anchor="middle">${monthView?i+1:fd(dt)}</text>`;
     const r=byD.get(dt); if(!r) return;
-    const x=L+i*slot+(slot-bw)/2, top=y(r.nav), h=Math.max(T+ih-top,0), bad=Math.abs(r.nav-r.ffc)>=1;
-    const tip=`${fdy(dt)} · ${rp(r.nav)} · ${r.tr} invoice`+(bad?' (NAV dan FFC belum sama)':'');
+    const x=L+i*slot+(slot-bw)/2, top=y(r.sx), h=Math.max(T+ih-top,0), bad=Math.abs(r.nav-r.ffc)>=1;
+    const tip=`${fdy(dt)} · ${rp(r.sx)} · ${r.tr} invoice`+(bad?' (NAV dan FFC belum sama)':'');
     g+=`<path data-tip="${esc(tip)}" d="${roundTop(x,top,bw,h,4)}" fill="${bad?'url(#hatch)':'var(--accent)'}"${bad?' stroke="var(--accent)" stroke-width="1.2"':''}/>`;
-    if(labels) g+=`<text class="vl" x="${x+bw/2}" y="${top-6}" text-anchor="middle">${Math.round(r.nav/1e6)}</text>`;
+    if(labels) g+=`<text class="vl" x="${x+bw/2}" y="${top-6}" text-anchor="middle">${Math.round(r.sx/1e6)}</text>`;
     g+=`<rect data-tip="${esc(tip)}" x="${L+i*slot}" y="${T}" width="${slot}" height="${ih}" fill="transparent"/>`;
   });
   g+=`<line x1="${L}" x2="${W-R}" y1="${y(avg)}" y2="${y(avg)}" stroke="var(--amber)" stroke-width="1.8" stroke-dasharray="6 4"/><text class="av" x="${W-R}" y="${y(avg)-6}" text-anchor="end">rata-rata ${Math.round(avg/1e6)}</text>`;
@@ -179,15 +179,15 @@ function renderTarget(rows){
   const bTot=sum(Object.values(bud));
   LASTTG={set,dates,bud,act,lyc};
   if(!bTot){box.innerHTML='<div class="empty">Belum ada budget untuk bulan pada rentang ini. Unggah file Budget (sheet "budget 1 tahun" dan "budget daily").</div>';return}
-  const nav=sum(rows.map(r=>r.nav));
+  const nav=sum(rows.map(r=>r.sx));
   const last=dates[dates.length-1], y=+last.slice(0,4), m=+last.slice(5,7), mk=last.slice(0,7);
   const mTarget=monthBudget(y,m);
-  const mtd=sum(DATA.D.filter(r=>r.d.slice(0,7)===mk&&r.d<=last).map(r=>r.nav));
+  const mtd=sum(DATA.D.filter(r=>r.d.slice(0,7)===mk&&r.d<=last).map(r=>r.sx));
   const done=Math.max(...DATA.D.filter(r=>r.d.slice(0,7)===mk).map(r=>+r.d.slice(8)));
   const left=dim(y,m)-done;
   const ach=nav/bTot, cls=ach>=1?'good':ach>=.9?'warn':'crit';
   const need=left>0&&mTarget>mtd?(mTarget-mtd)/left:0;
-  const lySum=sum(dates.map(d=>(LYD.get(lyDate(d))||{nav:0}).nav));
+  const lySum=sum(dates.map(d=>(LYD.get(lyDate(d))||{sx:0}).sx));
   const tile=(l,v,s)=>`<div class="tg-t"><span class="l">${l}</span><span class="v">${v}</span><span class="s">${s}</span></div>`;
   const list=cats.filter(c=>bud[c]>0||act[c]>0).sort((a,b)=>zn(a)-zn(b)||(bud[b]||act[b])-(bud[a]||act[a]));
   const zcount={};list.forEach(c=>{zcount[zn(c)]=(zcount[zn(c)]||0)+1});let zprev=null;
@@ -443,8 +443,8 @@ const KM={
   cin:{l:'Traffic',f:r=>r.cin,agg:a=>sum(a.map(r=>r.cin)),fmt:v=>nf.format(Math.round(v)),per:'Total'},
   tr:{l:'Invoice',f:r=>r.tr,agg:a=>sum(a.map(r=>r.tr)),fmt:v=>nf.format(Math.round(v)),per:'Total'},
   e:{l:'Efektivitas traffic',f:r=>r.cin?r.tr/r.cin:0,agg:a=>{const c=sum(a.map(r=>r.cin));return c?sum(a.map(r=>r.tr))/c:0},fmt:v=>dec(v*100,1)+'%',pts:1,per:'Periode'},
-  b:{l:'Basket size',f:r=>r.tr?r.nav/r.tr:0,agg:a=>{const t=sum(a.map(r=>r.tr));return t?sum(a.map(r=>r.nav))/t:0},fmt:v=>fu(v),per:'Periode'},
-  nav:{l:'Sales (exclude tax)',f:r=>r.nav,agg:a=>sum(a.map(r=>r.nav)),fmt:v=>fu(v),per:'Total'}
+  b:{l:'Basket size',f:r=>r.tr?r.sx/r.tr:0,agg:a=>{const t=sum(a.map(r=>r.tr));return t?sum(a.map(r=>r.sx))/t:0},fmt:v=>fu(v),per:'Periode'},
+  nav:{l:'Sales (exclude tax)',f:r=>r.sx,agg:a=>sum(a.map(r=>r.sx)),fmt:v=>fu(v),per:'Total'}
 };
 const HARI=['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
 const hari=d=>HARI[new Date(d+'T00:00:00Z').getUTCDay()];
@@ -466,7 +466,7 @@ function openKpi(key){
     const grTxt=has?(m.pts?'':dec(Math.abs(gr),1)+'%'):'';
     return `<tr><td>${hari(r.d)}, ${fdy(r.d)}</td><td class="r num">${m.fmt(v)}</td><td class="r num">${has?m.fmt(l)+' <span class="mut">('+fd(lyDate(r.d))+')</span>':'–'}</td><td class="r num">${has?pil(dv,selTxt):'–'}</td>${m.pts?'':`<td class="r num">${has?pil(gr,grTxt):'–'}</td>`}</tr>`}).join('');
   const tfoot=`<tr><td>${m.per}</td><td class="r num">${m.fmt(all)}</td><td class="r num">${ly?m.fmt(ly):'–'}</td><td class="r num">${ly?pil(m.pts?(cur-ly)*100:cur-ly,m.pts?dec(Math.abs(gv),1)+' poin':fu(Math.abs(cur-ly))):'–'}</td>${m.pts?'':`<td class="r num">${ly?pil(gv,gt):'–'}</td>`}</tr>`;
-  const note=key==='nav'?'<p class="hint">Sales diambil dari Report Compare FFC dan NAV kolom Sales Exclude Tax (NAV). Angka ini bisa sedikit berbeda dari total laporan detail penjualan di tabel Target vs actual.</p>':'';
+  const note=key==='nav'?'<p class="hint">Sales dihitung dari laporan detail penjualan yang diunggah (kolom Amount Exclude Sales), sama dengan tabel Target vs actual. Hari yang belum punya laporan detail memakai Sales Exclude Tax (NAV).</p>':'';
   $('brBody').innerHTML=note+`<div class="tbl brtbl"><table class="tgt"><thead><tr><th>Tanggal</th><th class="r">${m.l}</th><th class="r">Tahun lalu</th><th class="r">Selisih</th>${m.pts?'':'<th class="r">Growth</th>'}</tr></thead><tbody>${trs}</tbody><tfoot>${tfoot}</tfoot></table></div>`;
 }
 $('kpis').addEventListener('click',e=>{const k=e.target.closest('.kpi[data-kpi]');if(k)openKpi(k.dataset.kpi)});
@@ -517,7 +517,8 @@ async function loadData(){
     fetchAll('store_budget_monthly','year,month,category,budget',['year','month']),
     fetchAll('store_budget_phasing','phase_date,pct',['phase_date'])
   ]);
-  const D=d.map(r=>({d:r.sale_date,nav:+r.nav_sales,tr:+r.nav_trx,ffc:+r.ffc_sales,ffct:+r.ffc_trx,cin:+r.counter_in,cout:+r.counter_out}));
+  const DS=new Map();c.forEach(r=>DS.set(r.sale_date,(DS.get(r.sale_date)||0)+ +r.sales));
+  const D=d.map(r=>({d:r.sale_date,sx:DS.has(r.sale_date)?DS.get(r.sale_date):+r.nav_sales,nav:+r.nav_sales,tr:+r.nav_trx,ffc:+r.ffc_sales,ffct:+r.ffc_trx,cin:+r.counter_in,cout:+r.counter_out}));
   const yr=D.length?Math.max(...D.map(r=>+r.d.slice(0,4))):0;
   LYD=new Map();LYC=new Map();PH=new Map();BM=new Map();BRD=null;
   D.filter(r=>+r.d.slice(0,4)<yr).forEach(r=>LYD.set(r.d,r));
