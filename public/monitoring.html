@@ -161,6 +161,22 @@ tr.zt td.r .pill{font-weight:700}
 tr.zs td{border-top:2px solid var(--frame)}
 tr.zs:first-child td{border-top:0}
 table.tgt tbody tr:hover td.zona{background:inherit}
+
+tr[data-cat]{cursor:pointer}
+tr[data-cat]:hover td:not(.zona){background:#eef3fb}
+tr[data-cat]:focus-visible{outline:2px solid var(--accent,#1f5fbf);outline-offset:-2px}
+.br-ov{position:fixed;inset:0;background:rgba(16,28,52,.55);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
+.br-ov[hidden]{display:none}
+.br-panel{background:#fff;border:2px solid var(--frame);border-radius:14px;width:min(1040px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;padding:18px 20px;box-shadow:0 20px 60px rgba(16,28,52,.35)}
+.br-panel.shot{max-height:none;box-shadow:none}
+.br-head{display:flex;gap:12px;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.br-head h2{margin:0}
+.br-tools{display:flex;gap:8px;flex-wrap:wrap}
+.br-kpi{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.br-body{overflow:auto;min-height:0}
+.br-panel.shot .br-body{overflow:visible;max-height:none}
+.brtbl thead th{position:sticky;top:0;z-index:1}
+@media (max-width:900px){.br-kpi{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:1000px){.tg-top{grid-template-columns:repeat(2,minmax(0,1fr))}.tg-main{grid-column:1/-1}}
 </style>
 </head>
@@ -221,7 +237,7 @@ table.tgt tbody tr:hover td.zona{background:inherit}
         <button type="button" class="btn primary" id="tgShot">Salin gambar</button>
       </div>
     </div>
-    <p class="hint no-shot">Budget harian mengikuti persentase kontribusi harian dari file Budget. Actual per kategori dari laporan detail penjualan (exclude tax), sehingga totalnya bisa sedikit berbeda dari sales NAV.</p>
+    <p class="hint no-shot">Budget harian mengikuti persentase kontribusi harian dari file Budget. Actual per kategori dari laporan detail penjualan (exclude tax), sehingga totalnya bisa sedikit berbeda dari sales NAV. Klik baris kategori untuk melihat rincian master brand.</p>
     <div id="tg"></div>
   </section>
 
@@ -266,9 +282,15 @@ table.tgt tbody tr:hover td.zona{background:inherit}
 </div>
 <div id="tip" role="tooltip"></div>
 
+<div class="br-ov" id="brOv" hidden><div class="br-panel" id="brPanel" role="dialog" aria-modal="true" aria-labelledby="brTitle">
+  <div class="br-head"><div><h2 id="brTitle"></h2><p class="tg-period" id="brPeriod"></p></div>
+    <div class="br-tools no-shot"><button type="button" class="btn primary" id="brShot">Salin gambar</button><button type="button" class="chip" id="brClose">Tutup</button></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
 <script src="js/monitoring.js"></script>
+  <div class="br-kpi" id="brKpi"></div>
+  <div class="br-body" id="brBody"></div>
+</div></div>
 </body>
 </html>

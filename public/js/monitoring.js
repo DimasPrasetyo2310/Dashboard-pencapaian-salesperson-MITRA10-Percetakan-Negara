@@ -20,7 +20,7 @@ const title=s=>s.toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase());
 
 let DATA={D:[],C:[],B:[]};
 let LYD=new Map(), LYC=new Map(), PH=new Map(), BM=new Map();
-let skipPartial=false;
+let skipPartial=false; let BRD=null, LASTTG=null;
 let from='',to='';
 
 const allDates=()=>DATA.D.map(x=>x.d).sort();
@@ -176,6 +176,7 @@ function renderTarget(rows){
   DATA.C.forEach(c=>{if(set.has(c[0]))act[c[1]]=(act[c[1]]||0)+c[2]});
   dates.forEach(d=>cats.forEach(c=>{lyc[c]+=LYC.get(lyDate(d)+'|'+c)||0}));
   const bTot=sum(Object.values(bud));
+  LASTTG={set,dates,bud,act,lyc};
   if(!bTot){box.innerHTML='<div class="empty">Belum ada budget untuk bulan pada rentang ini. Unggah file Budget (sheet "budget 1 tahun" dan "budget daily").</div>';return}
   const nav=sum(rows.map(r=>r.nav));
   const last=dates[dates.length-1], y=+last.slice(0,4), m=+last.slice(5,7), mk=last.slice(0,7);
@@ -196,7 +197,7 @@ function renderTarget(rows){
     const zs=list.filter(x=>zn(x)===zn(c));
     const sub=last?`<tr class="zt"><td>Total ${zn(c)<99?'Zona '+zn(c):'lainnya'}</td>${cell(sum(zs.map(x=>act[x]||0)),sum(zs.map(x=>bud[x]||0)),sum(zs.map(x=>lyc[x]||0)))}</tr>`:'';
     const a=act[c]||0,b=bud[c]||0,pc=b?a/b:null,cl=pc==null?'':pc>=1?'good':pc>=.9?'warn':'crit',l=lyc[c];
-    return `<tr${first?' class="zs"':''}>${first?`<td class="zona z${zn(c)}" rowspan="${zcount[zn(c)]+1}">${zn(c)<99?'Zona '+zn(c):'–'}</td>`:''}<td>${esc(title(c))}</td><td class="r num">${b?fu(b):'–'}</td><td class="r num">${fu(a)}</td><td class="r num">${pc==null?'–':`<span class="pill ${cl}">${dec(pc*100,1)}%</span>`}</td><td class="r num">${b?sel(a-b):'–'}</td><td class="r num">${l?fu(l):'–'}</td><td class="r num">${l?lyp(a,l):'–'}</td></tr>${sub}`}).join('');
+    return `<tr data-cat="${esc(c)}" tabindex="0" title="Klik untuk rincian master brand"${first?' class="zs"':''}>${first?`<td class="zona z${zn(c)}" rowspan="${zcount[zn(c)]+1}">${zn(c)<99?'Zona '+zn(c):'–'}</td>`:''}<td>${esc(title(c))}</td><td class="r num">${b?fu(b):'–'}</td><td class="r num">${fu(a)}</td><td class="r num">${pc==null?'–':`<span class="pill ${cl}">${dec(pc*100,1)}%</span>`}</td><td class="r num">${b?sel(a-b):'–'}</td><td class="r num">${l?fu(l):'–'}</td><td class="r num">${l?lyp(a,l):'–'}</td></tr>${sub}`}).join('');
   const aT=sum(list.map(c=>act[c]||0)), bT=sum(list.map(c=>bud[c]||0)), lT=sum(list.map(c=>lyc[c]||0));
   box.innerHTML=`<div class="tg-top">
     <div class="tg-main"><span class="l">Pencapaian vs budget periode</span><span class="big ${cls}">${dec(ach*100,1)}%</span>
@@ -273,14 +274,15 @@ function parseSheet(f,sh,sn){
   h=rows.findIndex(r=>r&&r[0]==='Receipt Date');
   if(h>=0){
     const hd=rows[h].map(x=>String(x==null?'':x).trim());
-    const ic=hd.indexOf('Category'), ia=hd.indexOf('Amount Exclude Sales'), is=hd.indexOf('Store No');
+    const ic=hd.indexOf('Category'), ia=hd.indexOf('Amount Exclude Sales'), is=hd.indexOf('Store No'), ib=hd.indexOf('Master Brand');
     if(ic<0||ia<0) throw new Error('kolom Category atau Amount Exclude Sales tidak ada');
-    const m=new Map(); let n=0,other=0;
+    const m=new Map(), bm=new Map(); let n=0,other=0;
     rows.slice(h+1).forEach(r=>{const d=toISO(r[0]);if(!d||typeof r[ia]!=='number'||!r[ic])return;
       if(is>=0&&r[is]!=null&&String(r[is]).trim()!==STORE){other++;return}
-      const k=d+'|'+r[ic];m.set(k,(m.get(k)||0)+r[ia]);n++});
+      const k=d+'|'+r[ic];m.set(k,(m.get(k)||0)+r[ia]);n++;
+      if(ib>=0){const bk=k+'|'+(String(r[ib]==null?'':r[ib]).trim().toUpperCase()||'LAINNYA');bm.set(bk,(bm.get(bk)||0)+r[ia])}});
     if(!n) throw new Error(other?'file ini bukan untuk toko '+STORE:'tidak ada baris penjualan yang terbaca');
-    return {kind:'detail',name:src,n,rows:[...m].map(([k,v])=>{const p=k.split('|');return {store_code:STORE,sale_date:p[0],category:p[1],sales:Math.round(v),source:src}})};
+    return {kind:'detail',name:src,n,brands:[...bm].map(([k,v])=>{const p=k.split('|');return {store_code:STORE,sale_date:p[0],category:p[1],master_brand:p[2],sales:Math.round(v),source:src}}),rows:[...m].map(([k,v])=>{const p=k.split('|');return {store_code:STORE,sale_date:p[0],category:p[1],sales:Math.round(v),source:src}})};
   }
   const yr=(sn.match(/20\d\d/)||[String(new Date().getFullYear())])[0];
   const MI=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'], ALT={MEI:'MAY',AGU:'AUG',AGS:'AUG',OKT:'OCT',DES:'DEC'};
@@ -337,7 +339,8 @@ $('file').addEventListener('change',async e=>{
       if(r.kind==='nav'){await upsertChunks('store_daily',r.rows,'store_code,sale_date');parts.push('Report Compare FFC dan NAV: '+r.rows.length+' hari')}
       else if(r.kind==='budget'){await upsertChunks('store_budget_monthly',r.rows,'store_code,year,month,category');parts.push('Budget '+r.year+': '+r.rows.length+' angka bulanan')}
       else if(r.kind==='phasing'){await upsertChunks('store_budget_phasing',r.rows,'store_code,phase_date');parts.push('Budget harian '+r.month+': '+r.rows.length+' hari')}
-      else{await upsertChunks('store_day_category',r.rows,'store_code,sale_date,category');parts.push('Detail penjualan: '+nf.format(r.n)+' baris, '+new Set(r.rows.map(x=>x.sale_date)).size+' hari')}
+      else{await upsertChunks('store_day_category',r.rows,'store_code,sale_date,category');parts.push('Detail penjualan: '+nf.format(r.n)+' baris, '+new Set(r.rows.map(x=>x.sale_date)).size+' hari');
+        if(r.brands&&r.brands.length){await upsertChunks('store_day_brand',r.brands,'store_code,sale_date,category,master_brand');parts.push('Master brand: '+nf.format(r.brands.length)+' data')}}
     }catch(err){bad.push(r.name+': '+explain(err))}
   }
   if(parts.length){await loadData();const r=presetRange('all');setRange(r[0],r[1])}
@@ -367,7 +370,7 @@ async function cardToPng(el){
     d.style.cssText=css+'font-family:"Segoe UI",system-ui,-apple-system,Arial,sans-serif;';
   });
   clone.style.width=w+'px';clone.style.height='auto';clone.style.boxShadow='none';
-  clone.querySelectorAll('.tbl').forEach(t=>{t.style.overflow='visible'});
+  clone.querySelectorAll('.tbl,.br-body').forEach(t=>{t.style.overflow='visible';t.style.maxHeight='none'});
   const xhtml=new XMLSerializer().serializeToString(clone);
   const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'"><foreignObject x="0" y="0" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml">'+xhtml+'</div></foreignObject></svg>';
   const img=new Image();
@@ -393,6 +396,57 @@ $('tgShot').addEventListener('click',async()=>{
     }
     b.textContent=done;
   }catch(err){ b.textContent='Gagal membuat gambar'; }
+  el.classList.remove('shot');
+  setTimeout(()=>{b.textContent=old;b.disabled=false},2800);
+});
+
+/* Popup rincian master brand per kategori */
+async function loadBrands(){
+  if(BRD) return BRD;
+  const r=await fetchAll('store_day_brand','sale_date,category,master_brand,sales',['sale_date','category','master_brand']);
+  BRD=r.map(x=>({d:x.sale_date,c:x.category,b:x.master_brand,s:+x.sales}));
+  return BRD;
+}
+let brCat=null;
+async function openBrand(cat){
+  if(!LASTTG) return;
+  brCat=cat;
+  const ov=$('brOv'), body=$('brBody'); ov.hidden=false; document.body.style.overflow='hidden';
+  $('brTitle').textContent=title(cat)+(zn(cat)<99?' · Zona '+zn(cat):'');
+  const {set,dates,bud,act,lyc}=LASTTG;
+  $('brPeriod').textContent=fdy(dates[0])+' – '+fdy(dates[dates.length-1])+' · '+dates.length+' hari · dibanding '+lyYear(dates[0])+' (tanggal yang sama)';
+  const a=act[cat]||0,b=bud[cat]||0,l=lyc[cat]||0,pc=b?a/b:null,cl=pc==null?'':pc>=1?'good':pc>=.9?'warn':'crit';
+  const t=(k,v)=>`<div class="tg-t"><span class="l">${k}</span><span class="v">${v}</span></div>`;
+  $('brKpi').innerHTML=t('Budget periode',b?fu(b):'–')+t('Actual',fu(a))+t('Capaian',pc==null?'–':`<span class="pill ${cl}">${dec(pc*100,1)}%</span>`)+t('Selisih vs budget',b?sel(a-b):'–')+t('Tahun lalu',l?fu(l):'–')+t('Growth vs tahun lalu',l?lyp(a,l):'–');
+  body.innerHTML='<div class="empty">Memuat rincian master brand…</div>';
+  let rows;
+  try{rows=await loadBrands()}catch(e){if(brCat===cat)body.innerHTML='<div class="empty">Gagal memuat data master brand.</div>';return}
+  if(brCat!==cat) return;
+  const lyset=new Set(dates.map(lyDate)), cur={}, ly={};
+  rows.forEach(r=>{if(r.c!==cat)return;if(set.has(r.d))cur[r.b]=(cur[r.b]||0)+r.s;else if(lyset.has(r.d))ly[r.b]=(ly[r.b]||0)+r.s});
+  const brs=[...new Set([...Object.keys(cur),...Object.keys(ly)])].map(k=>({k,a:cur[k]||0,l:ly[k]||0}))
+    .filter(x=>Math.round(x.a)||Math.round(x.l)).sort((x,y)=>y.a-x.a||y.l-x.l);
+  if(!brs.length){body.innerHTML='<div class="empty">Rincian master brand belum tersedia untuk kategori dan rentang ini. Unggah laporan detail penjualan (periode ini dan tahun lalu) lewat tombol Unggah.</div>';return}
+  const A=sum(brs.map(x=>x.a)),L=sum(brs.map(x=>x.l));
+  const gr=(x,y)=>y?lyp(x,y):(x?'<span class="posbox">Baru</span>':'–');
+  const trs=brs.map((x,i)=>`<tr><td class="r num">${i+1}</td><td>${esc(title(x.k))}</td><td class="r num">${fu(x.a)}</td><td class="r num">${A?dec(x.a/A*100,1)+'%':'–'}</td><td class="r num">${x.l?fu(x.l):'–'}</td><td class="r num">${sel(x.a-x.l)}</td><td class="r num">${gr(x.a,x.l)}</td></tr>`).join('');
+  body.innerHTML=`<div class="tbl brtbl"><table class="tgt"><thead><tr><th class="r">#</th><th>Master brand</th><th class="r">Actual</th><th class="r">Kontribusi</th><th class="r">Tahun lalu</th><th class="r">Selisih</th><th class="r">Growth</th></tr></thead><tbody>${trs}</tbody>
+  <tfoot><tr><td></td><td>Total (${brs.length} brand)</td><td class="r num">${fu(A)}</td><td class="r num">${A?'100%':'–'}</td><td class="r num">${L?fu(L):'–'}</td><td class="r num">${sel(A-L)}</td><td class="r num">${L?lyp(A,L):'–'}</td></tr></tfoot></table></div>`;
+}
+function closeBrand(){$('brOv').hidden=true;document.body.style.overflow='';brCat=null}
+$('tg').addEventListener('click',e=>{const r=e.target.closest('tr[data-cat]');if(r)openBrand(r.dataset.cat)});
+$('tg').addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const r=e.target.closest('tr[data-cat]');if(r){e.preventDefault();openBrand(r.dataset.cat)}});
+$('brClose').addEventListener('click',closeBrand);
+$('brOv').addEventListener('click',e=>{if(e.target===$('brOv'))closeBrand()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('brOv').hidden)closeBrand()});
+$('brShot').addEventListener('click',async()=>{
+  const b=$('brShot'), old=b.textContent, el=$('brPanel'); b.disabled=true; b.textContent='Memproses…'; el.classList.add('shot');
+  try{
+    const pngP=cardToPng(el); let done='';
+    try{await navigator.clipboard.write([new ClipboardItem({'image/png':pngP})]);done='Tersalin. Tempel di WhatsApp (Ctrl+V)'}
+    catch(e){const blob=await pngP,a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='brand-'+String(brCat||'kategori').toLowerCase().replace(/\W+/g,'-')+'.png';document.body.appendChild(a);a.click();a.remove();done='Browser tidak bisa menyalin, gambar diunduh'}
+    b.textContent=done;
+  }catch(err){b.textContent='Gagal membuat gambar'}
   el.classList.remove('shot');
   setTimeout(()=>{b.textContent=old;b.disabled=false},2800);
 });
@@ -430,7 +484,7 @@ async function loadData(){
   ]);
   const D=d.map(r=>({d:r.sale_date,nav:+r.nav_sales,tr:+r.nav_trx,ffc:+r.ffc_sales,ffct:+r.ffc_trx,cin:+r.counter_in,cout:+r.counter_out}));
   const yr=D.length?Math.max(...D.map(r=>+r.d.slice(0,4))):0;
-  LYD=new Map();LYC=new Map();PH=new Map();BM=new Map();
+  LYD=new Map();LYC=new Map();PH=new Map();BM=new Map();BRD=null;
   D.filter(r=>+r.d.slice(0,4)<yr).forEach(r=>LYD.set(r.d,r));
   c.filter(r=>+r.sale_date.slice(0,4)<yr).forEach(r=>LYC.set(r.sale_date+'|'+r.category,(LYC.get(r.sale_date+'|'+r.category)||0)+ +r.sales));
   b.forEach(r=>BM.set(r.year+'|'+r.month+'|'+r.category,+r.budget));
