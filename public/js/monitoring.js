@@ -8,7 +8,7 @@ const dec=(n,d)=>n.toFixed(d).replace('.',',');
 const rp=n=>n>=1e9?'Rp '+dec(n/1e9,2)+' M':'Rp '+dec(n/1e6,1)+' jt';
 const jt=n=>dec(n/1e6,1)+' jt';
 const sel=n=>{const v=Math.round(n/1e5)/10;return v<0?'<span class="negbox">−'+dec(Math.abs(n)/1e6,1)+' jt</span>':jt(n)};
-const lyp=(a,l)=>{const v=(a/l-1)*100;return Math.round(v*10)/10<0?'<span class="negbox">−'+dec(Math.abs(v),1)+'%</span>':'▲ '+dec(v,1)+'%'};
+const lyp=(a,l)=>{const v=(a/l-1)*100;return Math.round(v*10)/10<0?'<span class="negbox">−'+dec(Math.abs(v),1)+'%</span>':'<span class="posbox">▲ '+dec(v,1)+'%</span>'};
 const sum=a=>a.reduce((x,y)=>x+y,0);
 const pad=n=>String(n).padStart(2,'0');
 const MON=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
