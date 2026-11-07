@@ -455,6 +455,20 @@ function openKpi(key){
 }
 $('kpis').addEventListener('click',e=>{const k=e.target.closest('.kpi[data-kpi]');if(k)openKpi(k.dataset.kpi)});
 $('kpis').addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const k=e.target.closest('.kpi[data-kpi]');if(k){e.preventDefault();openKpi(k.dataset.kpi)}});
+
+/* Ekspor cadangan: seluruh tabel monitoring dalam satu file JSON */
+$('bkBtn').addEventListener('click',async()=>{
+  const b=$('bkBtn'), old=b.textContent; b.disabled=true; b.textContent='Mengekspor…';
+  const T=[['store_daily',['sale_date']],['store_day_category',['sale_date','category']],['store_day_brand',['sale_date','category','master_brand']],['store_day_dim',['sale_date','dim','dim_value']],['store_day_detail',['sale_date','category','sub_category','func','sub_func','master_brand','brand','source_type','master_type_brand']],['store_budget_monthly',['year','month','category']],['store_budget_phasing',['phase_date']]];
+  try{
+    const out={dibuat:new Date().toISOString(),toko:STORE,tabel:{}};
+    for(const [t,o] of T){b.textContent='Mengekspor '+t.replace('store_','')+'…';out.tabel[t]=await fetchAll(t,'*',o)}
+    const blob=new Blob([JSON.stringify(out)],{type:'application/json'}), a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);a.download='cadangan-monitoring-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();
+    b.textContent='Cadangan diunduh';
+  }catch(err){b.textContent='Gagal mengekspor'}
+  setTimeout(()=>{b.textContent=old;b.disabled=false},3000);
+});
 $('brClose').addEventListener('click',closeBrand);
 $('brOv').addEventListener('click',e=>{if(e.target===$('brOv'))closeBrand()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('brOv').hidden)closeBrand()});
