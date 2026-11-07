@@ -380,26 +380,26 @@ async function cardToPng(el){
   const cx=cv.getContext('2d'); cx.fillStyle='#ffffff'; cx.fillRect(0,0,cv.width,cv.height); cx.scale(sc,sc); cx.drawImage(img,0,0);
   return await new Promise((ok,no)=>cv.toBlob(b=>b?ok(b):no(new Error('gagal membuat PNG')),'image/png'));
 }
-$('tgShot').addEventListener('click',async()=>{
-  const b=$('tgShot'), old=b.textContent; b.disabled=true; b.textContent='Memproses…';
-  const el=$('tgCard'); el.classList.add('shot');
-  try{
-    const pngP=cardToPng(el);
-    let done='';
-    try{
-      await navigator.clipboard.write([new ClipboardItem({'image/png':pngP})]);
-      done='Tersalin. Tempel di WhatsApp (Ctrl+V)';
-    }catch(e){
-      const blob=await pngP, a=document.createElement('a');
-      a.href=URL.createObjectURL(blob); a.download='target-vs-actual-'+new Date().toISOString().slice(0,10)+'.png';
-      document.body.appendChild(a); a.click(); a.remove();
-      done='Browser tidak bisa menyalin, gambar diunduh';
-    }
-    b.textContent=done;
-  }catch(err){ b.textContent='Gagal membuat gambar'; }
-  el.classList.remove('shot');
-  setTimeout(()=>{b.textContent=old;b.disabled=false},2800);
-});
+/* Salin/bagikan gambar: elemen digandakan ke wadah tersembunyi selebar layar PC, jadi hasilnya selalu utuh (tidak terpotong) di HP maupun PC. */
+async function shotImage(el,width,name){
+  const host=document.createElement('div'); host.className='shot-host'; host.style.width=width+'px';
+  const c=el.cloneNode(true); c.querySelectorAll('[id]').forEach(n=>n.removeAttribute('id')); c.removeAttribute('id'); c.classList.add('shot');
+  host.appendChild(c); document.body.appendChild(host);
+  try{ await new Promise(r=>requestAnimationFrame(()=>r())); return await cardToPng(c) } finally { host.remove() }
+}
+async function deliverImage(pngP,name){
+  try{ await navigator.clipboard.write([new ClipboardItem({'image/png':pngP})]); return 'Tersalin. Tempel di WhatsApp' }catch(e){}
+  const blob=await pngP, file=new File([blob],name,{type:'image/png'});
+  try{ if(navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file]}); return 'Gambar dibagikan' } }catch(e){ if(e&&e.name==='AbortError') return 'Dibatalkan' }
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  return 'Gambar diunduh ke galeri/unduhan';
+}
+async function runShot(btn,el,width,name){
+  const old=btn.textContent; btn.disabled=true; btn.textContent='Memproses…';
+  try{ btn.textContent=await deliverImage(shotImage(el,width,name),name) }catch(err){ btn.textContent='Gagal membuat gambar' }
+  setTimeout(()=>{btn.textContent=old;btn.disabled=false},2800);
+}
+$('tgShot').addEventListener('click',()=>runShot($('tgShot'),$('tgCard'),1180,'target-vs-actual-'+new Date().toISOString().slice(0,10)+'.png'));
 
 /* Popup rincian master brand per kategori */
 async function loadBrands(){
@@ -474,17 +474,7 @@ $('kpis').addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;
 $('brClose').addEventListener('click',closeBrand);
 $('brOv').addEventListener('click',e=>{if(e.target===$('brOv'))closeBrand()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('brOv').hidden)closeBrand()});
-$('brShot').addEventListener('click',async()=>{
-  const b=$('brShot'), old=b.textContent, el=$('brPanel'); b.disabled=true; b.textContent='Memproses…'; el.classList.add('shot');
-  try{
-    const pngP=cardToPng(el); let done='';
-    try{await navigator.clipboard.write([new ClipboardItem({'image/png':pngP})]);done='Tersalin. Tempel di WhatsApp (Ctrl+V)'}
-    catch(e){const blob=await pngP,a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='brand-'+String(brCat||'kategori').toLowerCase().replace(/\W+/g,'-')+'.png';document.body.appendChild(a);a.click();a.remove();done='Browser tidak bisa menyalin, gambar diunduh'}
-    b.textContent=done;
-  }catch(err){b.textContent='Gagal membuat gambar'}
-  el.classList.remove('shot');
-  setTimeout(()=>{b.textContent=old;b.disabled=false},2800);
-});
+$('brShot').addEventListener('click',()=>runShot($('brShot'),$('brPanel'),1060,'brand-'+String(brCat||'kategori').toLowerCase().replace(/\W+/g,'-')+'.png'));
 $('partChk').addEventListener('change',e=>{skipPartial=e.target.checked;render()});
 $('chips').addEventListener('click',e=>{const c=e.target.closest('.chip');if(!c)return;const r=presetRange(c.dataset.p);setRange(r[0],r[1])});
 
