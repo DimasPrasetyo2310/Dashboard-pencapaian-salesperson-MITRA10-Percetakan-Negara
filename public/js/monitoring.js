@@ -162,7 +162,10 @@ function renderCats(){
 }
 
 function renderTarget(rows){
-  const box=$('tg'), dates=rows.map(r=>r.d), set=new Set(dates);
+  const box=$('tg');
+  if(!rows.length){$('tgPeriod').textContent='';box.innerHTML='<div class="empty">Tidak ada data pada rentang tanggal ini.</div>';return}
+  $('tgPeriod').textContent=fdy(rows[0].d)+' – '+fdy(rows[rows.length-1].d)+' · '+rows.length+' hari';
+  const dates=rows.map(r=>r.d), set=new Set(dates);
   const cats=[...new Set([...[...BM.keys()].map(k=>k.split('|')[2]),...DATA.C.filter(c=>set.has(c[0])).map(c=>c[1])])];
   const bud={},act={},lyc={};
   cats.forEach(c=>{bud[c]=0;act[c]=0;lyc[c]=0});
@@ -211,6 +214,13 @@ function renderRows(rows){
   const cin=sum(rows.map(d=>d.cin)),trn=sum(rows.map(d=>d.tr)),nav=sum(rows.map(d=>d.nav)),ffc=sum(rows.map(d=>d.ffc));
   $('foot').innerHTML=`<tr><td>Total</td><td class="r num">${nf.format(cin)}</td><td class="r num">${nf.format(sum(rows.map(d=>d.cout)))}</td><td class="r num">${nf.format(trn)}</td><td class="r num">${cin?dec(trn/cin*100,1)+'%':'–'}</td><td class="r num">${trn?jt(nav/trn):'–'}</td><td class="r num">${jt(nav)}</td><td class="r num">${jt(ffc)}</td><td></td></tr>`;
 }
+let tgR={from:null,to:null};
+function tgRows(base){
+  if(!tgR.from&&!tgR.to) return base;
+  let r=DATA.D.filter(x=>(!tgR.from||x.d>=tgR.from)&&(!tgR.to||x.d<=tgR.to)).sort((a,b)=>a.d<b.d?-1:1);
+  if(skipPartial) r=r.filter(x=>Math.abs(x.nav-x.ffc)<1);
+  return r;
+}
 function render(){
   let rows=DATA.D.filter(x=>x.d>=from&&x.d<=to).sort((a,b)=>a.d<b.d?-1:1);
   const nPart=rows.filter(r=>Math.abs(r.nav-r.ffc)>=1).length;
@@ -218,15 +228,17 @@ function render(){
   $('partWrap').hidden=!nPart&&!skipPartial;$('partLbl').textContent='Abaikan hari yang belum sinkron NAV dan FFC ('+nPart+' hari)';
   document.querySelectorAll('.chip').forEach(c=>{const r=presetRange(c.dataset.p);c.setAttribute('aria-pressed',String(r[0]===from&&r[1]===to))});
   const ds=allDates();
-  if(ds.length){$('from').min=$('to').min=ds[0];$('from').max=$('to').max=ds[ds.length-1]}
+  if(ds.length){$('from').min=$('to').min=$('tgFrom').min=$('tgTo').min=ds[0];$('from').max=$('to').max=$('tgFrom').max=$('tgTo').max=ds[ds.length-1]}
+  $('tgFrom').value=tgR.from||from;$('tgTo').value=tgR.to||to;$('tgSync').hidden=!(tgR.from||tgR.to);
+  renderTarget(tgRows(rows));
   if(!rows.length){
     $('period').textContent='Tidak ada data pada rentang ini';
     $('kpis').innerHTML='<div class="card empty">Tidak ada data pada rentang tanggal ini. Ubah tanggal atau unggah database.</div>';
-    ['chart','chLegend','chNote','cats','rows','foot','tcChart','tcLegend','efList','tg'].forEach(i=>$(i).innerHTML='');
+    ['chart','chLegend','chNote','cats','rows','foot','tcChart','tcLegend','efList'].forEach(i=>$(i).innerHTML='');
     return;
   }
   $('period').textContent=`${fdy(rows[0].d)} – ${fdy(rows[rows.length-1].d)} · ${rows.length} hari`;
-  renderKpis(rows);renderChart(rows);renderTraffic(rows);renderEf(rows);renderCats();renderTarget(rows);renderRows(rows);
+  renderKpis(rows);renderChart(rows);renderTraffic(rows);renderEf(rows);renderCats();renderRows(rows);
 }
 
 /* ---------- Unggah database ke Supabase ---------- */
@@ -334,6 +346,53 @@ $('file').addEventListener('change',async e=>{
 /* ---------- Filter tanggal ---------- */
 $('from').addEventListener('change',e=>{let a=e.target.value,b=$('to').value;if(!a)return;if(b&&a>b)b=a;setRange(a,b)});
 $('to').addEventListener('change',e=>{let b=e.target.value,a=$('from').value;if(!b)return;if(a&&b<a)a=b;setRange(a,b)});
+$('tgFrom').addEventListener('change',e=>{tgR.from=e.target.value||null;if(!tgR.to)tgR.to=$('tgTo').value||null;render()});
+$('tgTo').addEventListener('change',e=>{tgR.to=e.target.value||null;if(!tgR.from)tgR.from=$('tgFrom').value||null;render()});
+$('tgSync').addEventListener('click',()=>{tgR={from:null,to:null};render()});
+/* Gambar kartu: tanpa pustaka luar. Kartu disalin ke SVG lalu digambar ke canvas. */
+async function cardToPng(el){
+  const w=Math.ceil(Math.max(el.scrollWidth,el.getBoundingClientRect().width)), h=Math.ceil(el.scrollHeight);
+  const clone=el.cloneNode(true);
+  clone.querySelectorAll('.no-shot').forEach(n=>n.remove());
+  const src=[el,...el.querySelectorAll('*')], dst=[clone,...clone.querySelectorAll('*')];
+  const keep=new Set([...el.querySelectorAll('.no-shot')].flatMap(n=>[n,...n.querySelectorAll('*')]));
+  const srcKeep=src.filter(n=>!keep.has(n));
+  srcKeep.forEach((o,i)=>{
+    const d=dst[i]; if(!d||!d.style) return;
+    const cs=getComputedStyle(o);
+    let css=''; for(const p of cs) css+=p+':'+cs.getPropertyValue(p)+';';
+    d.style.cssText=css+'font-family:"Segoe UI",system-ui,-apple-system,Arial,sans-serif;';
+  });
+  clone.style.width=w+'px';clone.style.height='auto';clone.style.boxShadow='none';
+  clone.querySelectorAll('.tbl').forEach(t=>{t.style.overflow='visible'});
+  const xhtml=new XMLSerializer().serializeToString(clone);
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'"><foreignObject x="0" y="0" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml">'+xhtml+'</div></foreignObject></svg>';
+  const img=new Image();
+  await new Promise((ok,no)=>{img.onload=ok;img.onerror=()=>no(new Error('gagal membuat gambar'));img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg)});
+  const sc=2, cv=document.createElement('canvas'); cv.width=w*sc; cv.height=h*sc;
+  const cx=cv.getContext('2d'); cx.fillStyle='#ffffff'; cx.fillRect(0,0,cv.width,cv.height); cx.scale(sc,sc); cx.drawImage(img,0,0);
+  return await new Promise((ok,no)=>cv.toBlob(b=>b?ok(b):no(new Error('gagal membuat PNG')),'image/png'));
+}
+$('tgShot').addEventListener('click',async()=>{
+  const b=$('tgShot'), old=b.textContent; b.disabled=true; b.textContent='Memproses…';
+  const el=$('tgCard'); el.classList.add('shot');
+  try{
+    const pngP=cardToPng(el);
+    let done='';
+    try{
+      await navigator.clipboard.write([new ClipboardItem({'image/png':pngP})]);
+      done='Tersalin. Tempel di WhatsApp (Ctrl+V)';
+    }catch(e){
+      const blob=await pngP, a=document.createElement('a');
+      a.href=URL.createObjectURL(blob); a.download='target-vs-actual-'+new Date().toISOString().slice(0,10)+'.png';
+      document.body.appendChild(a); a.click(); a.remove();
+      done='Browser tidak bisa menyalin, gambar diunduh';
+    }
+    b.textContent=done;
+  }catch(err){ b.textContent='Gagal membuat gambar'; }
+  el.classList.remove('shot');
+  setTimeout(()=>{b.textContent=old;b.disabled=false},2800);
+});
 $('partChk').addEventListener('change',e=>{skipPartial=e.target.checked;render()});
 $('chips').addEventListener('click',e=>{const c=e.target.closest('.chip');if(!c)return;const r=presetRange(c.dataset.p);setRange(r[0],r[1])});
 
