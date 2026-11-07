@@ -342,7 +342,7 @@ const CFG=window.APP_CONFIG||{};
 const SB=(window.supabase&&CFG.SUPABASE_URL&&CFG.SUPABASE_PUBLISHABLE_KEY&&!/YOUR-/.test(CFG.SUPABASE_URL))?window.supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_PUBLISHABLE_KEY):null;
 let canWrite=false;
 const bootMsg=(t,showOut)=>{$('boot-msg').textContent=t;$('boot-out').hidden=!showOut;$('boot').hidden=false;$('app').hidden=true};
-const toLogin=()=>location.replace('login.html?next=monitoring.html');
+const toLogin=()=>{try{sessionStorage.setItem('mitra10_next','monitoring.html')}catch(e){}location.replace('login.html?next=monitoring.html')};
 async function fetchAll(table,cols,order){
   const out=[];
   for(let from0=0;;from0+=1000){
