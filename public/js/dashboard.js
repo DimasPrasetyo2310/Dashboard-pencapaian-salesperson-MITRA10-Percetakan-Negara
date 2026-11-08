@@ -429,6 +429,62 @@ $('pop').addEventListener('click',e=>{ if(e.target===$('pop')) closePop(); });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closePop(); });
 $('tbody').addEventListener('click',e=>{ const tr=e.target.closest('tr[data-id]'); if(!tr||e.target.closest('button,a')) return; const p=rowMap[tr.dataset.id]; if(p) openPerson(p,tr); });
 $('tbody').addEventListener('keydown',e=>{ if(e.key!=='Enter') return; const tr=e.target.closest('tr[data-id]'); if(!tr) return; const p=rowMap[tr.dataset.id]; if(p) openPerson(p,tr); });
+/* ---- Kartu ringkasan interaktif: klik untuk rincian ---- */
+let kLast=null;
+function closeK(){ const o=$('kpop'); if(!o||o.hidden) return; o.hidden=true; document.documentElement.style.overflow=''; if(kLast&&kLast.focus) kLast.focus(); }
+function kShow(ttl,info,html,from){
+  kLast=from||null; $('kpop-t').textContent=ttl;
+  $('kpop-per').textContent=M.days? (M.from===M.to? fd(M.from,{day:'numeric',month:'long',year:'numeric'}) : fd(M.from,{day:'numeric',month:'short'})+' sampai '+fd(M.to,{day:'numeric',month:'short',year:'numeric'})+' ('+M.days+' hari)')+' · sales exclude PPN' : 'Tidak ada data pada rentang ini';
+  $('kpop-info').innerHTML=info.map(i=>'<div><span>'+esc(i[0])+'</span><b>'+esc(i[1])+'</b></div>').join('');
+  $('kpop-body').innerHTML=html; $('kpop').hidden=false; document.documentElement.style.overflow='hidden'; $('kpop-x').focus(); $('kpop-body').scrollTop=0;
+}
+const kRow=(p,cells,cls)=>'<tr data-pid="'+esc(p.id)+'" tabindex="0"'+(cls?' class="'+cls+'"':'')+'>'+cells.join('')+'</tr>';
+const kTbl=(head,rows)=>'<table class="pt"><thead><tr>'+head.map(h=>'<th'+(h[1]?' class="rt"':'')+'>'+h[0]+'</th>').join('')+'</tr></thead><tbody>'+rows.join('')+'</tbody></table>';
+const kNum=v=>'<td class="num rt">'+v+'</td>';
+function openK(k, el){
+  const L=filtered(), A=L.filter(p=>p.lines>0), tot=A.reduce((a,p)=>a+p.sales,0);
+  if(k==='total'){
+    const sel=dates.filter(d=>d>=M.from&&d<=M.to), mx=Math.max(1,...sel.map(d=>days[d].meta.total));
+    const rows=sel.map(d=>{ const x=days[d], t=x.meta.total, r=x.meta.receipts;
+      return '<tr><td>'+esc(fd(d,{weekday:'short',day:'numeric',month:'short'}))+'</td>'+kNum(rp(t))+kNum(fmtN.format(r))+kNum(rp(r?t/r:0))+kNum(x.people.length)+'<td style="width:140px"><span class="bar" style="width:'+Math.round(t/mx*100)+'%"></span></td></tr>'; });
+    kShow('Total penjualan per tanggal',[['Total penjualan',rp(M.total)],['Struk',fmtN.format(M.receipts)],['Basket size',rp(M.receipts?M.total/M.receipts:0)],['Rata-rata per hari',rp(M.days?M.total/M.days:0)]],
+      sel.length? kTbl([['Tanggal'],['Penjualan',1],['Struk',1],['Basket size',1],['Orang aktif',1],['']],rows) : '<p class="note" style="padding:14px 4px">Belum ada data pada rentang ini.</p>',el);
+  } else if(k==='aktif'){
+    const ia=L.filter(p=>!(p.lines>0));
+    const rows=A.map((p,i)=>kRow(p,['<td class="num mut">'+(i+1)+'</td>','<td>'+esc(p.id)+'</td>','<td>'+esc(p.name)+'</td>','<td>'+esc(p.zona||'–')+'</td>',kNum(rp(p.sales)),kNum(fmtN.format(p.receipts))]))
+      .concat(ia.map(p=>kRow(p,['<td class="num mut">–</td>','<td>'+esc(p.id)+'</td>','<td>'+esc(p.name)+'</td>','<td>'+esc(p.zona||'–')+'</td>',kNum('belum ada penjualan'),kNum('–')],'dim')));
+    kShow('Orang aktif',[['Aktif (ada transaksi)',String(A.length)],['Terjadwal tanpa penjualan',String(ia.length)],['Total dalam daftar',String(L.length)]],
+      rows.length? kTbl([['#'],['Sales ID'],['Salesperson'],['Zonasi'],['Penjualan',1],['Struk',1]],rows)+'<p class="note" style="padding:8px 4px">Klik salah satu baris untuk melihat detail item.</p>' : '<p class="note" style="padding:14px 4px">Belum ada orang pada filter ini.</p>',el);
+  } else if(k==='avg'){
+    const v=A.map(p=>p.sales).sort((a,b)=>a-b), n=v.length, avg=n?tot/n:0, med=n?(n%2?v[(n-1)/2]:(v[n/2-1]+v[n/2])/2):0;
+    const rows=A.map((p,i)=>{ const df=p.sales-avg, c=df>=0?'gd':'bd';
+      return kRow(p,['<td class="num mut">'+(i+1)+'</td>','<td>'+esc(p.name)+'</td>','<td>'+esc(p.zona||'–')+'</td>',kNum(rp(p.sales)),'<td class="num rt '+c+'">'+(df>=0?'+':'−')+rp(Math.abs(df))+' ('+(df>=0?'+':'−')+Math.round(Math.abs(df)/(avg||1)*100)+'%)</td>']); });
+    kShow('Rata-rata penjualan per orang',[['Rata-rata',rp(avg)],['Median',rp(med)],['Tertinggi',n?rp(v[n-1]):'–'],['Terendah',n?rp(v[0]):'–']],
+      rows.length? kTbl([['#'],['Salesperson'],['Zonasi'],['Penjualan',1],['Selisih dari rata-rata',1]],rows) : '<p class="note" style="padding:14px 4px">Belum ada penjualan pada rentang ini.</p>',el);
+  } else if(k==='top'){
+    if(L[0]) openPerson(L[0], el);
+  } else if(k==='target'){
+    const T=L.filter(p=>p.target>0);
+    if(T.length){
+      const hit=T.filter(p=>p.sales>=p.target), st=T.reduce((a,p)=>a+p.sales,0), tt=T.reduce((a,p)=>a+p.target,0), gap=T.reduce((a,p)=>a+Math.max(0,p.target-p.sales),0);
+      const rows=T.slice().sort((a,b)=>b.sales/b.target-a.sales/a.target).map(p=>{ const a=p.sales/p.target, ok=a>=1;
+        return kRow(p,['<td>'+esc(p.name)+'</td>','<td>'+esc(p.zona||'–')+'</td>',kNum(rp(p.target)),kNum(rp(p.sales)),'<td class="num rt '+(ok?'gd':'')+'">'+Math.round(a*100)+'%</td>','<td class="'+(ok?'gd':'bd')+'">'+(ok?'✓ Tercapai':'Kurang '+rp(p.target-p.sales))+'</td>']); });
+      kShow('Pencapaian target',[['Tercapai',hit.length+' / '+T.length],['Capaian total',pct(st/tt)],['Belum tercapai',String(T.length-hit.length)],['Total kekurangan',rp(gap)]],
+        kTbl([['Salesperson'],['Zonasi'],['Target',1],['Penjualan',1],['Capaian',1],['Status']],rows)+'<p class="note" style="padding:8px 4px">Klik salah satu baris untuk melihat detail item.</p>',el);
+    } else {
+      const t10=A.slice(0,10), s10=t10.reduce((a,p)=>a+p.sales,0);
+      kShow('Konsentrasi 10 teratas',[['10 teratas',rp(s10)],['Porsi dari total',pct(s10/(tot||1))]],
+        t10.length? kTbl([['#'],['Salesperson'],['Penjualan',1],['% total',1]],t10.map((p,i)=>kRow(p,['<td class="num mut">'+(i+1)+'</td>','<td>'+esc(p.name)+'</td>',kNum(rp(p.sales)),kNum(pct(p.sales/(tot||1)))]))) : '<p class="note" style="padding:14px 4px">Belum ada penjualan.</p>',el);
+    }
+  }
+}
+['total','aktif','avg','top','target'].forEach((k,i)=>{ const el=document.querySelectorAll('.kpis .kpi')[i]; if(!el) return; el.dataset.k=k; el.tabIndex=0; el.setAttribute('role','button'); el.title='Klik untuk melihat rincian'; });
+document.querySelector('.kpis').addEventListener('click',e=>{ const c=e.target.closest('.kpi[data-k]'); if(c) openK(c.dataset.k,c); });
+document.querySelector('.kpis').addEventListener('keydown',e=>{ if(e.key!=='Enter'&&e.key!==' ') return; const c=e.target.closest('.kpi[data-k]'); if(!c) return; e.preventDefault(); openK(c.dataset.k,c); });
+$('kpop-x').addEventListener('click',closeK);
+$('kpop').addEventListener('click',e=>{ if(e.target===$('kpop')){ closeK(); return; } const tr=e.target.closest('tr[data-pid]'); if(!tr) return; const p=P.find(x=>x.id===tr.dataset.pid); if(p){ const f=kLast; closeK(); openPerson(p,f); } });
+$('kpop').addEventListener('keydown',e=>{ if(e.key!=='Enter') return; const tr=e.target.closest('tr[data-pid]'); if(!tr) return; const p=P.find(x=>x.id===tr.dataset.pid); if(p){ const f=kLast; closeK(); openPerson(p,f); } });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeK(); });
 function renderProt(){
   const rows=Object.values(M.prot||{}).sort((a,b)=>b.s-a.s);
   const tq=rows.reduce((s,r)=>s+r.q,0), ts=rows.reduce((s,r)=>s+r.s,0);

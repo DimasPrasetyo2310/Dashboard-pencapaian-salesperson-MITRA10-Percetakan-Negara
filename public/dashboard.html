@@ -103,6 +103,13 @@ table.mg th:nth-child(2){text-align:right}
 .kpi .v{font-family:var(--font-display);font-weight:700;font-size:26px;line-height:1.15;margin-top:6px;overflow-wrap:anywhere}
 .kpi.hero .v{font-size:34px;white-space:nowrap}
 .kpi .d{color:var(--ink2);font-size:12.5px;margin-top:4px}
+.kpis .kpi[data-k]{cursor:pointer;transition:box-shadow .15s,transform .15s,border-color .15s}
+.kpis .kpi[data-k]:hover{border-color:var(--bar);box-shadow:0 8px 22px -12px rgba(15,37,71,.45);transform:translateY(-1px)}
+.kpis .kpi[data-k]:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+#kpop-body tr[data-pid]{cursor:pointer}#kpop-body tr[data-pid]:hover td{background:var(--hover)}
+#kpop-body tr[data-pid]:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
+#kpop-body .dim td{color:var(--ink3)}#kpop-body .gd{color:var(--good)}#kpop-body .bd{color:var(--bad)}
+#kpop-body .bar{display:block;height:8px;border-radius:4px;background:var(--bar);min-width:2px}
 .grid2{display:grid;grid-template-columns:1fr 1.2fr;gap:16px;align-items:start}
 .stack{display:grid;gap:16px;min-width:0}
 table.pt{width:100%;border-collapse:collapse;font-size:13px}
@@ -363,6 +370,14 @@ table.mt .ok{color:var(--good);font-weight:600}
     Print Screen
   </button>
   <button type="button" class="psdl" id="ps-dl" title="Simpan gambar tabel sebagai file PNG">Unduh PNG</button>
+</div>
+
+<div class="ovl" id="kpop" hidden role="dialog" aria-modal="true" aria-labelledby="kpop-t">
+  <div class="pop">
+    <div class="pop-hd"><div><h2 id="kpop-t"></h2><div class="per" id="kpop-per"></div></div><button type="button" class="pop-x" id="kpop-x" aria-label="Tutup">×</button></div>
+    <div class="pinfo" id="kpop-info"></div>
+    <div class="pop-body" id="kpop-body"></div>
+  </div>
 </div>
 
 <div class="ovl" id="pop" hidden role="dialog" aria-modal="true" aria-labelledby="pop-name">
