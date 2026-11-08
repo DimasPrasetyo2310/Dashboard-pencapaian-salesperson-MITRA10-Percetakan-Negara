@@ -19,7 +19,7 @@ const addDays=(iso,n)=>new Date(Date.parse(iso+'T00:00:00Z')+n*864e5).toISOStrin
 const title=s=>s.toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase());
 
 let DATA={D:[],C:[],B:[]};
-let LYD=new Map(), LYC=new Map(), PH=new Map(), BM=new Map();
+let KB=new Map(), LYD=new Map(), LYC=new Map(), PH=new Map(), BM=new Map();
 let skipPartial=false; let BRD=null, LASTTG=null, LASTK=[];
 let from='',to='';
 
@@ -267,6 +267,15 @@ function parseSheet(f,sh,sn){
     if(!out.length) throw new Error('tidak ada persentase harian yang terbaca');
     return {kind:'phasing',name:src,rows:out,month:MON[m-1]+' '+yr};
   }
+  h=rows.findIndex(r=>r&&String(r[0]||'').trim().toUpperCase()==='LY'&&String(r[1]||'').trim().toUpperCase()==='PERSENTASE'&&String(r[2]||'').trim().toUpperCase()==='TANGGAL');
+  if(h>=0){
+    const out=[], num=x=>typeof x==='number'&&isFinite(x)?x:null;
+    rows.slice(h+3).forEach(r=>{const d=r&&toISO(r[2]);if(!d)return;
+      const o={store_code:STORE,budget_date:d,traffic:num(r[3]),invoice:num(r[11]),effect:num(r[16]),basket:num(r[21]),prot_qty:num(r[27]),source:src};
+      if(d>='2000'&&(o.traffic||o.invoice||o.basket||o.prot_qty))out.push(o)});
+    if(!out.length) throw new Error('tidak ada budget traffic/invoice yang terbaca');
+    return {kind:'kpibudget',name:src,rows:out,month:out[0].budget_date.slice(0,7)};
+  }
   throw new Error('format tidak dikenali');
 }
 async function parseFile(f){
@@ -301,6 +310,7 @@ $('file').addEventListener('change',async e=>{
     try{
       if(r.kind==='nav'){await upsertChunks('store_daily',r.rows,'store_code,sale_date');parts.push('Report Compare FFC dan NAV: '+r.rows.length+' hari')}
       else if(r.kind==='budget'){await upsertChunks('store_budget_monthly',r.rows,'store_code,year,month,category');parts.push('Budget '+r.year+': '+r.rows.length+' angka bulanan')}
+      else if(r.kind==='kpibudget'){await upsertChunks('store_budget_kpi_daily',r.rows,'store_code,budget_date');parts.push('Budget traffic, invoice, basket, protection '+r.month+': '+r.rows.length+' hari')}
       else if(r.kind==='phasing'){await upsertChunks('store_budget_phasing',r.rows,'store_code,phase_date');parts.push('Budget harian '+r.month+': '+r.rows.length+' hari')}
       else{await upsertChunks('store_day_category',r.rows,'store_code,sale_date,category');parts.push('Detail penjualan: '+nf.format(r.n)+' baris, '+new Set(r.rows.map(x=>x.sale_date)).size+' hari');
         if(r.items&&r.items.length){await upsertChunks('store_day_item',r.items,'store_code,sale_date,category,master_brand,item_no');parts.push('Detail item: '+nf.format(r.items.length)+' data')}
@@ -505,7 +515,7 @@ const WAK=[['waFfc','traffic_manual'],['waQt','prot_qty_t'],['waQa','prot_qty_a'
 let WAD=null, WAT=null;
 function waVal(id){const v=$(id).value;return v===''?null:+v}
 function buildWa(){
-  const d=$('waDate').value, D=DATA.D, r=D.find(x=>x.d===d);
+  const d=$('waDate').value, D=DATA.D, r=D.find(x=>x.d===d), kb=KB.get(d)||{};
   if(!d||!r){$('waText').value=$('clText').value='Belum ada data untuk tanggal ini. Unggah laporan lewat tombol Unggah.';return}
   const y=+d.slice(0,4), m=+d.slice(5,7), day=+d.slice(8);
   const tgt=budgetDay(d), act=r.sx, ly=LYD.get(lyDate(d)), lyS=ly?ly.sx:0;
@@ -530,7 +540,7 @@ function buildWa(){
     'Effect. Manual : '+(eM==null?'-':pc2(eM)),
     '',
     'Mitra10 Protection',
-    '・QTY T / A : '+v(waVal('waQt'))+' / '+v(waVal('waQa')),
+    '・QTY T / A : '+v(waVal('waQt')!=null?waVal('waQt'):kb.pq)+' / '+v(waVal('waQa')),
     '・Member T / A : '+v(waVal('waMt'))+' / '+v(waVal('waMa')),
     '',
     'Alhamdulillah ya Allah',
@@ -554,7 +564,8 @@ function buildCl(){
   const pdd=clVal('clPdd'), ot=clVal('clOt'), ds=[clVal('clD0'),clVal('clD1'),clVal('clD2'),clVal('clD3')];
   const dsp=x=>x==null||!ot?'-':pc2(x/ot);
   const late=clVal('clLate');
-  const lc=ly?ly.cin:0, lt=ly?ly.tr:0, tt=clVal('clTt'), it=clVal('clIt'), bt=clVal('clBt');
+  const kb=KB.get(d)||{}, lc=ly?ly.cin:0, lt=ly?ly.tr:0, mtt=clVal('clTt'), mit=clVal('clIt'), tt=mtt!=null?mtt:kb.tr, it=mit!=null?mit:kb.iv, bt=clVal('clBt')!=null?clVal('clBt'):kb.bs, pqt=waVal('waQt')!=null?waVal('waQt'):kb.pq;
+  const eT=(mtt!=null||mit!=null)?(tt&&it!=null?it/tt:null):(kb.ef!=null?kb.ef:(tt&&it!=null?it/tt:null));
   const L=[
     'REPORT CLOSING','Mitra10 Percetakan Negara',
     pad2(day)+' '+BULAN[m-1]+' '+y+' : '+($('clTime').value||'--:--'),'',
@@ -576,10 +587,10 @@ function buildCl(){
     'Contribusi :',
     'Sameday : '+v(ds[0])+' ( '+dsp(ds[0])+' )','Next day : '+v(ds[1])+' ( '+dsp(ds[1])+' )',
     '2 Days : '+v(ds[2])+' ( '+dsp(ds[2])+' )','>2 Days : '+v(ds[3])+' ( '+dsp(ds[3])+' )','',
-    'Mitra10 Protection','QTY T/A/MTD : '+v(waVal('waQt'))+' / '+v(waVal('waQa'))+' / '+(WAM>0?en(WAM):'-'),'',
+    'Mitra10 Protection','QTY T/A/MTD : '+v(pqt)+' / '+v(waVal('waQa'))+' / '+(WAM>0?en(WAM):'-'),'',
     'Traffic','T/A/LY : '+v(tt)+' / '+en(r.cin)+' / '+(lc?en(lc):'-'),
     'Invoice','T/A/LY : '+v(it)+' / '+en(r.tr)+' / '+(lt?en(lt):'-'),
-    'Effectivitas Traffic','T/A/LY : '+(tt&&it!=null?pc2(it/tt):'-')+' / '+pr(eF)+' / '+(lc?pc2(lt/lc):'-'),
+    'Effectivitas Traffic','T/A/LY : '+pr(eT)+' / '+pr(eF)+' / '+(lc?pc2(lt/lc):'-'),
     'Basket Size','T/A/LY : '+v(bt)+' / '+(r.tr?en(act/r.tr):'-')+' / '+(lt&&ly?en(lyS/lt):'-'),'',
     'Terima Kasih yaallah atas nikmatmu ya diberikan pada hari ini','Semoga Omset dihari berikut selalu tercapai'
   ];
@@ -608,6 +619,7 @@ async function renderWa(){
     if(SB){try{const {data}=await SB.from('store_report_manual').select('*').eq('store_code',STORE).eq('report_date',d).maybeSingle();
       if(WAD===d&&data){WAK.forEach(([id,c])=>{$(id).value=data[c]==null?'':data[c]});const ex=data.extra||{};CLK.forEach(id=>{$(id).value=ex[id]==null?'':ex[id]})}}catch(e){}}
   }
+  {const k=KB.get(d)||{},ph=(id,x)=>{$(id).placeholder=x!=null?'budget '+en(x):''};ph('waQt',k.pq);ph('clTt',k.tr);ph('clIt',k.iv);ph('clBt',k.bs)}
   if(WAQ!=null){$('waQa').value=WAQ;$('waQa').disabled=true;$('waQa').title='Otomatis dari Master Brand BCA'}else{$('waQa').title='Belum ada data BCA, isi manual'}
   buildWa();
 }
@@ -656,13 +668,15 @@ async function fetchAll(table,cols,order){
   return out;
 }
 async function loadData(){
-  const [d,c,b,p,dm]=await Promise.all([
+  const [d,c,b,p,dm,kb]=await Promise.all([
     fetchAll('store_daily','sale_date,nav_sales,nav_trx,ffc_sales,ffc_trx,counter_in,counter_out',['sale_date']),
     fetchAll('store_day_category','sale_date,category,sales',['sale_date','category']),
     fetchAll('store_budget_monthly','year,month,category,budget',['year','month']),
     fetchAll('store_budget_phasing','phase_date,pct',['phase_date']),
-    fetchAll('store_day_dim','sale_date,dim,dim_value,sales',['sale_date','dim','dim_value'])
+    fetchAll('store_day_dim','sale_date,dim,dim_value,sales',['sale_date','dim','dim_value']),
+    fetchAll('store_budget_kpi_daily','budget_date,traffic,invoice,effect,basket,prot_qty',['budget_date']).catch(()=>[])
   ]);
+  KB=new Map();kb.forEach(r=>KB.set(r.budget_date,{tr:+r.traffic||null,iv:+r.invoice||null,ef:+r.effect||null,bs:+r.basket||null,pq:+r.prot_qty||null}));
   DIMD=dm.map(r=>({d:r.sale_date,dim:r.dim,v:r.dim_value,s:+r.sales}));
   const DS=new Map();c.forEach(r=>DS.set(r.sale_date,(DS.get(r.sale_date)||0)+ +r.sales));
   const D=d.map(r=>({d:r.sale_date,sx:DS.has(r.sale_date)?DS.get(r.sale_date):+r.nav_sales,nav:+r.nav_sales,tr:+r.nav_trx,ffc:+r.ffc_sales,ffct:+r.ffc_trx,cin:+r.counter_in,cout:+r.counter_out}));
