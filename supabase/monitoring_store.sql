@@ -49,3 +49,5 @@ create policy store_cat_delete on public.store_day_category for delete to authen
 
 -- Arsip detail penjualan lengkap per hari (migrasi store_day_detail): kategori, sub kategori, function, sub function,
 -- master brand, brand, source type, master type brand + sales (exclude/include), qty, jumlah baris. Dipakai agar fitur baru tidak butuh unggah ulang.
+
+-- Detail item per hari per kategori dan master brand (migrasi store_day_item): item_no (tanpa nol di depan), item_name, qty, sales, lines
