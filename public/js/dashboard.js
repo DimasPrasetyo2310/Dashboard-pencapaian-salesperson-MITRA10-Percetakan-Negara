@@ -494,7 +494,7 @@ function lowCalc(){
   try{
     aggregate(from,to);
     const T=P.filter(p=>p.hasSch&&p.target>0); tot=T.length;
-    rows=T.filter(p=>p.sales/p.target<LOWT).map(p=>{ const codes=(SCH.dates||[]).map(d=>codeOn(p.id,d)); return {id:p.id,name:p.name,zona:p.zona||'',tpd:p.tpe||0,target:p.target,sales:p.sales,pct:p.sales/p.target,codes,full:codes.reduce((a,c)=>a+(isWork(c)?(p.tpe||0):0),0)}; });
+    rows=T.filter(p=>p.sales/p.target<LOWT).map(p=>{ const codes=(SCH.dates||[]).map(d=>codeOn(p.id,d)); return {id:p.id,name:p.name,zona:p.zona||'',brand:p.brand||'',tpd:p.tpe||0,target:p.target,sales:p.sales,pct:p.sales/p.target,codes,full:codes.reduce((a,c)=>a+(isWork(c)?(p.tpe||0):0),0)}; });
   } finally { P=saved.P; M=saved.M; H=saved.H; curSel=saved.curSel; }
   rows.sort((a,b)=>a.pct-b.pct);
   return {rows,tot,from,to};
@@ -515,34 +515,73 @@ function renderLow(){
 }
 const colL=n=>{ let s=''; n++; while(n>0){ const m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26); } return s; };
 const lowTL=()=>{ const sd=(SCH&&SCH.dates)||[]; return sd.length? ckLab(sd[sd.length-1]) : 'akhir jadwal'; };
-const lowFormula=(base,r)=>'=IF(AND(ISNUMBER('+colL(base+1)+r+'),'+colL(base)+r+'>0),'+colL(base+1)+r+'/'+colL(base)+r+',"")';
-function lowAoa(){
-  const sd=(SCH&&SCH.dates)||[], r=lowInfo;
-  return [['Sales ID','Salesperson','Zonasi','Target harian','Target MTD','Actual MTD','%'].concat(sd.map(ckLab),['Target s/d '+lowTL(),'Actual','Achievement'])].concat(r.rows.map(p=>[p.id,p.name,p.zona,Math.round(p.tpd),Math.round(p.target),Math.round(p.sales),p.pct].concat(p.codes.map(c=>c||''),[Math.round(p.full),null,null])));
+/* Susunan spreadsheet: ID SALPER | NAMA | MASTER BRAND | per tanggal [SHIFT | BUDGET | ACHIEV (kosong, diisi manual) | %] | TARGET | ACTUAL | ACHIEVEMENT */
+function lowLayout(){
+  const sd=(SCH&&SCH.dates)||[], n=sd.length, multi=n&&sd[0].slice(0,7)!==sd[n-1].slice(0,7), dl=d=>multi? (+d.slice(8))+'/'+(+d.slice(5,7)) : String(+d.slice(8));
+  const T=3+4*n, hdr=['ID SALPER','NAMA','MASTER BRAND'], lab=['','',''];
+  sd.forEach(d=>{ hdr.push('SHIFT','BUDGET','ACHIEV','%'); lab.push(dl(d),'','',''); });
+  hdr.push('TARGET s/d '+lowTL(),'ACTUAL','ACHIEVEMENT'); lab.push('TOTAL','','');
+  const rows=lowInfo.rows.map((p,k)=>{ const R=7+k, x=[p.id,p.name,p.brand||''], bs=[], as=[];
+    sd.forEach((d,i)=>{ const c=3+4*i, bC=colL(c+1)+R, aC=colL(c+2)+R; x.push(p.codes[i]||'', isWork(p.codes[i])?Math.round(p.tpd):0, null, '=IF('+bC+'>0,N('+aC+')/'+bC+',0)'); bs.push(bC); as.push(aC); });
+    x.push('=SUM('+bs.join(',')+')','=SUM('+as.join(',')+')','=IF('+colL(T)+R+'>0,'+colL(T+1)+R+'/'+colL(T)+R+',0)');
+    return x; });
+  const per='MTD '+fd(lowInfo.from,{day:'numeric',month:'short'})+' sampai '+fd(lowInfo.to,{day:'numeric',month:'short',year:'numeric'});
+  const title='Schedule Salesperson pencapaian di bawah 60% (MTD) · '+D.store, sub=per+' · kolom ACHIEV diisi manual, kolom % dan ACHIEVEMENT terisi otomatis';
+  return {sd,n,T,hdr,lab,rows,title,sub,aoa:[[title],[sub],[],[],lab,hdr].concat(rows)};
+}
+const lowLoad=src=>new Promise((ok,no)=>{ if(window.ExcelJS) return ok(); const s=document.createElement('script'); const t=setTimeout(()=>no(new Error('timeout')),10000); s.src=src; s.onload=()=>{ clearTimeout(t); ok(); }; s.onerror=()=>{ clearTimeout(t); no(new Error('gagal memuat')); }; document.head.appendChild(s); });
+async function lowStyled(Ly){
+  await lowLoad('https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js');
+  const wb=new ExcelJS.Workbook(), ws=wb.addWorksheet('Di bawah 60% MTD',{views:[{state:'frozen',xSplit:3,ySplit:6}]});
+  const NC=Ly.T+3, thin={style:'thin',color:{argb:'FF9AA5B8'}}, bd={top:thin,left:thin,bottom:thin,right:thin};
+  ws.getCell(1,1).value=Ly.title; ws.getCell(1,1).font={bold:true,size:14,color:{argb:'FF0F2547'}};
+  ws.getCell(2,1).value=Ly.sub; ws.getCell(2,1).font={italic:true,color:{argb:'FF4A576B'}};
+  Ly.aoa.slice(4).forEach((row,ri)=>{ const R=5+ri; row.forEach((v,ci)=>{ const cell=ws.getCell(R,ci+1);
+    if(typeof v==='string'&&v[0]==='=') cell.value={formula:v.slice(1),result:0}; else if(v!==null&&v!=='') cell.value=v; }); });
+  // baris tanggal (kuning) dan judul kolom (biru)
+  for(let i=0;i<Ly.n;i++){ const c=4+4*i; ws.mergeCells(5,c,5,c+3); }
+  ws.mergeCells(5,Ly.T+1,5,Ly.T+3);
+  for(let c=1;c<=NC;c++){ const a=ws.getCell(5,c), h=ws.getCell(6,c);
+    if(c>3){ a.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFF00'}}; a.font={bold:true,size:13,color:{argb:'FFC00000'}}; a.alignment={horizontal:'center',vertical:'middle'}; a.border=bd; }
+    h.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF0F2547'}}; h.font={bold:true,color:{argb:'FFFFFFFF'}}; h.alignment={horizontal:'center',vertical:'middle',wrapText:true}; h.border=bd; }
+  ws.getRow(6).height=30;
+  ws.getCell(5,2).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF00FFFF'}}; ws.getCell(5,3).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF00FFFF'}};
+  Ly.rows.forEach((row,k)=>{ const R=7+k; ws.getRow(R).height=20;
+    for(let c=1;c<=NC;c++){ const cell=ws.getCell(R,c); cell.border=bd; cell.font={bold:c<=3||c<=3+4*Ly.n&&(c-4)%4===0};
+      if(c<=3){ cell.alignment={horizontal:c===1?'left':'center',vertical:'middle'}; continue; }
+      if(c<=3+4*Ly.n){ const k4=(c-4)%4;
+        if(k4===0) cell.alignment={horizontal:'center',vertical:'middle'};
+        else if(k4===3){ cell.numFmt='0.00%'; cell.alignment={horizontal:'right',vertical:'middle'}; }
+        else { cell.numFmt='#,##0'; cell.alignment={horizontal:'right',vertical:'middle'}; if(k4===2) cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFBEA'}}; }
+      } else { cell.numFmt=c===Ly.T+3?'0.00%':'#,##0'; cell.font={bold:true}; cell.alignment={horizontal:'right',vertical:'middle'}; }
+    } });
+  ws.getColumn(1).width=22; ws.getColumn(2).width=28; ws.getColumn(3).width=22;
+  for(let i=0;i<Ly.n;i++){ const c=4+4*i; ws.getColumn(c).width=8; ws.getColumn(c+1).width=13; ws.getColumn(c+2).width=13; ws.getColumn(c+3).width=9; }
+  ws.getColumn(Ly.T+1).width=18; ws.getColumn(Ly.T+2).width=15; ws.getColumn(Ly.T+3).width=14;
+  ws.autoFilter={from:{row:6,column:1},to:{row:6,column:NC}};
+  return new Blob([await wb.xlsx.writeBuffer()],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+function lowPlain(Ly){
+  const ws=XLSX.utils.aoa_to_sheet(Ly.aoa);
+  Object.keys(ws).forEach(k=>{ if(k[0]==='!') return; const c=ws[k]; if(c.t==='s'&&c.v[0]==='='){ c.f=c.v.slice(1); c.t='n'; c.v=0; } });
+  ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:Ly.aoa.length-1,c:Ly.T+2}});
+  ws['!cols']=[{wch:22},{wch:28},{wch:22}].concat(Array.from({length:Ly.n},()=>[{wch:8},{wch:13},{wch:13},{wch:9}]).flat(),[{wch:18},{wch:15},{wch:14}]);
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Di bawah 60% MTD');
+  return new Blob([XLSX.write(wb,{type:'array',bookType:'xlsx'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
 }
 async function lowDownload(){
   if(!lowInfo||!lowInfo.rows.length) return;
-  if(!window.XLSX){ $('low-note').textContent='Pembaca Excel belum termuat. Coba lagi sebentar.'; return; }
-  try{
-    const aoa=lowAoa(), sd=(SCH&&SCH.dates)||[], base=7+sd.length, ws=XLSX.utils.aoa_to_sheet(aoa);
-    aoa.forEach((r,i)=>{ if(!i) return;
-      [3,4,5,base].forEach(c=>{ const a=XLSX.utils.encode_cell({r:i,c}); if(ws[a]) ws[a].z='#,##0'; });
-      const a=XLSX.utils.encode_cell({r:i,c:6}); if(ws[a]) ws[a].z='0.0%';
-      ws[XLSX.utils.encode_cell({r:i,c:base+2})]={t:'n',f:lowFormula(base,i+1).slice(1),z:'0.0%'};
-    });
-    ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:aoa.length-1,c:base+2}});
-    ws['!cols']=[{wch:20},{wch:26},{wch:10},{wch:14},{wch:14},{wch:14},{wch:8}].concat(sd.map(()=>({wch:6})),[{wch:18},{wch:14},{wch:14}]);
-    const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Di bawah 60% MTD');
-    const out=XLSX.write(wb,{type:'array',bookType:'xlsx'});
-    await saveBlob(new Blob([out],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),'salesperson-di-bawah-60-mtd-'+lowInfo.to+'.xlsx');
-    $('low-note').textContent='Spreadsheet diunduh. Kolom Actual dikosongkan untuk diisi manual, kolom Achievement terisi otomatis. Untuk Google Sheets: buka sheets.google.com, pilih File, Impor, lalu unggah file ini.';
-  }catch(e){ $('low-note').textContent='Spreadsheet gagal dibuat.'; }
+  const Ly=lowLayout(), nm='salesperson-di-bawah-60-mtd-'+lowInfo.to+'.xlsx'; let blob=null, styled=true;
+  $('low-note').textContent='Menyiapkan spreadsheet…';
+  try{ blob=await lowStyled(Ly); }
+  catch(e){ styled=false; if(!window.XLSX){ $('low-note').textContent='Spreadsheet gagal dibuat. Periksa koneksi, lalu coba lagi.'; return; } try{ blob=lowPlain(Ly); }catch(x){ $('low-note').textContent='Spreadsheet gagal dibuat.'; return; } }
+  try{ await saveBlob(blob,nm); $('low-note').textContent='Spreadsheet diunduh'+(styled?'':' (versi polos tanpa warna, karena pustaka format tidak bisa dimuat)')+'. Kolom ACHIEV dikosongkan untuk diisi manual. Untuk Google Sheets: buka sheets.google.com, pilih File, Impor, lalu unggah file ini.'; }
+  catch(e){ $('low-note').textContent='Spreadsheet gagal diunduh.'; }
 }
 async function lowCopy(){
   if(!lowInfo||!lowInfo.rows.length) return;
-  const base=7+(((SCH&&SCH.dates)||[]).length);
-  const aoa=lowAoa().map((r,i)=>{ if(!i) return r; const x=r.map((v,j)=>j===6? Math.trunc(v*100)+'%' : (v==null?'':v)); x[base+2]=lowFormula(base,i+1); return x; }), tsv=aoa.map(r=>r.join('\t')).join('\n');
-  const msg='Tabel disalin. Buka Google Sheets, klik sel A1, lalu tekan Ctrl+V. Kolom Actual kosong untuk diisi manual, Achievement terisi otomatis.';
+  const tsv=lowLayout().aoa.map(r=>r.map(v=>v==null?'':v).join('\t')).join('\n');
+  const msg='Tabel disalin. Buka Google Sheets, klik sel A1, lalu tekan Ctrl+V. Warna tidak ikut tertempel, jadi untuk tampilan berwarna gunakan tombol Unduh spreadsheet.';
   try{ await navigator.clipboard.writeText(tsv); $('low-note').textContent=msg; }
   catch(e){ const t=document.createElement('textarea'); t.value=tsv; t.style.position='fixed'; t.style.opacity='0'; document.body.appendChild(t); t.select(); let ok=false; try{ ok=document.execCommand('copy'); }catch(x){} t.remove(); $('low-note').textContent=ok? msg : 'Browser tidak mengizinkan menyalin. Gunakan tombol Unduh spreadsheet.'; }
 }
