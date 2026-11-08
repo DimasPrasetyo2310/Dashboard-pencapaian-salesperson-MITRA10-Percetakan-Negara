@@ -182,6 +182,7 @@ function tgRows(base){
   return r;
 }
 function render(){
+  try{renderCk()}catch(e){}
   let rows=DATA.D.filter(x=>x.d>=from&&x.d<=to).sort((a,b)=>a.d<b.d?-1:1);
   const nPart=rows.filter(r=>Math.abs(r.nav-r.ffc)>=1).length;
   if(skipPartial) rows=rows.filter(r=>Math.abs(r.nav-r.ffc)<1);
@@ -297,6 +298,82 @@ function explain(err){
   if(/row-level security|permission denied/i.test(m)) return 'peran Anda tidak boleh mengubah data (hanya admin dan editor)';
   return m;
 }
+
+/* Checklist database wajib unggah + template standar */
+const CKOPEN={};
+function ckPeriod(){
+  const ref=to||(DATA.D.length?DATA.D.map(r=>r.d).sort().slice(-1)[0]:'')||new Date().toISOString().slice(0,10);
+  return {y:+ref.slice(0,4),m:+ref.slice(5,7),day:+ref.slice(8,10),ref};
+}
+const dlab=d=>(+d.slice(8))+' '+MON[+d.slice(5,7)-1];
+const dlist=a=>a.length?a.slice(0,12).map(dlab).join(', ')+(a.length>12?' dan '+(a.length-12)+' tanggal lain':''):'';
+function ckItems(){
+  const P=ckPeriod(), mm=pad2(P.m), ym=P.y+'-'+mm, dim=new Date(P.y,P.m,0).getDate();
+  const exp=[],all=[]; for(let i=1;i<=dim;i++){const d=ym+'-'+pad2(i);all.push(d);if(i<=P.day)exp.push(d)}
+  const Dm=new Map(DATA.D.map(r=>[r.d,r])), cs=new Map(); DATA.C.forEach(c=>cs.set(c[0],(cs.get(c[0])||0)+c[2]));
+  const lyc=new Set(); LYC.forEach((v,k)=>lyc.add(k.slice(0,10)));
+  const out=[], mk=(id,title,file,bad,warn,okTxt,badTxt,lines,tpl)=>out.push({id,title,file,state:bad.length?'bad':(warn&&warn.length?'warn':'ok'),summary:bad.length?badTxt:(warn&&warn.length?warn[0]:okTxt),lines,tpl});
+  const miss=exp.filter(d=>!Dm.has(d)), unsync=exp.filter(d=>Dm.has(d)&&Math.abs(Dm.get(d).nav-Dm.get(d).ffc)>=1);
+  mk('nav','Report Compare FFC dan NAV (harian)','File: Report Compare FFC And Nav',miss,unsync.length?[unsync.length+' hari belum sinkron NAV dan FFC']:null,'Lengkap sampai '+dlab(P.ref),miss.length+' tanggal belum ada',
+    [miss.length?'Belum ada: '+dlist(miss):'Semua tanggal 1 sampai '+dlab(P.ref)+' sudah ada.',unsync.length?'Belum sinkron NAV dan FFC: '+dlist(unsync):'','Isi: sales NAV dan FFC, transaksi, traffic masuk dan keluar.'].filter(Boolean),['nav']);
+  const dm=[],inc=[]; exp.forEach(d=>{const r=Dm.get(d);if(!r)return;if(!cs.has(d))dm.push(d);else if(cs.get(d)<r.nav*0.99)inc.push(d+' ('+Math.round(cs.get(d)/r.nav*100)+'%)')});
+  const bad2=dm.concat(inc);
+  mk('detail','Sales Detail Report (per transaksi)','File: Sales Detail Report (kolom Receipt Date)',bad2,null,'Lengkap, total sesuai NAV',bad2.length+' tanggal belum ada atau belum lengkap',
+    [dm.length?'Belum ada: '+dlist(dm):'',inc.length?'Total lebih kecil dari NAV (laporan ditarik sebelum hari selesai): '+inc.slice(0,12).join(', '):'',!bad2.length?'Semua tanggal ada dan totalnya sesuai NAV.':'','Isi: sales per kategori, master brand, item, source type, master type brand, dan qty. Tarik setelah hari selesai.'].filter(Boolean),['detail']);
+  const nb=[...BM.keys()].filter(k=>k.startsWith(P.y+'|'+P.m+'|')).length;
+  mk('budget','Budget bulanan per kategori','File: Budget (sheet berisi baris Category dan kolom JAN sampai DEC)',nb?[]:['x'],null,nb+' kategori terisi','Belum ada untuk '+MON[P.m-1]+' '+P.y,
+    [nb?'Budget '+MON[P.m-1]+' '+P.y+' tersedia untuk '+nb+' kategori.':'Budget '+MON[P.m-1]+' '+P.y+' belum ada.','Isi: target sales bulanan tiap kategori. Satu file untuk satu tahun.'],['budget']);
+  const mp=all.filter(d=>!PH.has(d));
+  mk('phasing','Budget harian (phasing %)','File: sheet "budget daily" (baris Tanggal dan cont %)',mp,null,'Lengkap '+dim+' hari',mp.length+' tanggal belum ada',
+    [mp.length?'Belum ada: '+dlist(mp):'Semua '+dim+' hari sudah ada.','Isi: persentase kontribusi target tiap tanggal. Jumlah sebulan = 100%.'],['phasing']);
+  const mk2=all.filter(d=>!KB.has(d));
+  mk('kpi','Budget traffic, invoice, basket size, dan Protection BCA','File: budget traffic dan invoice (kolom Tanggal, Traffic, Invoice, Effective Traffic, Basket Size, Mitra10 Proteksi)',mk2,null,'Lengkap '+dim+' hari',mk2.length+' tanggal belum ada',
+    [mk2.length?'Belum ada: '+dlist(mk2):'Semua '+dim+' hari sudah ada.','Isi: target harian traffic, invoice, efektivitas, basket size, dan QTY Protection. Dipakai di kartu laporan WhatsApp dan Report Closing.'],['kpi']);
+  const ml=exp.filter(d=>{const l=lyDate(d);return !LYD.has(l)||!lyc.has(l)});
+  mk('ly','Data tahun lalu (pembanding LY)','File: Compare FFC and NAV dan Sales Detail tahun '+(P.y-1),ml,null,'Lengkap sampai '+dlab(P.ref),ml.length+' tanggal belum ada',
+    [ml.length?'Belum ada untuk tanggal: '+dlist(ml.map(d=>lyDate(d)))+' ('+(P.y-1)+')':'Pembanding tahun lalu lengkap.','Isi: file yang sama dengan nomor 1 dan 2, tetapi untuk tahun '+(P.y-1)+'.'],['nav','detail']);
+  return out;
+}
+const TPL={nav:'Compare FFC NAV',detail:'Sales Detail',budget:'Budget Bulanan',phasing:'Budget Harian',kpi:'Budget KPI'};
+function tplSheets(kind,y,m){
+  const mm=pad2(m), dim=new Date(y,m,0).getDate(), days=[...Array(dim)].map((_,i)=>y+'-'+mm+'-'+pad2(i+1));
+  if(kind==='nav') return {name:'Compare FFC NAV',rows:[['Date','Store No (NAV)','Sales Exclude Tax (NAV)','Total Transaction (NAV)','Sales Exclude Tax (FFC)','Total Transaction (FFC)','Total Counter In','Total Counter Out'],...days.map(d=>[d,STORE,null,null,null,null,null,null])]};
+  if(kind==='detail') return {name:'Sales Detail',rows:[['Receipt Date','Store No','Category','Sub Category','Function','Sub Function','Master Brand','Brand','Item No','Item Name','Source Type Name','Master Type Brand','Quantity','Amount Include Sales','Amount Exclude Sales']]};
+  if(kind==='budget'){const cats=[...new Set(DATA.C.map(c=>c[1]))].sort();return {name:'Budget '+y,rows:[['Category','JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'],...(cats.length?cats:['KATEGORI 1']).map(c=>[c,...Array(12).fill(null)])]}}
+  if(kind==='phasing') return {name:'Budget daily '+MON[m-1]+' '+y,rows:[[MON[m-1].toUpperCase()],['CATEGORY','Tanggal',...days.map((_,i)=>i+1)],['','cont %',...days.map(()=>null)]]};
+  const R=[['LY','PERSENTASE','TANGGAL','TRAFFIC',null,null,null,null,'MTD',null,null,'INVOICE',null,null,null,null,'EFFECTIVE TRAFFIC',null,null,null,null,'BASKET SIZE',null,null,null,null,'MITRA10 PROTEKSI'],[],[]];
+  days.forEach(d=>{const r=Array(28).fill(null);r[2]=d;R.push(r)});
+  R[1][3]='BUDGET';R[1][11]='BUDGET';R[1][16]='BUDGET';R[1][21]='BUDGET';R[1][27]='BUDGET';
+  return {name:'Budget KPI '+MON[m-1]+' '+y,rows:R};
+}
+function tplGuide(y,m){return {name:'Petunjuk',rows:[['PETUNJUK TEMPLATE UNGGAH DASHBOARD MONITORING'],[''],['1. Isi hanya sheet data. Jangan ubah nama kolom di baris judul.'],['2. Sheet Petunjuk ini otomatis dilewati saat diunggah.'],['3. Compare FFC NAV: satu baris per tanggal, isi sales dan transaksi NAV dan FFC, serta Total Counter In dan Out.'],['4. Sales Detail: tempel data laporan Sales Detail dari sistem di bawah baris judul. Kolom wajib: Receipt Date, Category, Amount Exclude Sales. Kolom lain (Master Brand, Item No, Item Name, Source Type Name, Master Type Brand, Quantity) mengisi popup dan tabel.'],['5. Budget Bulanan: satu baris per kategori, isi target tiap bulan. Tahun dibaca dari nama sheet.'],['6. Budget Harian: isi baris cont % dengan persentase kontribusi tiap tanggal (jumlah 100%). Nama bulan di baris pertama, tahun dari nama sheet.'],['7. Budget KPI: isi Traffic (kolom D), Invoice (L), Effective Traffic (Q), Basket Size (V), Mitra10 Proteksi (AB) per tanggal.'],['8. Unggah lewat tombol Unggah database. Data tanggal yang sama akan diganti. Satu file boleh berisi beberapa sheet.'],['Periode template ini: '+MON[m-1]+' '+y]]}}
+function dlTpl(kinds){
+  if(typeof XLSX==='undefined'){showMsg('Pustaka Excel belum termuat. Coba lagi sebentar.','err');return}
+  const P=ckPeriod(), wb=XLSX.utils.book_new();
+  kinds.forEach(k=>{const y=(k==='nav'||k==='detail')&&kinds.ly?P.y-1:P.y;const t=tplSheets(k,y,P.m);XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(t.rows),t.name)});
+  const g=tplGuide(P.y,P.m);XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(g.rows),g.name);
+  XLSX.writeFile(wb,'template-'+(kinds.length>1?'semua':kinds[0])+'-'+P.y+'-'+pad2(P.m)+'.xlsx');
+}
+function renderCk(){
+  if(!$('ckBtn')) return;
+  const it=ckItems(), nOk=it.filter(x=>x.state==='ok').length, P=ckPeriod();
+  const worst=it.some(x=>x.state==='bad')?'bad':it.some(x=>x.state==='warn')?'warn':'ok';
+  $('ckBtn').className='ckbtn '+worst; $('ckBtn').innerHTML='<span class="ckdot"></span>Checklist database <b>'+nOk+'/'+it.length+'</b>';
+  const ic={ok:'✓',warn:'!',bad:'✕'};
+  $('ckList').innerHTML=it.map((x,i)=>'<li class="ckrow '+x.state+(CKOPEN[x.id]?' open':'')+'"><button type="button" class="ckhead" data-ck="'+x.id+'" aria-expanded="'+!!CKOPEN[x.id]+'"><span class="ckic">'+ic[x.state]+'</span><span class="cktx"><b>'+(i+1)+'. '+x.title+'</b><small>'+x.summary+'</small></span><span class="ckch">▾</span></button>'
+    +'<div class="ckdet"><p>'+x.lines.map(l=>l.replace(/&/g,'&amp;').replace(/</g,'&lt;')).join('</p><p>')+'</p><p class="ckf">'+x.file+'</p><div class="ckacts">'+(canWrite?'<button type="button" class="ckchip" data-up="1">Unggah file</button>':'')+'<button type="button" class="ckchip" data-tpl="'+x.id+'">Unduh template</button></div></div></li>').join('');
+  $('ckSub').textContent='Periode '+MON[P.m-1]+' '+P.y+', sampai '+dlab(P.ref)+' (mengikuti tanggal "Sampai")';
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('#ckBtn'); if(b){const o=$('ckPanel').hidden;$('ckPanel').hidden=!o;b.setAttribute('aria-expanded',String(o));return}
+  const h=e.target.closest('.ckhead'); if(h){CKOPEN[h.dataset.ck]=!CKOPEN[h.dataset.ck];renderCk();return}
+  const u=e.target.closest('[data-up]'); if(u){$('file').click();return}
+  const t=e.target.closest('[data-tpl]'); if(t){const it=ckItems().find(x=>x.id===t.dataset.tpl);const k=it.tpl.slice();if(it.id==='ly')k.ly=true;dlTpl(k);return}
+  if(e.target.closest('#ckAll')){dlTpl(['nav','detail','budget','phasing','kpi']);return}
+  if(!e.target.closest('#ckPanel')&&$('ckPanel')&&!$('ckPanel').hidden){$('ckPanel').hidden=true;$('ckBtn').setAttribute('aria-expanded','false')}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('ckPanel')&&!$('ckPanel').hidden){$('ckPanel').hidden=true;$('ckBtn').focus()}});
+
 $('upBtn').addEventListener('click',()=>$('file').click());
 $('file').addEventListener('change',async e=>{
   const files=[...e.target.files]; e.target.value='';

@@ -203,6 +203,28 @@ tr[data-cat]:focus-visible{outline:2px solid var(--accent,#1f5fbf);outline-offse
 #waText{width:100%;min-height:500px;font:13.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre;padding:12px;border:1.5px solid var(--frame);border-radius:10px;background:#fbfcfe;color:var(--ink);resize:vertical;box-sizing:border-box}
 .wa-btns{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
 @media (max-width:1000px){.tg-top{grid-template-columns:repeat(2,minmax(0,1fr))}.tg-main{grid-column:1/-1}}
+
+.ckw{position:relative;margin-left:auto;align-self:flex-end}
+.ckbtn{font:inherit;font-size:13px;border:1.5px solid var(--frame);background:var(--surface);color:var(--ink);border-radius:99px;padding:7px 14px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.ckbtn:hover{border-color:var(--accent)}
+.ckdot{width:9px;height:9px;border-radius:50%;background:var(--good)}
+.ckbtn.warn .ckdot{background:var(--amber)}.ckbtn.bad .ckdot{background:var(--crit)}
+#ckPanel{position:absolute;right:0;top:calc(100% + 8px);width:min(540px,92vw);max-height:70vh;overflow:auto;background:var(--surface);border:1.5px solid var(--frame);border-radius:14px;box-shadow:0 12px 36px rgba(15,30,60,.22);padding:14px;z-index:40;text-align:left}
+#ckPanel h3{margin:0;font-size:15px}#ckPanel .hint{margin:2px 0 10px}
+#ckList{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.ckrow{border:1px solid var(--frame);border-radius:10px;background:var(--bg)}
+.ckhead{all:unset;box-sizing:border-box;width:100%;display:flex;gap:10px;align-items:center;padding:9px 10px;cursor:pointer}
+.ckhead:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:10px}
+.ckic{flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;color:#fff;background:var(--good)}
+.ckrow.warn .ckic{background:var(--amber);color:#1a1a1a}.ckrow.bad .ckic{background:var(--crit)}
+.cktx{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;font-size:13.5px;color:var(--ink)}.cktx small{font-size:12px;color:var(--ink3)}
+.ckrow.bad .cktx small{color:var(--crit)}
+.ckch{color:var(--ink3);transition:transform .15s}.ckrow.open .ckch{transform:rotate(180deg)}
+.ckdet{display:none;padding:2px 12px 12px 44px;font-size:12.5px;color:var(--ink2)}.ckrow.open .ckdet{display:block}
+.ckdet p{margin:4px 0}.ckdet .ckf{color:var(--ink3);font-style:italic}
+.ckacts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.ckchip{font:inherit;font-size:12.5px;border:1px solid var(--frame);background:var(--tint);color:var(--ink2);border-radius:99px;padding:5px 12px;cursor:pointer}.ckchip:hover{border-color:var(--accent)}
+.ckfoot{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
 </style>
 </head>
 <body>
@@ -238,6 +260,15 @@ tr[data-cat]:focus-visible{outline:2px solid var(--accent,#1f5fbf);outline-offse
         <button type="button" class="chip" data-p="all" aria-pressed="false">Semua data</button>
         <button type="button" class="chip" data-p="7" aria-pressed="false">7 hari terakhir</button>
         <button type="button" class="chip" data-p="month" aria-pressed="false">Bulan terakhir</button>
+      </div>
+    </div>
+    <div class="ckw">
+      <button type="button" class="ckbtn" id="ckBtn" aria-expanded="false" aria-controls="ckPanel">Checklist database</button>
+      <div id="ckPanel" hidden role="dialog" aria-label="Checklist database wajib diunggah">
+        <h3>Checklist database wajib unggah</h3>
+        <p class="hint" id="ckSub"></p>
+        <ul id="ckList"></ul>
+        <div class="ckfoot"><button type="button" class="btn primary sm" id="ckAll">Unduh semua template (1 file)</button><span class="hint2">Klik baris untuk melihat tanggal yang kurang.</span></div>
       </div>
     </div>
     <label class="part" id="partWrap" hidden><input type="checkbox" id="partChk"> <span id="partLbl"></span></label>
