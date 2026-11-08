@@ -620,39 +620,72 @@ function rebuild(fullRange){
   if(fullRange||wasAll) setRange(first,last);
   else setRange(pf<first?first:pf, followEnd?last:(pt>last?last:pt));
 }
-function renderChecklist(){
-  if(!$('ck-body')) return;
-  const z=n=>String(n).padStart(2,'0'), now=new Date(), today=now.getFullYear()+'-'+z(now.getMonth()+1)+'-'+z(now.getDate());
-  const sd=(SCH&&SCH.dates)||[], hasS=!!(SCH&&SCH.people&&SCH.people.length);
-  const first=[dates[0],sd[0]].filter(Boolean).sort()[0];
-  if(!first){ $('ck-sub').textContent='Belum ada data.'; $('ck-sum').innerHTML=''; $('ck-body').innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--ink3)">Belum ada data. Unggah file untuk mulai.</td></tr>'; $('ck-note').textContent=''; return; }
-  const sEnd=sd.length? sd[sd.length-1] : '', lastD=dates[dates.length-1]||'';
-  const cap=sEnd&&sEnd<today? sEnd : today;
-  const end=[lastD,cap].filter(Boolean).sort().pop();
-  const list=[]; for(let t=new Date(first+'T00:00:00Z'); ; t=new Date(t.getTime()+864e5)){ const d=t.toISOString().slice(0,10); if(d>end) break; list.push(d); if(list.length>400) break; }
-  const upcoming = sEnd&&sEnd>end? Math.round((new Date(sEnd+'T00:00:00Z')-new Date(end+'T00:00:00Z'))/864e5) : 0;
-  let nOk=0,nPart=0,nMiss=0,nWait=0;
-  const mk=v=>v?'<span class="ok" title="Ada">✓</span>':'<span class="no" title="Belum ada">✕</span>';
-  const rows=list.map(d=>{
-    const x=days[d], sch=sd.includes(d);
-    const schCell = hasS? mk(sch) : '<span class="na">–</span>';
-    if(!x){
-      if(d===today){ nWait++; return '<tr><td>'+fd(d)+'</td><td class="c na">–</td><td class="c na">–</td><td class="c na">–</td><td class="c na">–</td><td class="c na">–</td><td class="c">'+schCell+'</td><td><span class="pill n">Menunggu data hari ini</span></td></tr>'; }
-      nMiss++; return '<tr><td>'+fd(d)+'</td><td class="c">'+mk(0)+'</td><td class="c">'+mk(0)+'</td><td class="c">'+mk(0)+'</td><td class="c">'+mk(0)+'</td><td class="c">'+mk(0)+'</td><td class="c">'+schCell+'</td><td><span class="pill r">Belum diunggah</span></td></tr>';
-    }
-    const ppl=x.people||[];
-    const c=[['Penjualan',!!(x.meta&&x.meta.total>0&&ppl.length)],['Jam',!!(x.hours&&x.hours.length)],['Master brand',!!(x.mb&&Object.keys(x.mb).length)],['Proteksi',Array.isArray(x.prot)],['Detail item',ppl.some(p=>Array.isArray(p.it)&&p.it.length)]];
-    const bad=c.filter(k=>!k[1]).map(k=>k[0]);
-    const schBad = hasS && !sch;
-    if(bad.length||schBad) nPart++; else nOk++;
-    const st = bad.length? '<span class="pill a">Belum lengkap</span> <span class="na">· kurang: '+bad.join(', ')+'</span>' : schBad? '<span class="pill a">Jadwal belum ada</span>' : '<span class="pill g">Lengkap</span>';
-    return '<tr><td>'+fd(d)+'</td>'+c.map(k=>'<td class="c">'+mk(k[1])+'</td>').join('')+'<td class="c">'+schCell+'</td><td>'+st+'</td></tr>';
-  });
-  $('ck-body').innerHTML=rows.slice().reverse().join('');
-  $('ck-sub').textContent='Dicek per tanggal, '+fd(first,{day:'numeric',month:'short'})+' sampai '+fd(end,{day:'numeric',month:'short',year:'numeric'})+(upcoming? ' · '+upcoming+' tanggal berikutnya belum waktunya':'');
-  $('ck-sum').innerHTML='<span class="pill g">'+nOk+' lengkap</span><span class="pill a">'+nPart+' belum lengkap</span><span class="pill r">'+nMiss+' belum diunggah</span>'+(nWait?'<span class="pill n">'+nWait+' menunggu</span>':'')+'<span class="pill '+(hasS?'g':'r')+'">Jadwal & target: '+(hasS? SCH.people.length+' orang' : 'belum ada')+'</span>';
-  $('ck-note').textContent = (nPart||nMiss||!hasS)? 'Untuk melengkapi, unggah (ulang) file Sales Detail yang memuat tanggal bertanda ✕'+(hasS?'':', dan file jadwal & target')+'. Tanggal yang sudah ada akan diganti.' : 'Semua data pada rentang ini sudah lengkap.';
+/* Checklist database wajib unggah + template standar (format sama dengan halaman Monitoring) */
+const CKOPEN={};
+const CKMON=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+const ckLab=d=>(+d.slice(8))+' '+CKMON[+d.slice(5,7)-1];
+const ckDates=a=>a.length? a.slice(0,12).map(ckLab).join(', ')+(a.length>12?' dan '+(a.length-12)+' tanggal lain':'') : '';
+function ckPeriod(){
+  const z=n=>String(n).padStart(2,'0'), t=new Date(), today=t.getFullYear()+'-'+z(t.getMonth()+1)+'-'+z(t.getDate());
+  const ref=$('d-to').value||dates[dates.length-1]||today;
+  return {y:+ref.slice(0,4),m:+ref.slice(5,7),day:+ref.slice(8,10),ref};
 }
+function ckItems(){
+  const P=ckPeriod(), z=n=>String(n).padStart(2,'0'), ym=P.y+'-'+z(P.m), exp=[]; for(let i=1;i<=P.day;i++) exp.push(ym+'-'+z(i));
+  const sd=new Set((SCH&&SCH.dates)||[]), hasS=!!(SCH&&SCH.people&&SCH.people.length);
+  const out=[], mk=(id,title,file,bad,warn,okTxt,badTxt,lines,tpl)=>out.push({id,title,file,state:bad.length?'bad':(warn&&warn.length?'warn':'ok'),summary:bad.length?badTxt:(warn&&warn.length?warn[0]:okTxt),lines:lines.filter(Boolean),tpl});
+  const miss=exp.filter(d=>!days[d]);
+  const nojam=exp.filter(d=>days[d]&&!(days[d].hours&&days[d].hours.length));
+  mk('sales','Sales Detail Report (per transaksi)','File: Sales Detail Report (kolom Receipt Date)',miss,nojam.length?[nojam.length+' hari belum ada rincian jam transaksi']:null,'Lengkap sampai '+ckLab(P.ref),miss.length+' tanggal belum ada',
+    [miss.length?'Belum ada: '+ckDates(miss):'Semua tanggal 1 sampai '+ckLab(P.ref)+' sudah ada.',nojam.length?'Belum ada rincian jam: '+ckDates(nojam):'','Isi: penjualan exclude PPN per salesperson, struk, dan jam transaksi. Tarik setelah hari selesai.'],['sales']);
+  const old=(f)=>exp.filter(d=>days[d]&&!f(days[d]));
+  const mbOk=x=>!!(x.mb&&Object.keys(x.mb).length)&&Array.isArray(x.prot), itOk=x=>(x.people||[]).some(p=>Array.isArray(p.it)&&p.it.length);
+  const mbOld=old(mbOk), mbBad=miss.concat(mbOld).sort();
+  mk('mb','Master brand dan Mitra10 Proteksi (BCA)','File: Sales Detail Report (kolom Master Brand dan Item)',mbBad,null,'Lengkap sampai '+ckLab(P.ref),mbBad.length+' tanggal belum ada atau perlu unggah ulang',
+    [miss.length?'Belum ada: '+ckDates(miss):'',mbOld.length?'Perlu diunggah ulang (data lama belum memuat master brand atau proteksi): '+ckDates(mbOld):'',!mbBad.length?'Semua tanggal memuat master brand dan proteksi.':'','Isi: penjualan per master brand dan qty serta value Mitra10 Proteksi per salesperson.'],['sales']);
+  const itOld=old(itOk), itBad=miss.concat(itOld).sort();
+  mk('item','Detail item per salesperson (pop up)','File: Sales Detail Report (kolom Item No, Item Name, Qty)',itBad,null,'Lengkap sampai '+ckLab(P.ref),itBad.length+' tanggal belum ada atau perlu unggah ulang',
+    [miss.length?'Belum ada: '+ckDates(miss):'',itOld.length?'Perlu diunggah ulang (data lama belum memuat detail item): '+ckDates(itOld):'',!itBad.length?'Semua tanggal memuat detail item.':'','Isi: category, master brand, no item, deskripsi, qty, dan value per salesperson.'],['sales']);
+  const ms=hasS? exp.filter(d=>!sd.has(d)) : exp;
+  mk('sched','Jadwal dan target salesperson','File: jadwal & target (kolom SALES ID, TARGET/DAY, lalu kolom tanggal)',ms,null,hasS? SCH.people.length+' orang, sampai '+ckLab(SCH.dates[SCH.dates.length-1]) : '',hasS? ms.length+' tanggal belum ada di jadwal' : 'Belum ada file jadwal',
+    [hasS? (ms.length?'Belum ada di jadwal: '+ckDates(ms):'Semua tanggal 1 sampai '+ckLab(P.ref)+' ada di jadwal.') : 'Belum ada jadwal & target.','Isi: kode jadwal harian (S/P/M/OFF dst), zonasi, master brand, category, TARGET/DAY dan TARGET/MONTH.'],['sched']);
+  return out;
+}
+function tplSheet(kind,y,m){
+  const z=n=>String(n).padStart(2,'0'), dim=new Date(y,m,0).getDate(), ds=[...Array(dim)].map((_,i)=>y+'-'+z(m)+'-'+z(i+1));
+  if(kind==='sales') return {name:'Sales Detail',rows:[['Receipt Date','Receipt No','Store No','Time','Salescode ID','Salescode Name','Category','Master Brand','Master Type Brand','Item No','Item Name','Qty','Amount Include Sales','Dicount Amount','Amount Exclude Sales']]};
+  return {name:'Jadwal '+CKMON[m-1]+' '+y,rows:[['No','Sales ID','Nama','Master Brand','Category','Zonasi','Target/Month','Target/Day',...ds]]};
+}
+const TPLGUIDE=[['PETUNJUK TEMPLATE UNGGAH DASHBOARD PENCAPAIAN SALESPERSON'],[''],['1. Isi hanya sheet data. Jangan ubah nama kolom di baris judul.'],['2. Sheet Petunjuk ini dilewati saat diunggah (hanya sheet pertama yang dibaca).'],['3. Sales Detail: tempel data laporan Sales Detail dari sistem di bawah baris judul. Kolom wajib: Receipt Date, Receipt No, Qty, Amount Exclude Sales, Salescode ID, Salescode Name. Store No harus 10005.'],['4. Jadwal: satu baris per salesperson. Isi kode jadwal harian (S, P, M, OFF, dst) pada kolom tanggal, lalu TARGET/DAY dan TARGET/MONTH.'],['5. Unggah lewat tombol Unggah file. Tanggal yang sudah ada akan diganti.']];
+async function dlTpl(kinds){
+  if(!window.XLSX){ setStatus('Pembaca Excel belum termuat. Coba lagi sebentar.','err'); return; }
+  const P=ckPeriod(), wb=XLSX.utils.book_new();
+  kinds.forEach(k=>{ const t=tplSheet(k,P.y,P.m); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(t.rows),t.name); });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(TPLGUIDE),'Petunjuk');
+  const out=XLSX.write(wb,{type:'array',bookType:'xlsx'});
+  const blob=new Blob([out],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const nm={sales:'sales-detail',sched:'jadwal'};
+  try{ await saveBlob(blob,'template-'+(kinds.length>1?'semua':nm[kinds[0]])+'-'+P.y+'-'+String(P.m).padStart(2,'0')+'.xlsx'); }catch(e){ setStatus('Template gagal diunduh.','warn'); }
+}
+function renderChecklist(){
+  if(!$('ckBtn')) return;
+  const it=ckItems(), nOk=it.filter(x=>x.state==='ok').length, P=ckPeriod();
+  const worst=it.some(x=>x.state==='bad')?'bad':it.some(x=>x.state==='warn')?'warn':'ok';
+  $('ckBtn').className='ckbtn '+worst; $('ckBtn').innerHTML='<span class="ckdot"></span>Checklist database <b>'+nOk+'/'+it.length+'</b>';
+  const ic={ok:'✓',warn:'!',bad:'✕'}, esc2=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  $('ckList').innerHTML=it.map((x,i)=>'<li class="ckrow '+x.state+(CKOPEN[x.id]?' open':'')+'"><button type="button" class="ckhead" data-ck="'+x.id+'" aria-expanded="'+!!CKOPEN[x.id]+'"><span class="ckic">'+ic[x.state]+'</span><span class="cktx"><b>'+(i+1)+'. '+x.title+'</b><small>'+esc2(x.summary)+'</small></span><span class="ckch">▾</span></button>'
+    +'<div class="ckdet"><p>'+x.lines.map(esc2).join('</p><p>')+'</p><p class="ckf">'+x.file+'</p><div class="ckacts">'+(canWrite!==false?'<button type="button" class="ckchip" data-up="1">Unggah file</button>':'')+'<button type="button" class="ckchip" data-tpl="'+x.id+'">Unduh template</button></div></div></li>').join('');
+  $('ckSub').textContent='Periode '+CKMON[P.m-1]+' '+P.y+', sampai '+ckLab(P.ref)+' (mengikuti tanggal "Sampai")';
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('#ckBtn'); if(b){ const o=$('ckPanel').hidden; $('ckPanel').hidden=!o; b.setAttribute('aria-expanded',String(o)); return; }
+  const h=e.target.closest('.ckhead'); if(h){ CKOPEN[h.dataset.ck]=!CKOPEN[h.dataset.ck]; renderChecklist(); return; }
+  const u=e.target.closest('[data-up]'); if(u){ $('file').click(); return; }
+  const t=e.target.closest('[data-tpl]'); if(t){ const it=ckItems().find(x=>x.id===t.dataset.tpl); if(it) dlTpl(it.tpl); return; }
+  if(e.target.closest('#ckAll')){ dlTpl(['sales','sched']); return; }
+  if(!e.target.closest('#ckPanel') && $('ckPanel') && !$('ckPanel').hidden){ $('ckPanel').hidden=true; $('ckBtn').setAttribute('aria-expanded','false'); }
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&$('ckPanel')&&!$('ckPanel').hidden){ $('ckPanel').hidden=true; $('ckBtn').focus(); } });
 function renderDataBar(){
   const n=dates.length, f=o=>fd(o,{day:'numeric',month:'short',year:'numeric'});
   $('db-title').textContent = n? n+' hari data · '+f(dates[0])+(n>1?' sampai '+f(dates[n-1]):'') : 'Belum ada data';

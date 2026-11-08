@@ -64,13 +64,27 @@ table.mg th{position:static}
 table.mg th,table.mg td{text-align:left}
 table.mg td.num{text-align:right}
 table.mg th:nth-child(2){text-align:right}
-table.ck th,table.ck td{text-align:left;white-space:nowrap}
-table.ck td{font-size:14px}
-table.ck td.c,table.ck th.c{text-align:center}
-.ck .ok{color:#0e6b49;font-weight:700}.ck .no{color:#b4271c;font-weight:700}.ck .na{color:var(--ink3)}
-.cksum .pill,.ck .pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600}
-.cksum .pill.g,.ck .pill.g{background:#dff3e8;color:#0e6b49}.cksum .pill.a,.ck .pill.a{background:#fff0cc;color:#8a5a00}.cksum .pill.r,.ck .pill.r{background:#fde3e0;color:#b4271c}.cksum .pill.n,.ck .pill.n{background:#eceef2;color:#4a576b}
-.cksum{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}
+.ckw{position:relative;display:inline-block}
+.ckbtn{font:inherit;font-size:13px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:99px;padding:7px 14px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.ckbtn:hover{border-color:var(--bar)}
+.ckdot{width:9px;height:9px;border-radius:50%;background:var(--good)}
+.ckbtn.warn .ckdot{background:var(--amber)}.ckbtn.bad .ckdot{background:var(--bad)}
+#ckPanel{position:absolute;right:0;top:calc(100% + 8px);width:min(540px,92vw);max-height:70vh;overflow:auto;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;box-shadow:0 12px 36px rgba(15,30,60,.22);padding:14px;z-index:40;text-align:left}
+#ckPanel h3{margin:0;font-size:15px}#ckPanel .hint{margin:2px 0 10px}
+#ckList{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.ckrow{border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.ckhead{all:unset;box-sizing:border-box;width:100%;display:flex;gap:10px;align-items:center;padding:9px 10px;cursor:pointer}
+.ckhead:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:10px}
+.ckic{flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;color:#fff;background:var(--good)}
+.ckrow.warn .ckic{background:var(--amber);color:#1a1a1a}.ckrow.bad .ckic{background:var(--bad)}
+.cktx{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;font-size:13.5px;color:var(--ink)}.cktx small{font-size:12px;color:var(--ink3)}
+.ckrow.bad .cktx small{color:var(--bad)}
+.ckch{color:var(--ink3);transition:transform .15s}.ckrow.open .ckch{transform:rotate(180deg)}
+.ckdet{display:none;padding:2px 12px 12px 44px;font-size:12.5px;color:var(--ink2)}.ckrow.open .ckdet{display:block}
+.ckdet p{margin:4px 0}.ckdet .ckf{color:var(--ink3);font-style:italic}
+.ckacts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.ckchip{font:inherit;font-size:12.5px;border:1px solid var(--line);background:var(--soft);color:var(--ink2);border-radius:99px;padding:5px 12px;cursor:pointer}.ckchip:hover{border-color:var(--bar)}
+.ckfoot{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}.ckfoot .hint2{font-size:12px;color:var(--ink3)}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
 .seg button{background:none;border:0;padding:7px 12px;cursor:pointer;color:var(--ink2)}
 .seg button+button{border-left:1px solid var(--line)}
@@ -248,19 +262,21 @@ table.mt .ok{color:var(--good);font-weight:600}
         <input type="file" id="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" multiple hidden>
         <button type="button" class="btn primary" id="upload">Unggah file</button>
         <button type="button" class="btn" id="manage" aria-expanded="false" aria-controls="manage-panel">Kelola data</button>
+        <div class="ckw">
+          <button type="button" class="ckbtn" id="ckBtn" aria-expanded="false" aria-controls="ckPanel">Checklist database</button>
+          <div id="ckPanel" hidden role="dialog" aria-label="Checklist database wajib diunggah">
+            <h3>Checklist database wajib unggah</h3>
+            <p class="hint" id="ckSub"></p>
+            <ul id="ckList"></ul>
+            <div class="ckfoot"><button type="button" class="btn primary sm" id="ckAll">Unduh semua template (2 file)</button><span class="hint2">Klik baris untuk melihat tanggal yang kurang.</span></div>
+          </div>
+        </div>
       </div>
     </div>
     <div id="status" class="status" role="status" aria-live="polite"></div>
     <div id="manage-panel" hidden>
       <div class="scroll" style="max-height:260px"><table class="mg"><thead><tr><th>Tanggal</th><th>Penjualan</th><th>Orang</th><th>Sumber</th><th></th></tr></thead><tbody id="mg-body"></tbody></table></div>
     </div>
-  </section>
-
-  <section class="card" id="ck-card" aria-label="Checklist data">
-    <div class="hd"><div><h2>Checklist data</h2><p class="hint" id="ck-sub"></p></div></div>
-    <div class="cksum" id="ck-sum"></div>
-    <div class="scroll" style="max-height:320px"><table class="mg ck"><thead><tr><th>Tanggal</th><th class="c">Penjualan</th><th class="c">Jam</th><th class="c">Master brand</th><th class="c">Proteksi</th><th class="c">Detail item</th><th class="c">Jadwal</th><th>Status</th></tr></thead><tbody id="ck-body"></tbody></table></div>
-    <p class="note" id="ck-note"></p>
   </section>
 
   <section class="kpis" aria-label="Ringkasan">
