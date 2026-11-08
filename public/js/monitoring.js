@@ -258,14 +258,16 @@ function parseSheet(f,sh,sn){
     const hx=(...ns)=>{for(const n of ns){const i=hd.indexOf(n);if(i>=0)return i}return -1};
     const iSub=hx('Sub Category'), iFn=hx('Function'), iSf=hx('Sub Function'), iBr=hx('Brand'), iQty=hx('Qty','Quantity'), iInc=hx('Amount Include Sales','Amount Inculde Sales');
     const tx=(r,i)=>i<0||r[i]==null?'':String(r[i]).trim(); let n=0,other=0;
+    const iNo=hx('Item No'), iNm=hx('Item Name'), items=new Map();
     rows.slice(h+1).forEach(r=>{const d=toISO(r[0]);if(!d||typeof r[ia]!=='number'||!r[ic])return;
       if(is>=0&&r[is]!=null&&String(r[is]).trim()!==STORE){other++;return}
       const k=d+'|'+r[ic];m.set(k,(m.get(k)||0)+r[ia]);n++;
+      if(iNo>=0&&tx(r,iNo)){const ik=JSON.stringify([d,r[ic],(tx(r,ib).toUpperCase()||'LAINNYA'),tx(r,iNo).replace(/^0+(?=\d)/,'')]);let e=items.get(ik);if(!e){e={nm:tx(r,iNm),s:0,q:0,n:0};items.set(ik,e)}e.s+=r[ia];e.q+=(iQty>=0&&typeof r[iQty]==='number')?r[iQty]:0;e.n++}
       {const ck=JSON.stringify([d,tx(r,ic),tx(r,iSub),tx(r,iFn),tx(r,iSf),tx(r,ib),tx(r,iBr),tx(r,isr),tx(r,itb)]);let e=cube.get(ck);if(!e){e={s:0,i:0,q:0,n:0};cube.set(ck,e)}e.s+=r[ia];e.i+=(iInc>=0&&typeof r[iInc]==='number')?r[iInc]:0;e.q+=(iQty>=0&&typeof r[iQty]==='number')?r[iQty]:0;e.n++}
       const addD=(dim,ix)=>{if(ix<0)return;const dk=d+'|'+dim+'|'+(String(r[ix]==null?'':r[ix]).trim()||'Lainnya');dmap.set(dk,(dmap.get(dk)||0)+r[ia])};addD('source',isr);addD('typebrand',itb);
       if(ib>=0){const bk=k+'|'+(String(r[ib]==null?'':r[ib]).trim().toUpperCase()||'LAINNYA');bm.set(bk,(bm.get(bk)||0)+r[ia])}});
     if(!n) throw new Error(other?'file ini bukan untuk toko '+STORE:'tidak ada baris penjualan yang terbaca');
-    return {kind:'detail',name:src,n,cube:[...cube].map(([k,e])=>{const a=JSON.parse(k);return {store_code:STORE,sale_date:a[0],category:a[1],sub_category:a[2],func:a[3],sub_func:a[4],master_brand:a[5],brand:a[6],source_type:a[7],master_type_brand:a[8],sales:Math.round(e.s),sales_incl:Math.round(e.i),qty:Math.round(e.q*100)/100,lines:e.n,source:src}}),dims:[...dmap].map(([k,v])=>{const p=k.split('|');return {store_code:STORE,sale_date:p[0],dim:p[1],dim_value:p[2],sales:Math.round(v),source:src}}),brands:[...bm].map(([k,v])=>{const p=k.split('|');return {store_code:STORE,sale_date:p[0],category:p[1],master_brand:p[2],sales:Math.round(v),source:src}}),rows:[...m].map(([k,v])=>{const p=k.split('|');return {store_code:STORE,sale_date:p[0],category:p[1],sales:Math.round(v),source:src}})};
+    return {kind:'detail',name:src,n,items:[...items].map(([k,e])=>{const a=JSON.parse(k);return {store_code:STORE,sale_date:a[0],category:a[1],master_brand:a[2],item_no:a[3],item_name:e.nm,qty:Math.round(e.q*100)/100,sales:Math.round(e.s),lines:e.n,source:src}}),cube:[...cube].map(([k,e])=>{const a=JSON.parse(k);return {store_code:STORE,sale_date:a[0],category:a[1],sub_category:a[2],func:a[3],sub_func:a[4],master_brand:a[5],brand:a[6],source_type:a[7],master_type_brand:a[8],sales:Math.round(e.s),sales_incl:Math.round(e.i),qty:Math.round(e.q*100)/100,lines:e.n,source:src}}),dims:[...dmap].map(([k,v])=>{const p=k.split('|');return {store_code:STORE,sale_date:p[0],dim:p[1],dim_value:p[2],sales:Math.round(v),source:src}}),brands:[...bm].map(([k,v])=>{const p=k.split('|');return {store_code:STORE,sale_date:p[0],category:p[1],master_brand:p[2],sales:Math.round(v),source:src}}),rows:[...m].map(([k,v])=>{const p=k.split('|');return {store_code:STORE,sale_date:p[0],category:p[1],sales:Math.round(v),source:src}})};
   }
   const yr=(sn.match(/20\d\d/)||[String(new Date().getFullYear())])[0];
   const MI=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'], ALT={MEI:'MAY',AGU:'AUG',AGS:'AUG',OKT:'OCT',DES:'DEC'};
@@ -323,6 +325,7 @@ $('file').addEventListener('change',async e=>{
       else if(r.kind==='budget'){await upsertChunks('store_budget_monthly',r.rows,'store_code,year,month,category');parts.push('Budget '+r.year+': '+r.rows.length+' angka bulanan')}
       else if(r.kind==='phasing'){await upsertChunks('store_budget_phasing',r.rows,'store_code,phase_date');parts.push('Budget harian '+r.month+': '+r.rows.length+' hari')}
       else{await upsertChunks('store_day_category',r.rows,'store_code,sale_date,category');parts.push('Detail penjualan: '+nf.format(r.n)+' baris, '+new Set(r.rows.map(x=>x.sale_date)).size+' hari');
+        if(r.items&&r.items.length){await upsertChunks('store_day_item',r.items,'store_code,sale_date,category,master_brand,item_no');parts.push('Detail item: '+nf.format(r.items.length)+' data')}
         if(r.cube&&r.cube.length){await upsertChunks('store_day_detail',r.cube,'store_code,sale_date,category,sub_category,func,sub_func,master_brand,brand,source_type,master_type_brand');parts.push('Arsip detail lengkap: '+nf.format(r.cube.length)+' data')}
         if(r.dims&&r.dims.length){await upsertChunks('store_day_dim',r.dims,'store_code,sale_date,dim,dim_value');parts.push('Source type dan master type brand: '+nf.format(r.dims.length)+' data')}
         if(r.brands&&r.brands.length){await upsertChunks('store_day_brand',r.brands,'store_code,sale_date,category,master_brand');parts.push('Master brand: '+nf.format(r.brands.length)+' data')}}
@@ -360,15 +363,15 @@ async function cardToPng(el){
   const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'"><foreignObject x="0" y="0" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml">'+xhtml+'</div></foreignObject></svg>';
   const img=new Image();
   await new Promise((ok,no)=>{img.onload=ok;img.onerror=()=>no(new Error('gagal membuat gambar'));img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg)});
-  const sc=2, cv=document.createElement('canvas'); cv.width=w*sc; cv.height=h*sc;
+  const sc=Math.max(1,Math.min(2,15000/h)), cv=document.createElement('canvas'); cv.width=w*sc; cv.height=h*sc;
   const cx=cv.getContext('2d'); cx.fillStyle='#ffffff'; cx.fillRect(0,0,cv.width,cv.height); cx.scale(sc,sc); cx.drawImage(img,0,0);
   return await new Promise((ok,no)=>cv.toBlob(b=>b?ok(b):no(new Error('gagal membuat PNG')),'image/png'));
 }
 /* Salin/bagikan gambar: elemen digandakan ke wadah tersembunyi selebar layar PC, jadi hasilnya selalu utuh (tidak terpotong) di HP maupun PC. */
-async function shotImage(el,width,name){
+async function shotImage(el,width,name,prep){
   const host=document.createElement('div'); host.className='shot-host'; host.style.width=width+'px';
   const c=el.cloneNode(true); c.querySelectorAll('[id]').forEach(n=>n.removeAttribute('id')); c.removeAttribute('id'); c.classList.add('shot');
-  host.appendChild(c); document.body.appendChild(host);
+  host.appendChild(c); document.body.appendChild(host); if(prep) prep(c);
   try{ await new Promise(r=>requestAnimationFrame(()=>r())); return await cardToPng(c) } finally { host.remove() }
 }
 async function deliverImage(pngP,name){
@@ -378,9 +381,9 @@ async function deliverImage(pngP,name){
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove();
   return 'Gambar diunduh ke galeri/unduhan';
 }
-async function runShot(btn,el,width,name){
+async function runShot(btn,el,width,name,prep){
   const old=btn.textContent; btn.disabled=true; btn.textContent='Memproses…';
-  try{ btn.textContent=await deliverImage(shotImage(el,width,name),name) }catch(err){ btn.textContent='Gagal membuat gambar' }
+  try{ btn.textContent=await deliverImage(shotImage(el,width,name,prep),name) }catch(err){ btn.textContent='Gagal membuat gambar' }
   setTimeout(()=>{btn.textContent=old;btn.disabled=false},2800);
 }
 $('tgShot').addEventListener('click',()=>runShot($('tgShot'),$('tgCard'),1180,'target-vs-actual-'+new Date().toISOString().slice(0,10)+'.png'));
@@ -392,10 +395,10 @@ async function loadBrands(){
   BRD=r.map(x=>({d:x.sale_date,c:x.category,b:x.master_brand,s:+x.sales}));
   return BRD;
 }
-let brCat=null;
+let brCat=null, BRCTX=null;
 async function openBrand(cat){
   if(!LASTTG) return;
-  brCat=cat;
+  brCat=cat; BRCTX=null;
   const ov=$('brOv'), body=$('brBody'); ov.hidden=false; document.body.style.overflow='hidden';
   $('brTitle').textContent=title(cat)+(zn(cat)<99?' · Zona '+zn(cat):'');
   const {set,dates,bud,act,lyc}=LASTTG;
@@ -407,6 +410,7 @@ async function openBrand(cat){
   let rows;
   try{rows=await loadBrands()}catch(e){if(brCat===cat)body.innerHTML='<div class="empty">Gagal memuat data master brand.</div>';return}
   if(brCat!==cat) return;
+  BRCTX={cat,dates};
   const lyset=new Set(dates.map(lyDate)), cur={}, ly={};
   rows.forEach(r=>{if(r.c!==cat)return;if(set.has(r.d))cur[r.b]=(cur[r.b]||0)+r.s;else if(lyset.has(r.d))ly[r.b]=(ly[r.b]||0)+r.s});
   const brs=[...new Set([...Object.keys(cur),...Object.keys(ly)])].map(k=>({k,a:cur[k]||0,l:ly[k]||0}))
@@ -414,11 +418,11 @@ async function openBrand(cat){
   if(!brs.length){body.innerHTML='<div class="empty">Rincian master brand belum tersedia untuk kategori dan rentang ini. Unggah laporan detail penjualan (periode ini dan tahun lalu) lewat tombol Unggah.</div>';return}
   const A=sum(brs.map(x=>x.a)),L=sum(brs.map(x=>x.l));
   const gr=(x,y)=>y?lyp(x,y):(x?'<span class="posbox">Baru</span>':'–');
-  const trs=brs.map((x,i)=>`<tr><td class="r num">${i+1}</td><td>${esc(title(x.k))}</td><td class="r num">${fu(x.a)}</td><td class="r num">${A?dec(x.a/A*100,1)+'%':'–'}</td><td class="r num">${x.l?fu(x.l):'–'}</td><td class="r num">${sel(x.a-x.l)}</td><td class="r num">${gr(x.a,x.l)}</td></tr>`).join('');
+  const trs=brs.map((x,i)=>`<tr data-b="${esc(x.k)}" tabindex="0" title="Klik untuk detail item"><td class="r num">${i+1}</td><td>${esc(title(x.k))}</td><td class="r num">${fu(x.a)}</td><td class="r num">${A?dec(x.a/A*100,1)+'%':'–'}</td><td class="r num">${x.l?fu(x.l):'–'}</td><td class="r num">${sel(x.a-x.l)}</td><td class="r num">${gr(x.a,x.l)}</td></tr>`).join('');
   body.innerHTML=`<div class="tbl brtbl"><table class="tgt"><thead><tr><th class="r">#</th><th>Master brand</th><th class="r">Actual</th><th class="r">Kontribusi</th><th class="r">Tahun lalu</th><th class="r">Selisih</th><th class="r">Growth</th></tr></thead><tbody>${trs}</tbody>
   <tfoot><tr><td></td><td>Total (${brs.length} brand)</td><td class="r num">${fu(A)}</td><td class="r num">${A?'100%':'–'}</td><td class="r num">${L?fu(L):'–'}</td><td class="r num">${sel(A-L)}</td><td class="r num">${L?lyp(A,L):'–'}</td></tr></tfoot></table></div>`;
 }
-function closeBrand(){$('brOv').hidden=true;document.body.style.overflow='';brCat=null}
+function closeBrand(){closeItems();$('brOv').hidden=true;document.body.style.overflow='';brCat=null}
 $('tg').addEventListener('click',e=>{const r=e.target.closest('tr[data-cat]');if(r)openBrand(r.dataset.cat)});
 $('tg').addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const r=e.target.closest('tr[data-cat]');if(r){e.preventDefault();openBrand(r.dataset.cat)}});
 
@@ -469,9 +473,49 @@ $('bkBtn').addEventListener('click',async()=>{
   }catch(err){b.textContent='Gagal mengekspor'}
   setTimeout(()=>{b.textContent=old;b.disabled=false},3000);
 });
+
+/* Popup detail item per master brand */
+const itN=n=>Math.round(n*100)/100===Math.round(n)?nf.format(Math.round(n)):dec(n,2);
+let itKey=null;
+async function openItems(brandKey){
+  if(!BRCTX) return;
+  const {cat,dates}=BRCTX; itKey=cat+'|'+brandKey;
+  $('itOv').hidden=false;
+  $('itTitle').textContent=title(brandKey)+' · '+title(cat);
+  $('itPeriod').textContent=fdy(dates[0])+' – '+fdy(dates[dates.length-1])+' · '+dates.length+' hari · dibanding '+lyYear(dates[0])+' (tanggal yang sama)';
+  $('itKpi').innerHTML=''; $('itBody').innerHTML='<div class="empty">Memuat detail item…</div>';
+  const set=new Set(dates), lyd=dates.map(lyDate), lyset=new Set(lyd), lo=[...lyd,...dates].sort()[0], hi=[...lyd,...dates].sort().slice(-1)[0];
+  let rows=[];
+  try{
+    for(let from0=0;;from0+=1000){
+      const {data,error}=await SB.from('store_day_item').select('sale_date,item_no,item_name,qty,sales').eq('store_code',STORE).eq('category',cat).eq('master_brand',brandKey).gte('sale_date',lo).lte('sale_date',hi).order('sale_date').order('item_no').range(from0,from0+999);
+      if(error) throw error; rows=rows.concat(data); if(data.length<1000) break;
+    }
+  }catch(e){if(itKey===cat+'|'+brandKey)$('itBody').innerHTML='<div class="empty">Gagal memuat detail item.</div>';return}
+  if(itKey!==cat+'|'+brandKey) return;
+  const M=new Map();
+  rows.forEach(r=>{const cu=set.has(r.sale_date), l=!cu&&lyset.has(r.sale_date); if(!cu&&!l)return;
+    let e=M.get(r.item_no); if(!e){e={no:r.item_no,nm:r.item_name||'',a:0,q:0,l:0,lq:0};M.set(r.item_no,e)}
+    if(cu){e.a+=+r.sales;e.q+=+r.qty;if(r.item_name)e.nm=r.item_name}else{e.l+=+r.sales;e.lq+=+r.qty;if(!e.nm)e.nm=r.item_name||''}});
+  const its=[...M.values()].filter(x=>Math.round(x.a)||Math.round(x.l)).sort((x,y)=>y.a-x.a||y.l-x.l);
+  if(!its.length){$('itBody').innerHTML='<div class="empty">Detail item belum tersedia untuk brand dan rentang ini. Unggah laporan detail penjualan (periode ini dan tahun lalu) lewat tombol Unggah.</div>';return}
+  const A=sum(its.map(x=>x.a)),L=sum(its.map(x=>x.l)),Q=sum(its.map(x=>x.q));
+  const t=(k,v)=>`<div class="tg-t"><span class="l">${k}</span><span class="v">${v}</span></div>`;
+  const gr=(x,y)=>y?lyp(x,y):(x?'<span class="posbox">Baru</span>':'–');
+  $('itKpi').innerHTML=t('Actual',fu(A))+t('Tahun lalu',L?fu(L):'–')+t('Growth vs tahun lalu',L?lyp(A,L):'–')+t('Selisih',L?sel(A-L):'–')+t('Jumlah item',nf.format(its.filter(x=>x.a>0).length)+'<span class="s">dari '+nf.format(its.length)+' item</span>')+t('Qty terjual',itN(Q));
+  const trs=its.map((x,i)=>`<tr><td class="r num">${i+1}</td><td class="num">${esc(x.no)}</td><td>${esc(x.nm)}</td><td class="r num">${x.q?itN(x.q):'–'}</td><td class="r num">${x.a?fu(x.a):'0'}</td><td class="r num">${A?dec(x.a/A*100,1)+'%':'–'}</td><td class="r num">${x.l?fu(x.l):'–'}</td><td class="r num">${sel(x.a-x.l)}</td><td class="r num">${gr(x.a,x.l)}</td></tr>`).join('');
+  $('itBody').innerHTML=`<div class="tbl brtbl"><table class="tgt itm"><thead><tr><th class="r">#</th><th>Item No</th><th>Nama item</th><th class="r">Qty</th><th class="r">Actual</th><th class="r">Kontribusi</th><th class="r">Tahun lalu</th><th class="r">Selisih</th><th class="r">Growth</th></tr></thead><tbody>${trs}</tbody><tfoot><tr><td></td><td></td><td>Total (${nf.format(its.length)} item)</td><td class="r num">${itN(Q)}</td><td class="r num">${fu(A)}</td><td class="r num">100%</td><td class="r num">${L?fu(L):'–'}</td><td class="r num">${L?sel(A-L):'–'}</td><td class="r num">${L?lyp(A,L):'–'}</td></tr></tfoot></table></div>`;
+}
+function closeItems(){$('itOv').hidden=true;itKey=null}
+$('brBody').addEventListener('click',e=>{const r=e.target.closest('tr[data-b]');if(r)openItems(r.dataset.b)});
+$('brBody').addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const r=e.target.closest('tr[data-b]');if(r){e.preventDefault();openItems(r.dataset.b)}});
+$('itClose').addEventListener('click',closeItems);
+$('itOv').addEventListener('click',e=>{if(e.target===$('itOv'))closeItems()});
+$('itShot').addEventListener('click',()=>runShot($('itShot'),$('itPanel'),1100,'item-'+String(itKey||'brand').toLowerCase().replace(/\W+/g,'-')+'.png',c=>{
+  const rs=[...c.querySelectorAll('tbody tr')]; if(rs.length>30){rs.slice(30).forEach(r=>r.remove());const n=document.createElement('p');n.className='hint';n.style.margin='8px 0 0';n.textContent='30 item teratas dari '+rs.length+' item (urut dari penjualan tertinggi).';c.querySelector('.tbl').after(n)}}));
 $('brClose').addEventListener('click',closeBrand);
 $('brOv').addEventListener('click',e=>{if(e.target===$('brOv'))closeBrand()});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('brOv').hidden)closeBrand()});
+document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(!$('itOv').hidden)closeItems();else if(!$('brOv').hidden)closeBrand()});
 $('brShot').addEventListener('click',()=>runShot($('brShot'),$('brPanel'),1060,'brand-'+String(brCat||'kategori').toLowerCase().replace(/\W+/g,'-')+'.png'));
 $('partChk').addEventListener('change',e=>{skipPartial=e.target.checked;render()});
 $('chips').addEventListener('click',e=>{const c=e.target.closest('.chip');if(!c)return;const r=presetRange(c.dataset.p);setRange(r[0],r[1])});

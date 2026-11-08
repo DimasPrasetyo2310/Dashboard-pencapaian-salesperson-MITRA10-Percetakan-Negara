@@ -164,7 +164,10 @@ tr.zs td{border-top:2px solid var(--frame)}
 tr.zs:first-child td{border-top:0}
 table.tgt tbody tr:hover td.zona{background:inherit}
 
-tr[data-cat]{cursor:pointer}
+tr[data-cat],tr[data-b]{cursor:pointer}
+tr[data-b]:hover td{background:#eef3fb}
+#itOv{z-index:60}
+table.itm td:nth-child(3){white-space:normal;min-width:220px}
 tr[data-cat]:hover td:not(.zona){background:#eef3fb}
 tr[data-cat]:focus-visible{outline:2px solid var(--accent,#1f5fbf);outline-offset:-2px}
 .kpi[data-kpi]{cursor:pointer;transition:transform .12s,box-shadow .12s}.kpi[data-kpi]:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(16,28,52,.18)}.kpi[data-kpi]:focus-visible{outline:2px solid var(--accent,#1f5fbf);outline-offset:2px}
@@ -288,6 +291,15 @@ tr[data-cat]:focus-visible{outline:2px solid var(--accent,#1f5fbf);outline-offse
 <div class="br-ov" id="brOv" hidden><div class="br-panel" id="brPanel" role="dialog" aria-modal="true" aria-labelledby="brTitle">
   <div class="br-head"><div><h2 id="brTitle"></h2><p class="tg-period" id="brPeriod"></p></div>
     <div class="br-tools no-shot"><button type="button" class="btn primary" id="brShot">Salin gambar</button><button type="button" class="chip" id="brClose">Tutup</button></div></div>
+  <div class="br-kpi" id="brKpi"></div>
+  <div class="br-body" id="brBody"></div>
+</div></div>
+<div class="br-ov" id="itOv" hidden><div class="br-panel" id="itPanel" role="dialog" aria-modal="true" aria-labelledby="itTitle">
+  <div class="br-head"><div><h2 id="itTitle"></h2><p class="tg-period" id="itPeriod"></p></div>
+    <div class="br-tools no-shot"><button type="button" class="btn primary" id="itShot">Salin gambar</button><button type="button" class="chip" id="itClose">Tutup</button></div></div>
+  <div class="br-kpi" id="itKpi"></div>
+  <div class="br-body" id="itBody"></div>
+</div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
