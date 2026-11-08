@@ -498,7 +498,7 @@ const en=n=>Math.round(n).toLocaleString('en-US');
 const pc2=x=>(x*100).toFixed(2)+'%';
 const gp2=(a,l)=>{if(!l)return '-';const g=(a/l-1)*100;return (g>=0?'+':'')+g.toFixed(2)+'%'};
 const pad2=n=>String(n).padStart(2,'0');
-const WAK=[['waFfc','traffic_ffc'],['waQt','prot_qty_t'],['waQa','prot_qty_a'],['waMt','member_t'],['waMa','member_a']];
+const WAK=[['waFfc','traffic_manual'],['waQt','prot_qty_t'],['waQa','prot_qty_a'],['waMt','member_t'],['waMa','member_a']];
 let WAD=null, WAT=null;
 function waVal(id){const v=$(id).value;return v===''?null:+v}
 function buildWa(){
@@ -508,8 +508,8 @@ function buildWa(){
   const tgt=budgetDay(d), act=r.sx, ly=LYD.get(lyDate(d)), lyS=ly?ly.sx:0;
   let mt=0; for(let i=1;i<=day;i++) mt+=budgetDay(y+'-'+pad2(m)+'-'+pad2(i));
   const mr=D.filter(x=>x.d.slice(0,7)===d.slice(0,7)&&x.d<=d), ma=sum(mr.map(x=>x.sx)), lm=sum(mr.map(x=>{const q=LYD.get(lyDate(x.d));return q?q.sx:0}));
-  const ffc=waVal('waFfc'), v=x=>x==null?'-':en(x);
-  const eM=r.cin?r.tr/r.cin:null, eF=ffc?r.tr/ffc:null;
+  const man=waVal('waFfc'), v=x=>x==null?'-':en(x);
+  const eF=r.cin?r.tr/r.cin:null, eM=man?r.tr/man:null;
   const L=[
     'Mitra10 Percetakan Negara',
     pad2(day)+' '+BULAN[m-1]+' '+y+' : '+($('waTime').value||'--:--'),
@@ -521,7 +521,7 @@ function buildWa(){
     'LY/Growth : '+(lm?en(lm):'-')+' ( '+gp2(ma,lm)+' )',
     '',
     'Bs Size : '+(r.tr?en(r.sx/r.tr):'-'),
-    'Traffic Man/FFC : '+en(r.cin)+' / '+v(ffc),
+    'Traffic Man/FFC : '+v(man)+' / '+en(r.cin),
     'Invoice : '+en(r.tr),
     'Effect. FFC : '+(eF==null?'-':pc2(eF)),
     'Effect. Manual : '+(eM==null?'-':pc2(eM)),
