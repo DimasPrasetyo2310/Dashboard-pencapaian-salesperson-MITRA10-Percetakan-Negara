@@ -239,6 +239,28 @@ tr[data-cat]:focus-visible{outline:2px solid var(--accent,#1f5fbf);outline-offse
 .ckchip{font:inherit;font-size:12.5px;border:1px solid var(--frame);background:var(--tint);color:var(--ink2);border-radius:99px;padding:5px 12px;cursor:pointer}.ckchip:hover{border-color:var(--accent)}
 .ckfoot{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
 .lock{margin:0 0 12px;padding:10px 14px;border-radius:10px;background:#fff4d6;border:1.5px solid #e9b949;color:#6a4a00;font-size:13.5px;font-weight:600}.lock.mine{background:#e5f1ff;border-color:#8db6e8;color:#12406f}#upBtn:disabled{opacity:.5;cursor:not-allowed}
+
+.rgform{margin:0 0 12px;border:1px solid var(--frame);border-radius:10px;padding:8px 12px;background:var(--bg)}
+.rgform summary{cursor:pointer;font-weight:600;font-size:13.5px}
+.rgfields{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px 12px;margin-top:10px}
+.rgfields label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink2)}
+.rgfields input{font:inherit;font-size:14px;padding:6px 8px;border:1.5px solid var(--frame);border-radius:8px;width:100%}
+.rgview{overflow-x:auto;background:#fff;padding:12px;font-family:Calibri,'Segoe UI',Arial,sans-serif}
+.rgtitle{text-align:center;font-weight:700;font-size:15px;margin-bottom:2px}.rgdate{font-size:13px;margin:0 0 6px 8%}
+.rgtag{white-space:nowrap;display:inline-block;background:#fff200;font-weight:700;font-size:11.5px;padding:2px 10px;margin:12px 0 0;min-width:140px}
+.rgsp{height:10px}
+table.rgt{width:100%;min-width:0;border-collapse:collapse;font-size:12.5px;margin:0}
+table.rgt th,table.rgt td{border:1px solid #fff;padding:4px 6px;text-align:center;white-space:nowrap;border-radius:0}
+table.rgt th{background:#1f5bd8;color:#fff;font-size:12px;letter-spacing:0;text-transform:none;font-weight:600;border-bottom:1px solid #fff}
+table.rgt th.st{text-align:left;width:70px}
+table.rgt td{background:#fff;color:#111;border:1px solid #9aa7c7;text-align:center}
+table.rgt td.store{background:#fff200;font-weight:700;text-align:left}
+table.rgt td.tot:first-child{text-align:left}
+table.rgt td.tot{background:#1f5bd8;color:#fff;font-weight:600;border-color:#fff}
+table.rgt td.acv{background:#cdb4f2}table.rgt td.tot.acv{background:#1f5bd8}
+table.rgt td.gw{background:#fbe0cc}table.rgt td.tot.gw{background:#1f5bd8}
+table.rgt .rneg{color:#c0392b;font-weight:700}table.rgt td.tot .rneg{color:#ff9b9b}
+.shot-host .rgview{overflow:visible}
 </style>
 </head>
 <body>
@@ -363,6 +385,18 @@ tr[data-cat]:focus-visible{outline:2px solid var(--accent,#1f5fbf);outline-offse
         <div class="wa-btns"><button type="button" class="btn primary" id="clCopy">Salin teks</button><button type="button" class="chip" id="clSend">Kirim ke WhatsApp</button><span class="hint" id="clMsg"></span></div>
       </div>
     </div>
+  </section>
+
+  <section class="card" id="rgCard">
+    <div class="tg-head">
+      <div><h2>Daily Report Closing Region 1</h2><p class="tg-period">Memakai tanggal laporan di kartu Laporan WhatsApp. Angka sales, traffic, invoice, project, Protection, dan Bathroom terisi otomatis.</p></div>
+      <div class="tg-tools"><button type="button" class="btn primary" id="rgShot">Salin gambar</button></div>
+    </div>
+    <details class="rgform no-shot" open><summary>Isi manual (data yang tidak ada di laporan penjualan)</summary>
+      <div class="rgfields"><label>Member registrasi<input type="number" inputmode="decimal" id="rgMr"></label><label>New member transaksi<input type="number" inputmode="decimal" id="rgMn"></label><label>Rata-rata waktu tunggu (j:mm:dd)<input type="text" placeholder="0:08:25" id="rgWt"></label><label>Total DR<input type="number" inputmode="decimal" id="rgDr"></label><label>DR lebih dari 10 menit<input type="number" inputmode="decimal" id="rgW10"></label><label>Two days: PD (0-2 hari)<input type="number" inputmode="decimal" id="rgP2"></label><label>Two days: OT (0-2 hari)<input type="number" inputmode="decimal" id="rgO2"></label><label>Alasan: Internal<input type="number" inputmode="decimal" id="rgRi"></label><label>Alasan: Req kons<input type="number" inputmode="decimal" id="rgRk"></label><label>Alasan: Dc<input type="number" inputmode="decimal" id="rgRd"></label><label>Alasan: Supp<input type="number" inputmode="decimal" id="rgRs"></label><label>Alasan: Lain 2<input type="number" inputmode="decimal" id="rgRl"></label><label>All salper<input type="number" inputmode="decimal" id="rgSa"></label><label>Salper lebih dari 2 kategori<input type="number" inputmode="decimal" id="rgS2"></label><label>Inventory class A · AP (Appliances)<input type="number" inputmode="decimal" id="rgIAP"></label><label>Inventory class A · BT (Bathroom)<input type="number" inputmode="decimal" id="rgIBT"></label><label>Inventory class A · BM (Building Material)<input type="number" inputmode="decimal" id="rgIBM"></label><label>Inventory class A · DW (Doors And Windows)<input type="number" inputmode="decimal" id="rgIDW"></label><label>Inventory class A · EL (Electrical And Lighting)<input type="number" inputmode="decimal" id="rgIEL"></label><label>Inventory class A · FW (Flooring And Wall)<input type="number" inputmode="decimal" id="rgIFW"></label><label>Inventory class A · HW (Hardware)<input type="number" inputmode="decimal" id="rgIHW"></label><label>Inventory class A · HS (Houseware & Hobbies)<input type="number" inputmode="decimal" id="rgIHS"></label><label>Inventory class A · KC (Kitchen)<input type="number" inputmode="decimal" id="rgIKC"></label><label>Inventory class A · PS (Paint And Sundries)<input type="number" inputmode="decimal" id="rgIPS"></label><label>Inventory class A · PL (Plumbing)<input type="number" inputmode="decimal" id="rgIPL"></label><label>Inventory class A · TL (Tools)<input type="number" inputmode="decimal" id="rgITL"></label></div>
+      <p class="hint">PD, OT, dan Sales Member diambil dari isian di kartu Report Closing. Target dan aktual Protection dari kartu di atas.</p>
+    </details>
+    <div class="rgview" id="rgView"></div>
   </section>
 
   <section class="card">
