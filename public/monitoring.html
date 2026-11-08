@@ -149,7 +149,6 @@ tfoot td{font-weight:700;border-top:2px solid var(--frame);border-bottom:0;backg
 .tgt .pill.good{font-weight:700}
 .pill.crit{background:var(--crit-bg);color:var(--crit)}
 table.tgt{min-width:640px}
-.tgt th.msep,.tgt td.msep{border-left:3px solid var(--amber)}
 .tgt thead tr.grp th{text-align:center;font-size:11px;letter-spacing:.06em;background:var(--navy2,var(--navy));color:#fff;border-bottom:1px solid rgba(255,255,255,.25)}
 .tg-head{display:flex;flex-wrap:wrap;gap:12px 20px;justify-content:space-between;align-items:flex-end;margin-bottom:8px}
 .tg-period{font-size:13px;color:var(--ink2);margin-top:2px}
@@ -166,6 +165,15 @@ tr.zt td.r .pill{font-weight:700}
 tr.zs td{border-top:2px solid var(--frame)}
 tr.zs:first-child td{border-top:0}
 table.tgt tbody tr:hover td.zona{background:inherit}
+table.tgt{border:1px solid #aeb9d1}
+table.tgt td,table.tgt th{border:1px solid #c9d1e3}
+table.tgt thead th,table.tgt thead tr.grp th{border:1px solid rgba(255,255,255,.28);border-bottom:3px solid var(--amber)}
+table.tgt thead tr.grp th{border-bottom:1px solid rgba(255,255,255,.28)}
+table.tgt tr.zt td{border:1px solid rgba(255,255,255,.3)}
+table.tgt tfoot td{border:1px solid rgba(255,255,255,.28);border-top:3px solid var(--amber)}
+table.tgt td.zona{border:1px solid #c9d1e3}
+table.tgt tr.zs td{border-top:2px solid #aeb9d1}
+table.tgt tr.zs:first-child td{border-top:1px solid #c9d1e3}
 
 tr[data-cat],tr[data-b]{cursor:pointer}
 tr[data-b]:hover td{background:#eef3fb}
