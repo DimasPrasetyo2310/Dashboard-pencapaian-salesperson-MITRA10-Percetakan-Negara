@@ -151,7 +151,7 @@ function renderTarget(rows){
   const tile=(l,v,s)=>`<div class="tg-t"><span class="l">${l}</span><span class="v">${v}</span><span class="s">${s}</span></div>`;
   const list=cats.filter(c=>bud[c]>0||act[c]>0).sort((a,b)=>zn(a)-zn(b)||(bud[b]||act[b])-(bud[a]||act[a]));
   const zcount={};list.forEach(c=>{zcount[zn(c)]=(zcount[zn(c)]||0)+1});let zprev=null;
-  const cell=(a,b,l)=>{const pc=b?a/b:null,cl=pc==null?'':pc>=1?'good':pc>=.9?'warn':'crit';return `<td class="r num">${b?fu(b):'–'}</td><td class="r num">${fu(a)}</td><td class="r num">${pc==null?'–':`<span class="pill ${cl}">${dec(pc*100,1)}%</span>`}</td><td class="r num">${b?sel(a-b):'–'}</td><td class="r num">${l?fu(l):'–'}</td><td class="r num">${l?lyp(a,l):'–'}</td>`};
+  const cell=(a,b,l)=>{const pc=b?a/b:null,cl=pc==null?'':pc>=1?'good':pc>=.9?'warn':'crit';return `<td class="r num">${b?fu(b):'–'}</td><td class="r num">${fu(a)}</td><td class="c num">${pc==null?'–':`<span class="pill ${cl}">${dec(pc*100,1)}%</span>`}</td><td class="r num">${b?sel(a-b):'–'}</td><td class="r num">${l?fu(l):'–'}</td><td class="r num">${l?lyp(a,l):'–'}</td>`};
   const mcell=(a,b,l)=>cell(a,b,l).replace('<td class="r num">','<td class="r num msep">');
   const mx=x=>mcell(actM[x]||0,budM[x]||0,lycM[x]||0), msum=zs=>mcell(sum(zs.map(x=>actM[x]||0)),sum(zs.map(x=>budM[x]||0)),sum(zs.map(x=>lycM[x]||0)));
   const trs=list.map((c,i)=>{
@@ -160,7 +160,7 @@ function renderTarget(rows){
     const zs=list.filter(x=>zn(x)===zn(c));
     const sub=last?`<tr class="zt"><td>Total ${zn(c)<99?'Zona '+zn(c):'lainnya'}</td>${cell(sum(zs.map(x=>act[x]||0)),sum(zs.map(x=>bud[x]||0)),sum(zs.map(x=>lyc[x]||0)))}${msum(zs)}</tr>`:'';
     const a=act[c]||0,b=bud[c]||0,pc=b?a/b:null,cl=pc==null?'':pc>=1?'good':pc>=.9?'warn':'crit',l=lyc[c];
-    return `<tr data-cat="${esc(c)}" tabindex="0" title="Klik untuk rincian master brand"${first?' class="zs"':''}>${first?`<td class="zona z${zn(c)}" rowspan="${zcount[zn(c)]+1}">${zn(c)<99?'Zona '+zn(c):'–'}</td>`:''}<td>${esc(title(c))}</td><td class="r num">${b?fu(b):'–'}</td><td class="r num">${fu(a)}</td><td class="r num">${pc==null?'–':`<span class="pill ${cl}">${dec(pc*100,1)}%</span>`}</td><td class="r num">${b?sel(a-b):'–'}</td><td class="r num">${l?fu(l):'–'}</td><td class="r num">${l?lyp(a,l):'–'}</td>${mx(c)}</tr>${sub}`}).join('');
+    return `<tr data-cat="${esc(c)}" tabindex="0" title="Klik untuk rincian master brand"${first?' class="zs"':''}>${first?`<td class="zona z${zn(c)}" rowspan="${zcount[zn(c)]+1}">${zn(c)<99?'Zona '+zn(c):'–'}</td>`:''}<td>${esc(title(c))}</td><td class="r num">${b?fu(b):'–'}</td><td class="r num">${fu(a)}</td><td class="c num">${pc==null?'–':`<span class="pill ${cl}">${dec(pc*100,1)}%</span>`}</td><td class="r num">${b?sel(a-b):'–'}</td><td class="r num">${l?fu(l):'–'}</td><td class="r num">${l?lyp(a,l):'–'}</td>${mx(c)}</tr>${sub}`}).join('');
   const aT=sum(list.map(c=>act[c]||0)), bT=sum(list.map(c=>bud[c]||0)), lT=sum(list.map(c=>lyc[c]||0));
   box.innerHTML=`<div class="tg-top">
     <div class="tg-main"><span class="l">Pencapaian vs budget periode</span><span class="big ${cls}">${dec(ach*100,1)}%</span>
@@ -171,7 +171,7 @@ function renderTarget(rows){
     ${tile('Sisa target',mTarget>mtd?rp(mTarget-mtd):'Tercapai',left>0?(mTarget>mtd?rp(need)+' per hari untuk '+left+' hari lagi':left+' hari lagi'):'bulan sudah lewat')}
     ${lySum?tile('Sales vs '+lyYear(dates[0]),(nav/lySum-1>=0?'▲ ':'▼ ')+dec(Math.abs(nav/lySum-1)*100,1)+'%',rp(lySum)+' tahun lalu'):''}
   </div>
-  <div class="tbl"><table class="tgt"><thead><tr class="grp"><th colspan="2"></th><th colspan="6" class="r">Periode terpilih</th><th colspan="6" class="r msep">MTD · 1 – ${fd(last)}</th></tr><tr><th>Zonasi</th><th>Kategori</th><th class="r">Budget periode</th><th class="r">Actual</th><th class="r">Capaian</th><th class="r">Selisih</th><th class="r">Tahun lalu</th><th class="r">vs tahun lalu</th><th class="r msep">Budget MTD</th><th class="r">Actual MTD</th><th class="r">Capaian MTD</th><th class="r">Selisih MTD</th><th class="r">MTD tahun lalu</th><th class="r">vs tahun lalu</th></tr></thead><tbody>${trs}</tbody>
+  <div class="tbl"><table class="tgt"><thead><tr class="grp"><th colspan="2"></th><th colspan="6" class="r">Periode terpilih</th><th colspan="6" class="r msep">MTD · 1 – ${fd(last)}</th></tr><tr><th>Zonasi</th><th>Kategori</th><th class="r">Budget periode</th><th class="r">Actual</th><th class="c">Achievement</th><th class="r">Selisih</th><th class="r">Tahun lalu</th><th class="r">vs tahun lalu</th><th class="r msep">Budget MTD</th><th class="r">Actual MTD</th><th class="c">Achievement MTD</th><th class="r">Selisih MTD</th><th class="r">MTD tahun lalu</th><th class="r">vs tahun lalu</th></tr></thead><tbody>${trs}</tbody>
   <tfoot><tr><td colspan="2">Total</td><td class="r num">${fu(bT)}</td><td class="r num">${fu(aT)}</td><td class="r num">${bT?dec(aT/bT*100,1)+'%':'–'}</td><td class="r num">${sel(aT-bT)}</td><td class="r num">${lT?fu(lT):'–'}</td><td class="r num">${lT?lyp(aT,lT):'–'}</td>${mcell(sum(list.map(c=>actM[c]||0)),sum(list.map(c=>budM[c]||0)),sum(list.map(c=>lycM[c]||0)))}</tr></tfoot></table></div>`;
 }
 function renderRows(rows){
