@@ -679,7 +679,7 @@ async function loadData(){
   KB=new Map();kb.forEach(r=>KB.set(r.budget_date,{tr:+r.traffic||null,iv:+r.invoice||null,ef:+r.effect||null,bs:+r.basket||null,pq:+r.prot_qty||null}));
   DIMD=dm.map(r=>({d:r.sale_date,dim:r.dim,v:r.dim_value,s:+r.sales}));
   const DS=new Map();c.forEach(r=>DS.set(r.sale_date,(DS.get(r.sale_date)||0)+ +r.sales));
-  const D=d.map(r=>({d:r.sale_date,sx:DS.has(r.sale_date)?DS.get(r.sale_date):+r.nav_sales,nav:+r.nav_sales,tr:+r.nav_trx,ffc:+r.ffc_sales,ffct:+r.ffc_trx,cin:+r.counter_in,cout:+r.counter_out}));
+  const D=d.map(r=>({d:r.sale_date,sx:DS.has(r.sale_date)?Math.max(DS.get(r.sale_date),+r.nav_sales):+r.nav_sales,nav:+r.nav_sales,tr:+r.nav_trx,ffc:+r.ffc_sales,ffct:+r.ffc_trx,cin:+r.counter_in,cout:+r.counter_out}));
   const yr=D.length?Math.max(...D.map(r=>+r.d.slice(0,4))):0;
   LYD=new Map();LYC=new Map();PH=new Map();BM=new Map();BRD=null;
   D.filter(r=>+r.d.slice(0,4)<yr).forEach(r=>LYD.set(r.d,r));
