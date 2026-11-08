@@ -104,28 +104,6 @@ function renderKpis(rows){
   $('lyNote').hidden=!(L&&!L.full);
   if(L&&!L.full)$('lyNote').textContent='Pembanding tahun lalu hanya tersedia untuk '+pr.length+' dari '+rows.length+' hari pada rentang ini; selisih dihitung untuk hari yang ada pembandingnya saja.';
 }
-function renderTraffic(rows){
-  const n=rows.length, [mx,step]=niceCount(Math.max(...rows.map(r=>r.cin))*1.12);
-  const W=720,H=250,L=44,R=10,T=18,B=28,iw=W-L-R,ih=H-T-B,slot=iw/n,gw=Math.min(slot*0.72,76),bw=gw/2-1.5;
-  const y=v=>T+ih-(v/mx)*ih;
-  let g='';
-  for(let v=0;v<=mx+1;v+=step){g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)"/><text x="${L-6}" y="${y(v)+3.5}" text-anchor="end">${nf.format(v)}</text>`}
-  const every=Math.ceil(n/8), labels=n<=7;
-  rows.forEach((r,i)=>{
-    const cx=L+(i+0.5)*slot, x1=cx-bw-1.5, x2=cx+1.5;
-    if(i%every===0) g+=`<text x="${cx}" y="${H-8}" text-anchor="middle">${fd(r.d)}</text>`;
-    const tip=`${fdy(r.d)} · traffic masuk ${nf.format(r.cin)} · invoice ${nf.format(r.tr)} · efektivitas ${r.cin?dec(r.tr/r.cin*100,1)+'%':'–'}`;
-    g+=`<path d="${roundTop(x1,y(r.cin),bw,T+ih-y(r.cin),4)}" fill="var(--s1)"/><path d="${roundTop(x2,y(r.tr),bw,T+ih-y(r.tr),4)}" fill="var(--s2)"/>`;
-    if(labels) g+=`<text class="vl" x="${x1+bw/2}" y="${y(r.cin)-5}" text-anchor="middle">${nf.format(r.cin)}</text><text class="vl" x="${x2+bw/2}" y="${y(r.tr)-5}" text-anchor="middle">${nf.format(r.tr)}</text>`;
-    g+=`<rect data-tip="${esc(tip)}" x="${L+i*slot}" y="${T}" width="${slot}" height="${ih}" fill="transparent"/>`;
-  });
-  $('tcChart').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Grafik traffic dan invoice harian">${g}</svg>`;
-  $('tcLegend').innerHTML=`<span><i style="background:var(--s1)"></i>Traffic masuk</span><span><i style="background:var(--s2)"></i>Invoice</span>`;
-}
-function renderEf(rows){
-  const cin=sum(rows.map(r=>r.cin)), avg=cin?sum(rows.map(r=>r.tr))/cin:0;
-  $('efList').innerHTML=rows.map(r=>{const e=eff(r);return `<div class="ef" data-tip="${esc(fdy(r.d)+' · '+nf.format(r.tr)+' invoice dari '+nf.format(r.cin)+' pengunjung')}"><span class="d num">${fd(r.d)}</span><div class="b"><i style="width:${Math.min(e,1)*100}%"></i><u style="left:${Math.min(avg,1)*100}%"></u></div><span class="p">${dec(e*100,1)}%</span></div>`}).join('');
-}
 const DIMS=[['source','dimSrc','Source Type Name'],['typebrand','dimTb','Master Type Brand']];
 let DIMD=[];
 function renderDims(rows){
@@ -216,11 +194,11 @@ function render(){
   if(!rows.length){
     $('period').textContent='Tidak ada data pada rentang ini';
     $('kpis').innerHTML='<div class="card empty">Tidak ada data pada rentang tanggal ini. Ubah tanggal atau unggah database.</div>';
-    ['dimSrc','dimTb','rows','foot','tcChart','tcLegend','efList'].forEach(i=>$(i).innerHTML='');
+    ['dimSrc','dimTb','rows','foot'].forEach(i=>$(i).innerHTML='');
     return;
   }
   $('period').textContent=`${fdy(rows[0].d)} – ${fdy(rows[rows.length-1].d)} · ${rows.length} hari`;
-  renderKpis(rows);renderDims(rows);renderTraffic(rows);renderEf(rows);renderRows(rows);
+  renderKpis(rows);renderDims(rows);renderWa();renderRows(rows);
 }
 
 /* ---------- Unggah database ke Supabase ---------- */
@@ -513,6 +491,81 @@ $('itClose').addEventListener('click',closeItems);
 $('itOv').addEventListener('click',e=>{if(e.target===$('itOv'))closeItems()});
 $('itShot').addEventListener('click',()=>runShot($('itShot'),$('itPanel'),1100,'item-'+String(itKey||'brand').toLowerCase().replace(/\W+/g,'-')+'.png',c=>{
   const rs=[...c.querySelectorAll('tbody tr')]; if(rs.length>30){rs.slice(30).forEach(r=>r.remove());const n=document.createElement('p');n.className='hint';n.style.margin='8px 0 0';n.textContent='30 item teratas dari '+rs.length+' item (urut dari penjualan tertinggi).';c.querySelector('.tbl').after(n)}}));
+
+/* Laporan WhatsApp harian */
+const BULAN=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+const en=n=>Math.round(n).toLocaleString('en-US');
+const pc2=x=>(x*100).toFixed(2)+'%';
+const gp2=(a,l)=>{if(!l)return '-';const g=(a/l-1)*100;return (g>=0?'+':'')+g.toFixed(2)+'%'};
+const pad2=n=>String(n).padStart(2,'0');
+const WAK=[['waFfc','traffic_ffc'],['waQt','prot_qty_t'],['waQa','prot_qty_a'],['waMt','member_t'],['waMa','member_a']];
+let WAD=null, WAT=null;
+function waVal(id){const v=$(id).value;return v===''?null:+v}
+function buildWa(){
+  const d=$('waDate').value, D=DATA.D, r=D.find(x=>x.d===d);
+  if(!d||!r){$('waText').value='Belum ada data untuk tanggal ini. Unggah laporan lewat tombol Unggah.';return}
+  const y=+d.slice(0,4), m=+d.slice(5,7), day=+d.slice(8);
+  const tgt=budgetDay(d), act=r.sx, ly=LYD.get(lyDate(d)), lyS=ly?ly.sx:0;
+  let mt=0; for(let i=1;i<=day;i++) mt+=budgetDay(y+'-'+pad2(m)+'-'+pad2(i));
+  const mr=D.filter(x=>x.d.slice(0,7)===d.slice(0,7)&&x.d<=d), ma=sum(mr.map(x=>x.sx)), lm=sum(mr.map(x=>{const q=LYD.get(lyDate(x.d));return q?q.sx:0}));
+  const ffc=waVal('waFfc'), v=x=>x==null?'-':en(x);
+  const eM=r.cin?r.tr/r.cin:null, eF=ffc?r.tr/ffc:null;
+  const L=[
+    'Mitra10 Percetakan Negara',
+    pad2(day)+' '+BULAN[m-1]+' '+y+' : '+($('waTime').value||'--:--'),
+    '',
+    'T/A : '+en(tgt)+' / '+en(act)+' / '+(tgt?pc2(act/tgt):'-'),
+    'LY/ Growth : '+(lyS?en(lyS):'-')+' ( '+gp2(act,lyS)+' )',
+    '',
+    'MTD : '+en(mt)+' / '+en(ma)+' / '+(mt?pc2(ma/mt):'-'),
+    'LY/Growth : '+(lm?en(lm):'-')+' ( '+gp2(ma,lm)+' )',
+    '',
+    'Bs Size : '+(r.tr?en(r.sx/r.tr):'-'),
+    'Traffic Man/FFC : '+en(r.cin)+' / '+v(ffc),
+    'Invoice : '+en(r.tr),
+    'Effect. FFC : '+(eF==null?'-':pc2(eF)),
+    'Effect. Manual : '+(eM==null?'-':pc2(eM)),
+    '',
+    'Mitra10 Protection',
+    '・QTY T / A : '+v(waVal('waQt'))+' / '+v(waVal('waQa')),
+    '・Member T / A : '+v(waVal('waMt'))+' / '+v(waVal('waMa')),
+    '',
+    'Alhamdulillah ya Allah',
+    'Terimakasih Atas Nikmatmu Hari ini'
+  ];
+  $('waText').value=L.join('\n');
+}
+async function saveWa(){
+  if(!canWrite||!SB||!WAD) return;
+  const row={store_code:STORE,report_date:WAD};WAK.forEach(([id,c])=>row[c]=waVal(id));
+  try{const {error}=await SB.from('store_report_manual').upsert(row,{onConflict:'store_code,report_date'});$('waMsg').textContent=error?'Gagal menyimpan kolom manual':'Kolom manual tersimpan'}catch(e){$('waMsg').textContent='Gagal menyimpan kolom manual'}
+}
+async function renderWa(){
+  const D=DATA.D, inp=$('waDate');
+  WAK.forEach(([id])=>{$(id).disabled=!canWrite});
+  if(!D.length){$('waText').value='Belum ada data. Unggah laporan lewat tombol Unggah.';return}
+  const dates=D.map(r=>r.d).sort();
+  inp.min=dates[0]; inp.max=dates[dates.length-1];
+  if(!inp.value||!dates.includes(inp.value)) inp.value=dates[dates.length-1];
+  if(!$('waTime').value){const n=new Date();$('waTime').value=pad2(n.getHours())+':'+pad2(n.getMinutes())}
+  const d=inp.value;
+  if(WAD!==d){
+    WAD=d; WAK.forEach(([id])=>{$(id).value=''});
+    if(SB){try{const {data}=await SB.from('store_report_manual').select('*').eq('store_code',STORE).eq('report_date',d).maybeSingle();
+      if(WAD===d&&data) WAK.forEach(([id,c])=>{$(id).value=data[c]==null?'':data[c]})}catch(e){}}
+  }
+  buildWa();
+}
+['waDate'].forEach(id=>$(id).addEventListener('change',()=>{renderWa()}));
+$('waTime').addEventListener('input',buildWa);
+WAK.forEach(([id])=>$(id).addEventListener('input',()=>{buildWa();clearTimeout(WAT);WAT=setTimeout(saveWa,700)}));
+$('waCopy').addEventListener('click',async()=>{
+  const t=$('waText').value, m=$('waMsg');
+  try{await navigator.clipboard.writeText(t);m.textContent='Teks tersalin. Tempel di grup WhatsApp (Ctrl+V)'}
+  catch(e){$('waText').select();try{document.execCommand('copy');m.textContent='Teks tersalin'}catch(e2){m.textContent='Tidak bisa menyalin, blok teks lalu salin manual'}}
+  setTimeout(()=>{m.textContent=''},3500);
+});
+$('waSend').addEventListener('click',()=>{window.open('https://wa.me/?text='+encodeURIComponent($('waText').value),'_blank','noopener')});
 $('brClose').addEventListener('click',closeBrand);
 $('brOv').addEventListener('click',e=>{if(e.target===$('brOv'))closeBrand()});
 document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(!$('itOv').hidden)closeItems();else if(!$('brOv').hidden)closeBrand()});

@@ -193,6 +193,15 @@ tr[data-cat]:focus-visible{outline:2px solid var(--accent,#1f5fbf);outline-offse
 .shot-host .tg-top{grid-template-columns:minmax(0,1.5fr) repeat(4,minmax(0,1fr))}
 .shot-host .tg-main{grid-column:auto}
 .shot-host .tg-head{flex-wrap:nowrap}
+.wa-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:18px;margin-top:12px}
+@media (max-width:900px){.wa-grid{grid-template-columns:minmax(0,1fr)}}
+.wa-form h3{margin:0 0 8px;font-size:14px}
+.wa-form label,#waCard .tg-tools label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--ink3);font-weight:600;margin-bottom:10px}
+.wa-form input,#waCard .tg-tools input{font:inherit;font-size:14px;padding:7px 9px;border:1.5px solid var(--frame);border-radius:8px;background:#fff;color:var(--ink);width:100%}
+.wa-form input:disabled{background:var(--tint)}
+.wa-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#waText{width:100%;min-height:500px;font:13.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre;padding:12px;border:1.5px solid var(--frame);border-radius:10px;background:#fbfcfe;color:var(--ink);resize:vertical;box-sizing:border-box}
+.wa-btns{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
 @media (max-width:1000px){.tg-top{grid-template-columns:repeat(2,minmax(0,1fr))}.tg-main{grid-column:1/-1}}
 </style>
 </head>
@@ -263,17 +272,26 @@ tr[data-cat]:focus-visible{outline:2px solid var(--accent,#1f5fbf);outline-offse
     <div class="card"><h2>Pencapaian per Master Type Brand</h2><p class="hint">Sales exclude tax dari laporan detail penjualan, dibanding tahun lalu (tanggal yang sama).</p><div id="dimTb"></div></div>
   </section>
 
-  <section class="grid2">
-    <div class="card chart">
-      <h2>Traffic dan invoice harian</h2>
-      <p class="hint">Selisih antara batang biru dan oranye adalah pengunjung yang masuk tanpa membeli.</p>
-      <div id="tcChart"></div>
-      <div class="legend" id="tcLegend"></div>
+  <section class="card" id="waCard">
+    <div class="tg-head">
+      <div><h2>Laporan WhatsApp harian</h2><p class="tg-period" id="waSub">Angka terisi otomatis dari data yang diunggah. Lengkapi kolom manual, lalu salin atau kirim ke grup.</p></div>
+      <div class="tg-tools">
+        <label>Tanggal laporan<input type="date" id="waDate"></label>
+        <label>Jam<input type="time" id="waTime"></label>
+      </div>
     </div>
-    <div class="card">
-      <h2>Efektivitas traffic per hari</h2>
-      <p class="hint">Invoice ÷ traffic masuk. Garis hitam adalah rata-rata periode.</p>
-      <div class="efl" id="efList"></div>
+    <div class="wa-grid">
+      <div class="wa-form">
+        <h3>Isi manual</h3>
+        <label>Traffic FFC<input type="number" min="0" inputmode="numeric" id="waFfc" placeholder="mis. 780"></label>
+        <div class="wa-row"><label>Protection QTY target<input type="number" min="0" inputmode="numeric" id="waQt"></label><label>Protection QTY aktual<input type="number" min="0" inputmode="numeric" id="waQa"></label></div>
+        <div class="wa-row"><label>Member target<input type="number" min="0" inputmode="numeric" id="waMt"></label><label>Member aktual<input type="number" min="0" inputmode="numeric" id="waMa"></label></div>
+        <p class="hint" id="waNote">Kolom manual tersimpan per tanggal dan terlihat oleh seluruh tim. Target, actual, LY, MTD, Bs Size, traffic manual, invoice, dan efektivitas terhitung otomatis.</p>
+      </div>
+      <div class="wa-out">
+        <textarea id="waText" spellcheck="false" aria-label="Teks laporan WhatsApp"></textarea>
+        <div class="wa-btns"><button type="button" class="btn primary" id="waCopy">Salin teks</button><button type="button" class="chip" id="waSend">Kirim ke WhatsApp</button><span class="hint" id="waMsg"></span></div>
+      </div>
     </div>
   </section>
 
