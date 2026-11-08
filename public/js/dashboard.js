@@ -469,8 +469,8 @@ function openK(k, el){
       const hit=T.filter(p=>p.sales>=p.target), st=T.reduce((a,p)=>a+p.sales,0), tt=T.reduce((a,p)=>a+p.target,0), gap=T.reduce((a,p)=>a+Math.max(0,p.target-p.sales),0);
       const rows=T.slice().sort((a,b)=>b.sales/b.target-a.sales/a.target).map(p=>{ const a=p.sales/p.target, ok=a>=1;
         return kRow(p,['<td>'+esc(p.name)+'</td>','<td>'+esc(p.zona||'–')+'</td>',kNum(rp(p.target)),kNum(rp(p.sales)),'<td class="num rt '+(ok?'gd':'')+'">'+Math.round(a*100)+'%</td>','<td class="'+(ok?'gd':'bd')+'">'+(ok?'✓ Tercapai':'Kurang '+rp(p.target-p.sales))+'</td>']); });
-      kShow('Pencapaian target',[['Tercapai',hit.length+' / '+T.length],['Capaian total',pct(st/tt)],['Belum tercapai',String(T.length-hit.length)],['Total kekurangan',rp(gap)]],
-        kTbl([['Salesperson'],['Zonasi'],['Target',1],['Penjualan',1],['Capaian',1],['Status']],rows)+'<p class="note" style="padding:8px 4px">Klik salah satu baris untuk melihat detail item.</p>',el);
+      kShow('Pencapaian target',[['Tercapai',hit.length+' / '+T.length],['Achievement total',pct(st/tt)],['Belum tercapai',String(T.length-hit.length)],['Total kekurangan',rp(gap)]],
+        kTbl([['Salesperson'],['Zonasi'],['Target',1],['Penjualan',1],['Achievement',1],['Status']],rows)+'<p class="note" style="padding:8px 4px">Klik salah satu baris untuk melihat detail item.</p>',el);
     } else {
       const t10=A.slice(0,10), s10=t10.reduce((a,p)=>a+p.sales,0);
       kShow('Konsentrasi 10 teratas',[['10 teratas',rp(s10)],['Porsi dari total',pct(s10/(tot||1))]],
@@ -597,7 +597,7 @@ function openMpp(tr,bandKey){
   const rows=f.map((p,i)=>{ const b=bandOf(p); return kRow(p,['<td class="num mut">'+(i+1)+'</td>','<td>'+esc(p.id)+'</td>','<td>'+esc(p.name)+'</td>','<td>'+esc(p.zona||'–')+'</td>','<td>'+esc(p.brand?title(p.brand):'–')+'</td>',kNum(rp(p.target)),kNum(rp(p.sales)),'<td class="num rt '+cls[b]+'">'+pct(p.sales/p.target)+'</td>','<td class="'+cls[b]+'">'+lab[b]+'</td>']); });
   kShow('Daftar salesperson · '+tr.dataset.lbl+(set==='pb'?' · Private Brand':'')+(bk?' · '+lab[bk]:''),
     [['Actual MPP',String(l.length)],['≥100%',String(cnt.hi)],['75–99%',String(cnt.mid)],['<75%',String(cnt.lo)]],
-    rows.length? kTbl([['#'],['Sales ID'],['Salesperson'],['Zonasi'],['Master brand'],['Target',1],['Penjualan',1],['Capaian',1],['Kelompok']],rows)+'<p class="note" style="padding:8px 4px">Klik salah satu baris untuk melihat detail item. Urut dari capaian tertinggi.</p>' : '<p class="note" style="padding:14px 4px">Tidak ada salesperson pada kelompok ini.</p>',tr);
+    rows.length? kTbl([['#'],['Sales ID'],['Salesperson'],['Zonasi'],['Master brand'],['Target',1],['Penjualan',1],['Achievement',1],['Kelompok']],rows)+'<p class="note" style="padding:8px 4px">Klik salah satu baris untuk melihat detail item. Urut dari capaian tertinggi.</p>' : '<p class="note" style="padding:14px 4px">Tidak ada salesperson pada kelompok ini.</p>',tr);
 }
 $('mpp-body').addEventListener('click',e=>{ const tr=e.target.closest('tr.mpp-r'); if(!tr) return; const c=e.target.closest('td[data-b]'); openMpp(tr,c?c.dataset.b:''); });
 $('mpp-body').addEventListener('keydown',e=>{ if(e.key!=='Enter') return; const tr=e.target.closest('tr.mpp-r'); if(tr) openMpp(tr,''); });

@@ -477,7 +477,7 @@ async function openBrand(cat){
   $('brPeriod').textContent=fdy(dates[0])+' – '+fdy(dates[dates.length-1])+' · '+dates.length+' hari · dibanding '+lyYear(dates[0])+' (tanggal yang sama)';
   const a=act[cat]||0,b=bud[cat]||0,l=lyc[cat]||0,pc=b?a/b:null,cl=pc==null?'':pc>=1?'good':pc>=.9?'warn':'crit';
   const t=(k,v)=>`<div class="tg-t"><span class="l">${k}</span><span class="v">${v}</span></div>`;
-  $('brKpi').innerHTML=t('Budget periode',b?fu(b):'–')+t('Actual',fu(a))+t('Capaian',pc==null?'–':`<span class="pill ${cl}">${dec(pc*100,1)}%</span>`)+t('Selisih vs budget',b?sel(a-b):'–')+t('Tahun lalu',l?fu(l):'–')+t('Growth vs tahun lalu',l?lyp(a,l):'–');
+  $('brKpi').innerHTML=t('Budget periode',b?fu(b):'–')+t('Actual',fu(a))+t('Achievement',pc==null?'–':`<span class="pill ${cl}">${dec(pc*100,1)}%</span>`)+t('Selisih vs budget',b?sel(a-b):'–')+t('Tahun lalu',l?fu(l):'–')+t('Growth vs tahun lalu',l?lyp(a,l):'–');
   body.innerHTML='<div class="empty">Memuat rincian master brand…</div>';
   let rows;
   try{rows=await loadBrands()}catch(e){if(brCat===cat)body.innerHTML='<div class="empty">Gagal memuat data master brand.</div>';return}
