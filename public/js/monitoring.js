@@ -484,9 +484,17 @@ async function cardToPng(el){
   const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'"><foreignObject x="0" y="0" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml">'+xhtml+'</div></foreignObject></svg>';
   const img=new Image();
   await new Promise((ok,no)=>{img.onload=ok;img.onerror=()=>no(new Error('gagal membuat gambar'));img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg)});
-  const sc=Math.max(1,Math.min(2,15000/h)), cv=document.createElement('canvas'); cv.width=w*sc; cv.height=h*sc;
-  const cx=cv.getContext('2d'); cx.fillStyle='#ffffff'; cx.fillRect(0,0,cv.width,cv.height); cx.scale(sc,sc); cx.drawImage(img,0,0);
-  return await new Promise((ok,no)=>cv.toBlob(b=>b?ok(b):no(new Error('gagal membuat PNG')),'image/png'));
+  const mobile=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent), budget=mobile?16e6:40e6;
+  let sc=Math.max(1,Math.min(3,15000/h,15000/w,Math.sqrt(budget/(w*h))));
+  for(;;){
+    const cv=document.createElement('canvas'); cv.width=Math.round(w*sc); cv.height=Math.round(h*sc);
+    const cx=cv.getContext('2d');
+    if(cx){ cx.fillStyle='#ffffff'; cx.fillRect(0,0,cv.width,cv.height); cx.scale(sc,sc); cx.imageSmoothingQuality='high'; cx.drawImage(img,0,0);
+      const blob=await new Promise(ok=>cv.toBlob(b=>ok(b),'image/png'));
+      if(blob) return blob; }
+    if(sc<=1) throw new Error('gagal membuat PNG');
+    sc=Math.max(1,sc*0.7);
+  }
 }
 /* Salin/bagikan gambar: elemen digandakan ke wadah tersembunyi selebar layar PC, jadi hasilnya selalu utuh (tidak terpotong) di HP maupun PC. */
 async function shotImage(el,width,name,prep){
