@@ -485,6 +485,58 @@ $('kpop-x').addEventListener('click',closeK);
 $('kpop').addEventListener('click',e=>{ if(e.target===$('kpop')){ closeK(); return; } const tr=e.target.closest('tr[data-pid]'); if(!tr) return; const p=P.find(x=>x.id===tr.dataset.pid); if(p){ const f=kLast; closeK(); openPerson(p,f); } });
 $('kpop').addEventListener('keydown',e=>{ if(e.key!=='Enter') return; const tr=e.target.closest('tr[data-pid]'); if(!tr) return; const p=P.find(x=>x.id===tr.dataset.pid); if(p){ const f=kLast; closeK(); openPerson(p,f); } });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeK(); });
+/* ---- Salesperson dengan pencapaian MTD di bawah 60% + schedule sampai akhir bulan ---- */
+const LOWT=0.6; let lowInfo=null;
+function lowCalc(){
+  if(!dates.length) return null;
+  const last=dates[dates.length-1], to=(dT.value&&dT.value<=last)?dT.value:last, ms=to.slice(0,8)+'01', from=ms<dates[0]?dates[0]:ms;
+  const saved={P,M,H,curSel}; let rows=[], tot=0;
+  try{
+    aggregate(from,to);
+    const T=P.filter(p=>p.hasSch&&p.target>0); tot=T.length;
+    rows=T.filter(p=>p.sales/p.target<LOWT).map(p=>({id:p.id,name:p.name,zona:p.zona||'',tpd:p.tpe||0,target:p.target,sales:p.sales,pct:p.sales/p.target,codes:(SCH.dates||[]).map(d=>codeOn(p.id,d))}));
+  } finally { P=saved.P; M=saved.M; H=saved.H; curSel=saved.curSel; }
+  rows.sort((a,b)=>a.pct-b.pct);
+  return {rows,tot,from,to};
+}
+function renderLow(){
+  const el=$('low-wrap'); if(!el) return;
+  const r=lowInfo=lowCalc(), sd=(SCH&&SCH.dates)||[];
+  $('low-xlsx').disabled=$('low-copy').disabled=!(r&&r.rows.length);
+  if(!r){ $('low-sub').textContent=''; el.innerHTML='<p class="note" style="padding:14px 4px">Belum ada data.</p>'; $('low-note').textContent=''; return; }
+  const multi=sd.length&&sd[0].slice(0,7)!==sd[sd.length-1].slice(0,7), dl=d=>multi? (+d.slice(8))+'/'+(+d.slice(5,7)) : String(+d.slice(8));
+  $('low-sub').textContent='MTD '+fd(r.from,{day:'numeric',month:'short'})+' sampai '+fd(r.to,{day:'numeric',month:'short',year:'numeric'})+' · '+r.rows.length+' dari '+r.tot+' orang bertarget · jadwal sampai '+(sd.length? fd(sd[sd.length-1],{day:'numeric',month:'long'}) : '–');
+  if(!r.rows.length){ el.innerHTML='<p class="note" style="padding:14px 4px">Tidak ada salesperson di bawah 60% pada rentang ini.</p>'; $('low-note').textContent=''; return; }
+  const head='<tr><th>#</th><th>Sales ID</th><th>Salesperson</th><th>Zonasi</th><th class="rt">Target harian</th><th class="rt">Target MTD</th><th class="rt">Actual MTD</th><th class="rt">%</th>'+sd.map((d,i)=>'<th class="sc'+(i===0?' sep':'')+'" title="'+esc(fd(d))+'">'+dl(d)+'</th>').join('')+'</tr>';
+  const body=r.rows.map((p,i)=>'<tr><td class="num mut">'+(i+1)+'</td><td>'+esc(p.id)+'</td><td>'+esc(p.name)+'</td><td>'+esc(p.zona||'–')+'</td><td class="num rt">'+rp(p.tpd)+'</td><td class="num rt">'+rp(p.target)+'</td><td class="num rt">'+rp(p.sales)+'</td><td class="num rt bd">'+pct(p.pct)+'</td>'+p.codes.map((c,j)=>'<td class="sc'+(j===0?' sep':'')+' '+(isWork(c)?'on':'off')+'">'+esc(c||'')+'</td>').join('')+'</tr>').join('');
+  el.innerHTML='<table class="pt"><thead>'+head+'</thead><tbody>'+body+'</tbody></table>';
+  $('low-note').textContent='Urut dari pencapaian terendah. Kolom kanan adalah jadwal harian (S/P/M = masuk kerja, selain itu libur atau cuti) sampai akhir jadwal.';
+}
+function lowAoa(){
+  const sd=(SCH&&SCH.dates)||[], r=lowInfo;
+  return [['Sales ID','Salesperson','Zonasi','Target harian','Target MTD','Actual MTD','%'].concat(sd.map(ckLab))].concat(r.rows.map(p=>[p.id,p.name,p.zona,Math.round(p.tpd),Math.round(p.target),Math.round(p.sales),p.pct].concat(p.codes.map(c=>c||''))));
+}
+async function lowDownload(){
+  if(!lowInfo||!lowInfo.rows.length) return;
+  if(!window.XLSX){ $('low-note').textContent='Pembaca Excel belum termuat. Coba lagi sebentar.'; return; }
+  try{
+    const aoa=lowAoa(), sd=(SCH&&SCH.dates)||[], ws=XLSX.utils.aoa_to_sheet(aoa);
+    aoa.forEach((r,i)=>{ if(!i) return; [3,4,5].forEach(c=>{ const a=XLSX.utils.encode_cell({r:i,c}); if(ws[a]) ws[a].z='#,##0'; }); const a=XLSX.utils.encode_cell({r:i,c:6}); if(ws[a]) ws[a].z='0.0%'; });
+    ws['!cols']=[{wch:20},{wch:26},{wch:10},{wch:14},{wch:14},{wch:14},{wch:8}].concat(sd.map(()=>({wch:6})));
+    const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Di bawah 60% MTD');
+    const out=XLSX.write(wb,{type:'array',bookType:'xlsx'});
+    await saveBlob(new Blob([out],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),'salesperson-di-bawah-60-mtd-'+lowInfo.to+'.xlsx');
+    $('low-note').textContent='Spreadsheet diunduh. Untuk Google Sheets: buka sheets.google.com, pilih File, Impor, lalu unggah file ini.';
+  }catch(e){ $('low-note').textContent='Spreadsheet gagal dibuat.'; }
+}
+async function lowCopy(){
+  if(!lowInfo||!lowInfo.rows.length) return;
+  const aoa=lowAoa().map((r,i)=>i? r.map((v,j)=>j===6? Math.floor(v*100)+'%' : v) : r), tsv=aoa.map(r=>r.join('\t')).join('\n');
+  try{ await navigator.clipboard.writeText(tsv); $('low-note').textContent='Tabel disalin. Buka Google Sheets, klik sel A1, lalu tekan Ctrl+V.'; }
+  catch(e){ const t=document.createElement('textarea'); t.value=tsv; t.style.position='fixed'; t.style.opacity='0'; document.body.appendChild(t); t.select(); let ok=false; try{ ok=document.execCommand('copy'); }catch(x){} t.remove(); $('low-note').textContent=ok? 'Tabel disalin. Buka Google Sheets, klik sel A1, lalu tekan Ctrl+V.' : 'Browser tidak mengizinkan menyalin. Gunakan tombol Unduh spreadsheet.'; }
+}
+$('low-xlsx').addEventListener('click',lowDownload);
+$('low-copy').addEventListener('click',lowCopy);
 function renderProt(){
   const rows=Object.values(M.prot||{}).sort((a,b)=>b.s-a.s);
   const tq=rows.reduce((s,r)=>s+r.q,0), ts=rows.reduce((s,r)=>s+r.s,0);
@@ -503,7 +555,7 @@ function renderTopBrand(){
   else t.innerHTML='<table class="pt"><thead><tr><th>Master brand</th><th class="rt">Qty</th><th class="rt">Value</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+esc(title(r.k))+'</td><td class="num rt">'+fmtN.format(r.q)+'</td><td class="num rt">'+rp(r.s)+'</td></tr>').join('')+'</tbody></table>';
   const n=$('tb-note'); n.hidden=!M.mbMiss; n.textContent=M.mbMiss? M.mbMiss+' tanggal belum memuat data master brand. Unggah ulang laporan tanggal tersebut agar ikut terhitung.':'';
 }
-function all(){ renderSub(); renderKPI(); renderRank(); renderProt(); renderTopBrand(); renderMPP(); renderTable(); renderFoot(); }
+function all(){ renderSub(); renderKPI(); renderRank(); renderProt(); renderTopBrand(); renderMPP(); renderTable(); renderLow(); renderFoot(); }
 document.querySelectorAll('[data-role]').forEach(b=>b.addEventListener('click',()=>{ S.role=b.dataset.role; document.querySelectorAll('[data-role]').forEach(x=>x.setAttribute('aria-pressed',x===b)); all(); }));
 document.querySelectorAll('[data-m]').forEach(b=>b.addEventListener('click',()=>{ S.m=b.dataset.m; document.querySelectorAll('[data-m]').forEach(x=>x.setAttribute('aria-pressed',x===b)); renderRank(); }));
 $('topn').addEventListener('change',e=>{ S.topn=parseInt(e.target.value,10); renderRank(); });
