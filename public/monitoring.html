@@ -295,6 +295,30 @@ tr[data-cat]:focus-visible{outline:2px solid var(--accent,#1f5fbf);outline-offse
     </div>
   </section>
 
+  <section class="card" id="clCard">
+    <div class="tg-head">
+      <div><h2>Report Closing Daily</h2><p class="tg-period">Memakai tanggal laporan di kartu atas. Traffic manual, target QTY Protection, dan New Member T/A diisi di kartu atas. Sisanya diisi di sini.</p></div>
+      <div class="tg-tools"><label>Jam<input type="time" id="clTime" value="21:00"></label></div>
+    </div>
+    <div class="wa-grid">
+      <div class="wa-form">
+        <h3>Isi manual</h3>
+        <div class="wa-row"><label>Traffic target<input type="number" inputmode="numeric" id="clTt"></label><label>Invoice target<input type="number" inputmode="numeric" id="clIt"></label></div>
+        <label>Basket size target<input type="number" inputmode="numeric" id="clBt"></label>
+        <div class="wa-row"><label>Sales Member (Rp)<input type="number" inputmode="numeric" id="clSm"></label><label>Total invoice WhatsApp<input type="number" inputmode="numeric" id="clWi"></label></div>
+        <div class="wa-row"><label>PDD<input type="number" inputmode="numeric" id="clPdd"></label><label>OT<input type="number" inputmode="numeric" id="clOt"></label></div>
+        <div class="wa-row"><label>Sameday<input type="number" inputmode="numeric" id="clD0"></label><label>Next day<input type="number" inputmode="numeric" id="clD1"></label></div>
+        <div class="wa-row"><label>2 Days<input type="number" inputmode="numeric" id="clD2"></label><label>&gt;2 Days<input type="number" inputmode="numeric" id="clD3"></label></div>
+        <label>Keterangan late<textarea id="clLate" rows="4" style="font:inherit;font-size:14px;padding:7px 9px;border:1.5px solid var(--frame);border-radius:8px;width:100%"></textarea></label>
+        <p class="hint">Sales PB, WhatsApp, Project, kontribusi, MTD Protection (Master Brand BCA), LY, dan efektivitas terhitung otomatis. Persentase pengiriman dihitung dari OT.</p>
+      </div>
+      <div class="wa-out">
+        <textarea id="clText" spellcheck="false" aria-label="Teks report closing" style="width:100%;min-height:760px;font:13.5px/1.55 ui-monospace,Menlo,Consolas,monospace;white-space:pre;padding:12px;border:1.5px solid var(--frame);border-radius:10px;background:#fbfcfe"></textarea>
+        <div class="wa-btns"><button type="button" class="btn primary" id="clCopy">Salin teks</button><button type="button" class="chip" id="clSend">Kirim ke WhatsApp</button><span class="hint" id="clMsg"></span></div>
+      </div>
+    </div>
+  </section>
+
   <section class="card">
     <h2>Rekap harian</h2>
     <p class="hint">Gabungan laporan NAV dan FFC. Selisih bukan nol berarti kedua sistem belum sama.</p>
