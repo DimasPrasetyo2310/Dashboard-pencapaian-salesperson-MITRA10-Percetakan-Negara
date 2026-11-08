@@ -498,13 +498,15 @@ const en=n=>Math.round(n).toLocaleString('en-US');
 const pc2=x=>(x*100).toFixed(2)+'%';
 const gp2=(a,l)=>{if(!l)return '-';const g=(a/l-1)*100;return (g>=0?'+':'')+g.toFixed(2)+'%'};
 const pad2=n=>String(n).padStart(2,'0');
-let WAQ=null;
+let WAQ=null, WAM=0;
+const CLK=['clTt','clIt','clBt','clSm','clWi','clPdd','clOt','clD0','clD1','clD2','clD3','clLate'];
+const clVal=id=>{const e=$(id);if(id==='clLate')return e.value.trim();return e.value===''?null:+e.value};
 const WAK=[['waFfc','traffic_manual'],['waQt','prot_qty_t'],['waQa','prot_qty_a'],['waMt','member_t'],['waMa','member_a']];
 let WAD=null, WAT=null;
 function waVal(id){const v=$(id).value;return v===''?null:+v}
 function buildWa(){
   const d=$('waDate').value, D=DATA.D, r=D.find(x=>x.d===d);
-  if(!d||!r){$('waText').value='Belum ada data untuk tanggal ini. Unggah laporan lewat tombol Unggah.';return}
+  if(!d||!r){$('waText').value=$('clText').value='Belum ada data untuk tanggal ini. Unggah laporan lewat tombol Unggah.';return}
   const y=+d.slice(0,4), m=+d.slice(5,7), day=+d.slice(8);
   const tgt=budgetDay(d), act=r.sx, ly=LYD.get(lyDate(d)), lyS=ly?ly.sx:0;
   let mt=0; for(let i=1;i<=day;i++) mt+=budgetDay(y+'-'+pad2(m)+'-'+pad2(i));
@@ -535,15 +537,64 @@ function buildWa(){
     'Terimakasih Atas Nikmatmu Hari ini'
   ];
   $('waText').value=L.join('\n');
+  buildCl();
+}
+
+function buildCl(){
+  const d=$('waDate').value, D=DATA.D, r=D.find(x=>x.d===d); if(!d||!r) return;
+  const y=+d.slice(0,4), m=+d.slice(5,7), day=+d.slice(8);
+  const tgt=budgetDay(d), act=r.sx, ly=LYD.get(lyDate(d))||null, lyS=ly?ly.sx:0;
+  let mt=0; for(let i=1;i<=day;i++) mt+=budgetDay(y+'-'+pad2(m)+'-'+pad2(i));
+  const mr=D.filter(x=>x.d.slice(0,7)===d.slice(0,7)&&x.d<=d), ma=sum(mr.map(x=>x.sx)), lm=sum(mr.map(x=>{const q=LYD.get(lyDate(x.d));return q?q.sx:0}));
+  const v=x=>x==null?'-':en(x), pr=x=>x==null?'-':pc2(x);
+  const man=waVal('waFfc'), eF=r.cin?r.tr/r.cin:null, eM=man?r.tr/man:null;
+  const dm=(dim,val)=>sum(DIMD.filter(z=>z.d===d&&z.dim===dim&&z.v===val).map(z=>z.s));
+  const cont=x=>act?pc2(x/act):'-';
+  const sm=clVal('clSm'), pb=dm('typebrand','Private Brand'), wa=dm('source','WhatsApp'), pj=dm('source','Sales Project');
+  const pdd=clVal('clPdd'), ot=clVal('clOt'), ds=[clVal('clD0'),clVal('clD1'),clVal('clD2'),clVal('clD3')];
+  const dsp=x=>x==null||!ot?'-':pc2(x/ot);
+  const late=clVal('clLate');
+  const lc=ly?ly.cin:0, lt=ly?ly.tr:0, tt=clVal('clTt'), it=clVal('clIt'), bt=clVal('clBt');
+  const L=[
+    'REPORT CLOSING','Mitra10 Percetakan Negara',
+    pad2(day)+' '+BULAN[m-1]+' '+y+' : '+($('clTime').value||'--:--'),'',
+    'T/A : '+en(tgt)+' / '+en(act)+' / '+(tgt?pc2(act/tgt):'-'),
+    'LY/ Growth : '+(lyS?en(lyS):'-')+' ( '+gp2(act,lyS)+' )','',
+    'MTD : '+en(mt)+' / '+en(ma)+' / '+(mt?pc2(ma/mt):'-'),
+    'LY/Growth : '+(lm?en(lm):'-')+' ( '+gp2(ma,lm)+' )','',
+    'Bs Size : '+(r.tr?en(act/r.tr):'-'),
+    'Traffic Man/FFC : '+v(man)+' / '+en(r.cin),
+    'Invoice : '+en(r.tr),
+    'Effect. FFC : '+pr(eF),'Effect. Manual : '+pr(eM),'',
+    'NEMS','New Member T/A : '+v(waVal('waMt'))+' / '+v(waVal('waMa')),
+    'Sales Member : '+v(sm),'Sales Member Contr : '+(sm==null?'-':cont(sm)),'',
+    'Sales PB','Actual ( Contribusi) : '+en(pb)+' ( '+cont(pb)+' )','',
+    'Sales WhatsApp','Actual ( Contribusi) : '+en(wa)+' / '+cont(wa),'Total Invoice : '+v(clVal('clWi')),'',
+    'Sales Project','Actual ( Contribusi) : '+en(pj)+' ( '+cont(pj)+' )','',
+    'Report DSL','','PDD : '+v(pdd),'OT : '+v(ot)+' ( '+(pdd&&ot!=null?Math.round(ot/pdd*100)+'%':'-')+' )',
+    'KETERANGAN LATE : '+(late?'\n'+late:''),'',
+    'Contribusi :',
+    'Sameday : '+v(ds[0])+' ( '+dsp(ds[0])+' )','Next day : '+v(ds[1])+' ( '+dsp(ds[1])+' )',
+    '2 Days : '+v(ds[2])+' ( '+dsp(ds[2])+' )','>2 Days : '+v(ds[3])+' ( '+dsp(ds[3])+' )','',
+    'Mitra10 Protection','QTY T/A/MTD : '+v(waVal('waQt'))+' / '+v(waVal('waQa'))+' / '+(WAM>0?en(WAM):'-'),'',
+    'Traffic','T/A/LY : '+v(tt)+' / '+en(r.cin)+' / '+(lc?en(lc):'-'),
+    'Invoice','T/A/LY : '+v(it)+' / '+en(r.tr)+' / '+(lt?en(lt):'-'),
+    'Effectivitas Traffic','T/A/LY : '+(tt&&it!=null?pc2(it/tt):'-')+' / '+pr(eF)+' / '+(lc?pc2(lt/lc):'-'),
+    'Basket Size','T/A/LY : '+v(bt)+' / '+(r.tr?en(act/r.tr):'-')+' / '+(lt&&ly?en(lyS/lt):'-'),'',
+    'Terima Kasih yaallah atas nikmatmu ya diberikan pada hari ini','Semoga Omset dihari berikut selalu tercapai'
+  ];
+  $('clText').value=L.join('\n');
 }
 async function saveWa(){
   if(!canWrite||!SB||!WAD) return;
   const row={store_code:STORE,report_date:WAD};WAK.forEach(([id,c])=>row[c]=waVal(id));
+  row.extra={};CLK.forEach(id=>{row.extra[id]=clVal(id)});
   try{const {error}=await SB.from('store_report_manual').upsert(row,{onConflict:'store_code,report_date'});$('waMsg').textContent=error?'Gagal menyimpan kolom manual':'Kolom manual tersimpan'}catch(e){$('waMsg').textContent='Gagal menyimpan kolom manual'}
 }
 async function renderWa(){
   const D=DATA.D, inp=$('waDate');
-  WAK.forEach(([id])=>{$(id).disabled=!canWrite});
+  WAK.forEach(([id])=>{$(id).disabled=!canWrite});CLK.forEach(id=>{$(id).disabled=!canWrite});
+  if(!$('clTime').value){const n=new Date();$('clTime').value='21:00'}
   if(!D.length){$('waText').value='Belum ada data. Unggah laporan lewat tombol Unggah.';return}
   const dates=D.map(r=>r.d).sort();
   inp.min=dates[0]; inp.max=dates[dates.length-1];
@@ -551,11 +602,11 @@ async function renderWa(){
   if(!$('waTime').value){const n=new Date();$('waTime').value=pad2(n.getHours())+':'+pad2(n.getMinutes())}
   const d=inp.value;
   if(WAD!==d){
-    WAD=d; WAK.forEach(([id])=>{$(id).value=''}); $('waQa').placeholder='';
-    if(SB){try{const {data:bq}=await SB.from('store_day_brand').select('qty').eq('store_code',STORE).eq('sale_date',d).eq('master_brand','BCA');
-      const q=(bq||[]).reduce((a,x)=>a+(+x.qty||0),0); WAQ=q>0?q:null}catch(e){WAQ=null}}
+    WAD=d; WAK.forEach(([id])=>{$(id).value=''}); CLK.forEach(id=>{$(id).value=''}); $('waQa').placeholder='';
+    if(SB){try{const {data:bq}=await SB.from('store_day_brand').select('sale_date,qty').eq('store_code',STORE).eq('master_brand','BCA').gte('sale_date',d.slice(0,8)+'01').lte('sale_date',d);
+      const q=(bq||[]).filter(x=>x.sale_date===d).reduce((a,x)=>a+(+x.qty||0),0); WAQ=q>0?q:null; WAM=(bq||[]).reduce((a,x)=>a+(+x.qty||0),0)}catch(e){WAQ=null;WAM=0}}
     if(SB){try{const {data}=await SB.from('store_report_manual').select('*').eq('store_code',STORE).eq('report_date',d).maybeSingle();
-      if(WAD===d&&data) WAK.forEach(([id,c])=>{$(id).value=data[c]==null?'':data[c]})}catch(e){}}
+      if(WAD===d&&data){WAK.forEach(([id,c])=>{$(id).value=data[c]==null?'':data[c]});const ex=data.extra||{};CLK.forEach(id=>{$(id).value=ex[id]==null?'':ex[id]})}}catch(e){}}
   }
   if(WAQ!=null){$('waQa').value=WAQ;$('waQa').disabled=true;$('waQa').title='Otomatis dari Master Brand BCA'}else{$('waQa').title='Belum ada data BCA, isi manual'}
   buildWa();
@@ -563,12 +614,17 @@ async function renderWa(){
 ['waDate'].forEach(id=>$(id).addEventListener('change',()=>{renderWa()}));
 $('waTime').addEventListener('input',buildWa);
 WAK.forEach(([id])=>$(id).addEventListener('input',()=>{buildWa();clearTimeout(WAT);WAT=setTimeout(saveWa,700)}));
-$('waCopy').addEventListener('click',async()=>{
-  const t=$('waText').value, m=$('waMsg');
+CLK.forEach(id=>$(id).addEventListener('input',()=>{buildCl();clearTimeout(WAT);WAT=setTimeout(saveWa,700)}));
+$('clTime').addEventListener('input',buildCl);
+$('clCopy').addEventListener('click',()=>copyTxt('clText','clMsg'));
+$('clSend').addEventListener('click',()=>{window.open('https://wa.me/?text='+encodeURIComponent($('clText').value),'_blank','noopener')});
+async function copyTxt(tid,mid){
+  const t=$(tid).value, m=$(mid);
   try{await navigator.clipboard.writeText(t);m.textContent='Teks tersalin. Tempel di grup WhatsApp (Ctrl+V)'}
-  catch(e){$('waText').select();try{document.execCommand('copy');m.textContent='Teks tersalin'}catch(e2){m.textContent='Tidak bisa menyalin, blok teks lalu salin manual'}}
+  catch(e){$(tid).select();try{document.execCommand('copy');m.textContent='Teks tersalin'}catch(e2){m.textContent='Tidak bisa menyalin, blok teks lalu salin manual'}}
   setTimeout(()=>{m.textContent=''},3500);
-});
+}
+$('waCopy').addEventListener('click',()=>copyTxt('waText','waMsg'));
 $('waSend').addEventListener('click',()=>{window.open('https://wa.me/?text='+encodeURIComponent($('waText').value),'_blank','noopener')});
 $('brClose').addEventListener('click',closeBrand);
 $('brOv').addEventListener('click',e=>{if(e.target===$('brOv'))closeBrand()});
