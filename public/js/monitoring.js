@@ -778,6 +778,35 @@ function buildRg(r,d,act,ly){
   h+=tag('SALPER JUALAN >2 CATEGORY &amp; SALES BATHROOM')+T('w6',row(th('STORE',1,'st')+th('SALPER JUALAN >2 CATEGORY',3)+th('SALES BATHROOM',5))+row(th('')+['ALL SALPER','SALPER >2 CAT','CTR >2 CAT','BUDGET','LAST YEARS','ACTUAL','ACV','GRW'].map(x=>th(x)).join(''))+row(td('PCN','store')+bc(sb)));
   $('rgView').innerHTML=h;
 }
+
+/* Salin tabel Region 1 agar bisa ditempel ke Excel (sel, warna, dan gabungan kolom ikut) */
+function rgExcelParts(){
+  const src=$('rgView'); if(!src.querySelector('table')) return null;
+  const clone=src.cloneNode(true), so=[src,...src.querySelectorAll('*')], co=[clone,...clone.querySelectorAll('*')];
+  const props=['background-color','color','font-weight','font-size','font-family','text-align','padding-top','padding-right','padding-bottom','padding-left','white-space','border-top','border-right','border-bottom','border-left'];
+  so.forEach((o,i)=>{const d=co[i],cs=getComputedStyle(o);if(!d||!d.style)return;
+    d.style.cssText=props.map(p=>{let v=cs.getPropertyValue(p);if(p.startsWith('border-')&&!v)v=['width','style','color'].map(k=>cs.getPropertyValue(p+'-'+k)).join(' ');return p+':'+v}).join(';')+';';
+    if(o.tagName==='TABLE'){d.style.borderCollapse='collapse';d.style.width='auto'}});
+  clone.querySelectorAll('table').forEach(t=>t.setAttribute('border','1'));
+  clone.querySelectorAll('.rgsp').forEach(e=>e.replaceWith(document.createElement('br')));
+  const html='<html><head><meta charset="utf-8"></head><body>'+clone.innerHTML.replace(/<table/g,'<br><table')+'</body></html>';
+  const lines=[];
+  src.querySelectorAll(':scope > *').forEach(el=>{
+    if(el.tagName==='TABLE'){el.querySelectorAll('tr').forEach(tr=>{const r=[];tr.querySelectorAll('th,td').forEach(c=>{r.push(c.innerText.trim());for(let k=1;k<(+c.getAttribute('colspan')||1);k++)r.push('')});lines.push(r.join('\t'))});lines.push('')}
+    else if(el.classList.contains('rgsp')) lines.push(''); else lines.push(el.innerText.trim());
+  });
+  return {html,text:lines.join('\n')};
+}
+$('rgExcel').addEventListener('click',async()=>{
+  const b=$('rgExcel'), old=b.textContent, parts=rgExcelParts(); if(!parts){return}
+  let msg='Tersalin. Tempel di Excel (Ctrl+V)';
+  try{await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([parts.html],{type:'text/html'}),'text/plain':new Blob([parts.text],{type:'text/plain'})})])}
+  catch(e){
+    try{const r=document.createRange();r.selectNodeContents($('rgView'));const sel=getSelection();sel.removeAllRanges();sel.addRange(r);document.execCommand('copy');sel.removeAllRanges()}
+    catch(e2){msg='Tidak bisa menyalin. Blok tabel lalu salin manual'}
+  }
+  b.textContent=msg; setTimeout(()=>{b.textContent=old},3000);
+});
 $('rgShot').addEventListener('click',()=>runShot($('rgShot'),$('rgView'),1500,'report-closing-region-'+$('waDate').value+'.png'));
 
 async function saveWa(){
