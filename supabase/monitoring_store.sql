@@ -52,4 +52,4 @@ create policy store_cat_delete on public.store_day_category for delete to authen
 
 -- Detail item per hari per kategori dan master brand (migrasi store_day_item): item_no (tanpa nol di depan), item_name, qty, sales, lines
 
--- Kolom manual laporan WhatsApp harian (migrasi store_report_manual): traffic_ffc, prot_qty_t/a, member_t/a per tanggal, RLS sama
+-- Kolom manual laporan WhatsApp harian (migrasi store_report_manual): traffic_manual, prot_qty_t/a, member_t/a per tanggal, RLS sama
