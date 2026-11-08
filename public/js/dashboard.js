@@ -620,6 +620,39 @@ function rebuild(fullRange){
   if(fullRange||wasAll) setRange(first,last);
   else setRange(pf<first?first:pf, followEnd?last:(pt>last?last:pt));
 }
+function renderChecklist(){
+  if(!$('ck-body')) return;
+  const z=n=>String(n).padStart(2,'0'), now=new Date(), today=now.getFullYear()+'-'+z(now.getMonth()+1)+'-'+z(now.getDate());
+  const sd=(SCH&&SCH.dates)||[], hasS=!!(SCH&&SCH.people&&SCH.people.length);
+  const first=[dates[0],sd[0]].filter(Boolean).sort()[0];
+  if(!first){ $('ck-sub').textContent='Belum ada data.'; $('ck-sum').innerHTML=''; $('ck-body').innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--ink3)">Belum ada data. Unggah file untuk mulai.</td></tr>'; $('ck-note').textContent=''; return; }
+  const sEnd=sd.length? sd[sd.length-1] : '', lastD=dates[dates.length-1]||'';
+  const cap=sEnd&&sEnd<today? sEnd : today;
+  const end=[lastD,cap].filter(Boolean).sort().pop();
+  const list=[]; for(let t=new Date(first+'T00:00:00Z'); ; t=new Date(t.getTime()+864e5)){ const d=t.toISOString().slice(0,10); if(d>end) break; list.push(d); if(list.length>400) break; }
+  const upcoming = sEnd&&sEnd>end? Math.round((new Date(sEnd+'T00:00:00Z')-new Date(end+'T00:00:00Z'))/864e5) : 0;
+  let nOk=0,nPart=0,nMiss=0,nWait=0;
+  const mk=v=>v?'<span class="ok" title="Ada">✓</span>':'<span class="no" title="Belum ada">✕</span>';
+  const rows=list.map(d=>{
+    const x=days[d], sch=sd.includes(d);
+    const schCell = hasS? mk(sch) : '<span class="na">–</span>';
+    if(!x){
+      if(d===today){ nWait++; return '<tr><td>'+fd(d)+'</td><td class="c na">–</td><td class="c na">–</td><td class="c na">–</td><td class="c na">–</td><td class="c na">–</td><td class="c">'+schCell+'</td><td><span class="pill n">Menunggu data hari ini</span></td></tr>'; }
+      nMiss++; return '<tr><td>'+fd(d)+'</td><td class="c">'+mk(0)+'</td><td class="c">'+mk(0)+'</td><td class="c">'+mk(0)+'</td><td class="c">'+mk(0)+'</td><td class="c">'+mk(0)+'</td><td class="c">'+schCell+'</td><td><span class="pill r">Belum diunggah</span></td></tr>';
+    }
+    const ppl=x.people||[];
+    const c=[['Penjualan',!!(x.meta&&x.meta.total>0&&ppl.length)],['Jam',!!(x.hours&&x.hours.length)],['Master brand',!!(x.mb&&Object.keys(x.mb).length)],['Proteksi',Array.isArray(x.prot)],['Detail item',ppl.some(p=>Array.isArray(p.it)&&p.it.length)]];
+    const bad=c.filter(k=>!k[1]).map(k=>k[0]);
+    const schBad = hasS && !sch;
+    if(bad.length||schBad) nPart++; else nOk++;
+    const st = bad.length? '<span class="pill a">Belum lengkap</span> <span class="na">· kurang: '+bad.join(', ')+'</span>' : schBad? '<span class="pill a">Jadwal belum ada</span>' : '<span class="pill g">Lengkap</span>';
+    return '<tr><td>'+fd(d)+'</td>'+c.map(k=>'<td class="c">'+mk(k[1])+'</td>').join('')+'<td class="c">'+schCell+'</td><td>'+st+'</td></tr>';
+  });
+  $('ck-body').innerHTML=rows.slice().reverse().join('');
+  $('ck-sub').textContent='Dicek per tanggal, '+fd(first,{day:'numeric',month:'short'})+' sampai '+fd(end,{day:'numeric',month:'short',year:'numeric'})+(upcoming? ' · '+upcoming+' tanggal berikutnya belum waktunya':'');
+  $('ck-sum').innerHTML='<span class="pill g">'+nOk+' lengkap</span><span class="pill a">'+nPart+' belum lengkap</span><span class="pill r">'+nMiss+' belum diunggah</span>'+(nWait?'<span class="pill n">'+nWait+' menunggu</span>':'')+'<span class="pill '+(hasS?'g':'r')+'">Jadwal & target: '+(hasS? SCH.people.length+' orang' : 'belum ada')+'</span>';
+  $('ck-note').textContent = (nPart||nMiss||!hasS)? 'Untuk melengkapi, unggah (ulang) file Sales Detail yang memuat tanggal bertanda ✕'+(hasS?'':', dan file jadwal & target')+'. Tanggal yang sudah ada akan diganti.' : 'Semua data pada rentang ini sudah lengkap.';
+}
 function renderDataBar(){
   const n=dates.length, f=o=>fd(o,{day:'numeric',month:'short',year:'numeric'});
   $('db-title').textContent = n? n+' hari data · '+f(dates[0])+(n>1?' sampai '+f(dates[n-1]):'') : 'Belum ada data';
@@ -630,6 +663,7 @@ function renderDataBar(){
   $('mg-body').innerHTML = dates.slice().reverse().map(d=>{
     const x=days[d]; return '<tr><td>'+fd(d)+'</td><td class="num">'+rp(x.meta.total)+'</td><td class="num">'+x.people.length+'</td><td>'+esc(x.source||'File awal')+'</td><td><button type="button" class="btn sm" data-del="'+d+'">Hapus</button></td></tr>';
   }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--ink3)">Belum ada data. Unggah file untuk mulai.</td></tr>';
+  renderChecklist();
 }
 const errText = e => !e? '' : e.code==='quota_exceeded' ? 'Penyimpanan penuh.' : (e.code==='revoked'||e.code==='not_granted') ? 'Akses penyimpanan tidak tersedia.' : 'Penyimpanan gagal ('+(e.code||'error')+').';
 const dbErr = e => !e? '' : (e.code==='42501'||/row-level security|permission/i.test(e.message||'')) ? 'Akun Anda tidak punya izin mengubah data.' : 'Penyimpanan gagal ('+(e.message||e.code||'error')+').';

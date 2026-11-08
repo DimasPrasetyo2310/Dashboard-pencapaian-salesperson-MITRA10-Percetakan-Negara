@@ -64,6 +64,13 @@ table.mg th{position:static}
 table.mg th,table.mg td{text-align:left}
 table.mg td.num{text-align:right}
 table.mg th:nth-child(2){text-align:right}
+table.ck th,table.ck td{text-align:left;white-space:nowrap}
+table.ck td{font-size:14px}
+table.ck td.c,table.ck th.c{text-align:center}
+.ck .ok{color:#0e6b49;font-weight:700}.ck .no{color:#b4271c;font-weight:700}.ck .na{color:var(--ink3)}
+.cksum .pill,.ck .pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600}
+.cksum .pill.g,.ck .pill.g{background:#dff3e8;color:#0e6b49}.cksum .pill.a,.ck .pill.a{background:#fff0cc;color:#8a5a00}.cksum .pill.r,.ck .pill.r{background:#fde3e0;color:#b4271c}.cksum .pill.n,.ck .pill.n{background:#eceef2;color:#4a576b}
+.cksum{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
 .seg button{background:none;border:0;padding:7px 12px;cursor:pointer;color:var(--ink2)}
 .seg button+button{border-left:1px solid var(--line)}
@@ -247,6 +254,13 @@ table.mt .ok{color:var(--good);font-weight:600}
     <div id="manage-panel" hidden>
       <div class="scroll" style="max-height:260px"><table class="mg"><thead><tr><th>Tanggal</th><th>Penjualan</th><th>Orang</th><th>Sumber</th><th></th></tr></thead><tbody id="mg-body"></tbody></table></div>
     </div>
+  </section>
+
+  <section class="card" id="ck-card" aria-label="Checklist data">
+    <div class="hd"><div><h2>Checklist data</h2><p class="hint" id="ck-sub"></p></div></div>
+    <div class="cksum" id="ck-sum"></div>
+    <div class="scroll" style="max-height:320px"><table class="mg ck"><thead><tr><th>Tanggal</th><th class="c">Penjualan</th><th class="c">Jam</th><th class="c">Master brand</th><th class="c">Proteksi</th><th class="c">Detail item</th><th class="c">Jadwal</th><th>Status</th></tr></thead><tbody id="ck-body"></tbody></table></div>
+    <p class="note" id="ck-note"></p>
   </section>
 
   <section class="kpis" aria-label="Ringkasan">
