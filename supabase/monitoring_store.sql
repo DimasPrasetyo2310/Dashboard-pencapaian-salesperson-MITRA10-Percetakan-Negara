@@ -55,3 +55,4 @@ create policy store_cat_delete on public.store_day_category for delete to authen
 -- Kolom manual laporan WhatsApp harian (migrasi store_report_manual): traffic_manual, prot_qty_t/a, member_t/a per tanggal, RLS sama
 -- store_report_manual.extra (jsonb): kolom manual Report Closing (clTt, clIt, clBt, clSm, clWi, clPdd, clOt, clD0-3, clLate)
 -- store_budget_kpi_daily (store_code,budget_date,traffic,invoice,effect,basket,prot_qty): budget harian traffic, invoice, efektivitas, basket size, QTY Protection BCA. Diisi lewat Unggah (file budget_tiebs.xlsx)
+-- store_budget_kpi_daily.project dan .pb: budget harian Sales Project dan Private Brand (kolom AI dan AO di file budget)
