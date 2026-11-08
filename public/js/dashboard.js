@@ -494,7 +494,7 @@ function lowCalc(){
   try{
     aggregate(from,to);
     const T=P.filter(p=>p.hasSch&&p.target>0); tot=T.length;
-    rows=T.filter(p=>p.sales/p.target<LOWT).map(p=>{ const codes=(SCH.dates||[]).map(d=>codeOn(p.id,d)); return {id:p.id,name:p.name,zona:p.zona||'',brand:p.brand||'',tpd:p.tpe||0,target:p.target,sales:p.sales,pct:p.sales/p.target,codes,full:codes.reduce((a,c)=>a+(isWork(c)?(p.tpe||0):0),0)}; });
+    rows=T.filter(p=>p.sales/p.target<LOWT).map(p=>{ const codes=(SCH.dates||[]).map(d=>codeOn(p.id,d)); return {id:p.id,name:p.name,zona:p.zona||'',brand:p.brand||'',cat:(SCHM[p.id]&&SCHM[p.id].cat)||p.cat||'',tpd:p.tpe||0,target:p.target,sales:p.sales,pct:p.sales/p.target,codes,full:codes.reduce((a,c)=>a+(isWork(c)?(p.tpe||0):0),0)}; });
   } finally { P=saved.P; M=saved.M; H=saved.H; curSel=saved.curSel; }
   rows.sort((a,b)=>a.pct-b.pct);
   return {rows,tot,from,to};
@@ -508,21 +508,22 @@ function renderLow(){
   $('low-sub').textContent='MTD '+fd(r.from,{day:'numeric',month:'short'})+' sampai '+fd(r.to,{day:'numeric',month:'short',year:'numeric'})+' · '+r.rows.length+' dari '+r.tot+' orang bertarget · jadwal sampai '+(sd.length? fd(sd[sd.length-1],{day:'numeric',month:'long'}) : '–');
   if(!r.rows.length){ el.innerHTML='<p class="note" style="padding:14px 4px">Tidak ada salesperson di bawah 60% pada rentang ini.</p>'; $('low-note').textContent=''; return; }
   const tl=sd.length? fd(sd[sd.length-1],{day:'numeric',month:'short'}) : 'akhir jadwal';
-  const head='<tr><th>#</th><th>Sales ID</th><th>Salesperson</th><th>Zonasi</th><th class="rt">Target harian</th><th class="rt">Target MTD</th><th class="rt">Actual MTD</th><th class="rt">%</th>'+sd.map((d,i)=>'<th class="sc'+(i===0?' sep':'')+'" title="'+esc(fd(d))+'">'+dl(d)+'</th>').join('')+'<th class="rt sep">Target s/d '+esc(tl)+'</th><th class="rt">Actual</th><th class="rt">Achievement</th></tr>';
-  const body=r.rows.map((p,i)=>'<tr><td class="num mut">'+(i+1)+'</td><td>'+esc(p.id)+'</td><td>'+esc(p.name)+'</td><td>'+esc(p.zona||'–')+'</td><td class="num rt">'+rp(p.tpd)+'</td><td class="num rt">'+rp(p.target)+'</td><td class="num rt">'+rp(p.sales)+'</td><td class="num rt bd">'+pct(p.pct)+'</td>'+p.codes.map((c,j)=>'<td class="sc'+(j===0?' sep':'')+' '+(isWork(c)?'on':'off')+'">'+esc(c||'')+'</td>').join('')+'<td class="num rt sep">'+rp(p.full)+'</td><td class="num rt lo-in"></td><td class="num rt"></td></tr>').join('');
+  const head='<tr><th>#</th><th>Sales ID</th><th>Salesperson</th><th>Zonasi</th><th>Category</th><th class="rt">Target harian</th><th class="rt">Target MTD</th><th class="rt">Actual MTD</th><th class="rt">%</th>'+sd.map((d,i)=>'<th class="sc'+(i===0?' sep':'')+'" title="'+esc(fd(d))+'">'+dl(d)+'</th>').join('')+'<th class="rt sep">Target s/d '+esc(tl)+'</th><th class="rt">Actual</th><th class="rt">Achievement</th></tr>';
+  const body=r.rows.map((p,i)=>'<tr><td class="num mut">'+(i+1)+'</td><td>'+esc(p.id)+'</td><td>'+esc(p.name)+'</td><td>'+esc(p.zona||'–')+'</td><td>'+esc(p.cat||'–')+'</td><td class="num rt">'+rp(p.tpd)+'</td><td class="num rt">'+rp(p.target)+'</td><td class="num rt">'+rp(p.sales)+'</td><td class="num rt bd">'+pct(p.pct)+'</td>'+p.codes.map((c,j)=>'<td class="sc'+(j===0?' sep':'')+' '+(isWork(c)?'on':'off')+'">'+esc(c||'')+'</td>').join('')+'<td class="num rt sep">'+rp(p.full)+'</td><td class="num rt lo-in"></td><td class="num rt"></td></tr>').join('');
   el.innerHTML='<table class="pt"><thead>'+head+'</thead><tbody>'+body+'</tbody></table>';
   $('low-note').textContent='Urut dari pencapaian terendah. Setelah kolom jadwal harian (S/P/M = masuk kerja, selain itu libur atau cuti) ada Target sampai akhir jadwal, Actual (dikosongkan, diisi manual di spreadsheet), dan Achievement (otomatis di spreadsheet).';
 }
 const colL=n=>{ let s=''; n++; while(n>0){ const m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26); } return s; };
 const lowTL=()=>{ const sd=(SCH&&SCH.dates)||[]; return sd.length? ckLab(sd[sd.length-1]) : 'akhir jadwal'; };
-/* Susunan spreadsheet: ID SALPER | NAMA | MASTER BRAND | per tanggal [SHIFT | BUDGET | ACHIEV (kosong, diisi manual) | %] | TARGET | ACTUAL | ACHIEVEMENT */
+/* Susunan spreadsheet: SALESPERSON ID | SALESPERSON NAME | ZONA | CATEGORY | per tanggal [SHIFT | BUDGET | ACHIEV (kosong, diisi manual) | %] | TARGET | ACTUAL | ACHIEVEMENT */
+const LC=4;
 function lowLayout(){
   const sd=(SCH&&SCH.dates)||[], n=sd.length, multi=n&&sd[0].slice(0,7)!==sd[n-1].slice(0,7), dl=d=>multi? (+d.slice(8))+'/'+(+d.slice(5,7)) : String(+d.slice(8));
-  const T=3+4*n, hdr=['ID SALPER','NAMA','MASTER BRAND'], lab=['','',''];
+  const T=LC+4*n, hdr=['SALESPERSON ID','SALESPERSON NAME','ZONA','CATEGORY'], lab=['','','',''];
   sd.forEach(d=>{ hdr.push('SHIFT','BUDGET','ACHIEV','%'); lab.push(dl(d),'','',''); });
   hdr.push('TARGET s/d '+lowTL(),'ACTUAL','ACHIEVEMENT'); lab.push('TOTAL','','');
-  const rows=lowInfo.rows.map((p,k)=>{ const R=7+k, x=[p.id,p.name,p.brand||''], bs=[], as=[];
-    sd.forEach((d,i)=>{ const c=3+4*i, bC=colL(c+1)+R, aC=colL(c+2)+R; x.push(p.codes[i]||'', isWork(p.codes[i])?Math.round(p.tpd):0, null, '=IF('+bC+'>0,N('+aC+')/'+bC+',0)'); bs.push(bC); as.push(aC); });
+  const rows=lowInfo.rows.map((p,k)=>{ const R=7+k, x=[p.id,p.name,p.zona||'',p.cat||''], bs=[], as=[];
+    sd.forEach((d,i)=>{ const c=LC+4*i, bC=colL(c+1)+R, aC=colL(c+2)+R; x.push(p.codes[i]||'', isWork(p.codes[i])?Math.round(p.tpd):0, null, '=IF('+bC+'>0,N('+aC+')/'+bC+',0)'); bs.push(bC); as.push(aC); });
     x.push('=SUM('+bs.join(',')+')','=SUM('+as.join(',')+')','=IF('+colL(T)+R+'>0,'+colL(T+1)+R+'/'+colL(T)+R+',0)');
     return x; });
   const per='MTD '+fd(lowInfo.from,{day:'numeric',month:'short'})+' sampai '+fd(lowInfo.to,{day:'numeric',month:'short',year:'numeric'});
@@ -532,31 +533,30 @@ function lowLayout(){
 const lowLoad=src=>new Promise((ok,no)=>{ if(window.ExcelJS) return ok(); const s=document.createElement('script'); const t=setTimeout(()=>no(new Error('timeout')),10000); s.src=src; s.onload=()=>{ clearTimeout(t); ok(); }; s.onerror=()=>{ clearTimeout(t); no(new Error('gagal memuat')); }; document.head.appendChild(s); });
 async function lowStyled(Ly){
   await lowLoad('https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js');
-  const wb=new ExcelJS.Workbook(), ws=wb.addWorksheet('Di bawah 60% MTD',{views:[{state:'frozen',xSplit:3,ySplit:6}]});
-  const NC=Ly.T+3, thin={style:'thin',color:{argb:'FF9AA5B8'}}, bd={top:thin,left:thin,bottom:thin,right:thin};
+  const wb=new ExcelJS.Workbook(), ws=wb.addWorksheet('Di bawah 60% MTD',{views:[{state:'frozen',xSplit:LC,ySplit:6}]});
+  const NC=Ly.T+3, thin={style:'thin',color:{argb:'FF9AA5B8'}}, bd={top:thin,left:thin,bottom:thin,right:thin}, fill=c=>({type:'pattern',pattern:'solid',fgColor:{argb:c}});
   ws.getCell(1,1).value=Ly.title; ws.getCell(1,1).font={bold:true,size:14,color:{argb:'FF0F2547'}};
   ws.getCell(2,1).value=Ly.sub; ws.getCell(2,1).font={italic:true,color:{argb:'FF4A576B'}};
   Ly.aoa.slice(4).forEach((row,ri)=>{ const R=5+ri; row.forEach((v,ci)=>{ const cell=ws.getCell(R,ci+1);
     if(typeof v==='string'&&v[0]==='=') cell.value={formula:v.slice(1),result:0}; else if(v!==null&&v!=='') cell.value=v; }); });
-  // baris tanggal (kuning) dan judul kolom (biru)
-  for(let i=0;i<Ly.n;i++){ const c=4+4*i; ws.mergeCells(5,c,5,c+3); }
+  for(let i=0;i<Ly.n;i++){ const c=LC+1+4*i; ws.mergeCells(5,c,5,c+3); }
   ws.mergeCells(5,Ly.T+1,5,Ly.T+3);
   for(let c=1;c<=NC;c++){ const a=ws.getCell(5,c), h=ws.getCell(6,c);
-    if(c>3){ a.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFF00'}}; a.font={bold:true,size:13,color:{argb:'FFC00000'}}; a.alignment={horizontal:'center',vertical:'middle'}; a.border=bd; }
-    h.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF0F2547'}}; h.font={bold:true,color:{argb:'FFFFFFFF'}}; h.alignment={horizontal:'center',vertical:'middle',wrapText:true}; h.border=bd; }
+    if(c>LC){ a.fill=fill('FFFFFF00'); a.font={bold:true,size:13,color:{argb:'FFC00000'}}; a.alignment={horizontal:'center',vertical:'middle'}; a.border=bd; }
+    else if(c>1) a.fill=fill('FF00FFFF');
+    h.fill=fill('FF0F2547'); h.font={bold:true,color:{argb:'FFFFFFFF'}}; h.alignment={horizontal:'center',vertical:'middle',wrapText:true}; h.border=bd; }
   ws.getRow(6).height=30;
-  ws.getCell(5,2).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF00FFFF'}}; ws.getCell(5,3).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF00FFFF'}};
   Ly.rows.forEach((row,k)=>{ const R=7+k; ws.getRow(R).height=20;
-    for(let c=1;c<=NC;c++){ const cell=ws.getCell(R,c); cell.border=bd; cell.font={bold:c<=3||c<=3+4*Ly.n&&(c-4)%4===0};
-      if(c<=3){ cell.alignment={horizontal:c===1?'left':'center',vertical:'middle'}; continue; }
-      if(c<=3+4*Ly.n){ const k4=(c-4)%4;
+    for(let c=1;c<=NC;c++){ const cell=ws.getCell(R,c), inDays=c>LC&&c<=LC+4*Ly.n, k4=(c-LC-1)%4; cell.border=bd; cell.font={bold:c<=LC||(inDays&&k4===0)};
+      if(c<=LC){ cell.alignment={horizontal:c===1?'left':'center',vertical:'middle'}; continue; }
+      if(inDays){
         if(k4===0) cell.alignment={horizontal:'center',vertical:'middle'};
         else if(k4===3){ cell.numFmt='0.00%'; cell.alignment={horizontal:'right',vertical:'middle'}; }
-        else { cell.numFmt='#,##0'; cell.alignment={horizontal:'right',vertical:'middle'}; if(k4===2) cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFBEA'}}; }
+        else { cell.numFmt='#,##0'; cell.alignment={horizontal:'right',vertical:'middle'}; if(k4===2) cell.fill=fill('FFFFFBEA'); }
       } else { cell.numFmt=c===Ly.T+3?'0.00%':'#,##0'; cell.font={bold:true}; cell.alignment={horizontal:'right',vertical:'middle'}; }
     } });
-  ws.getColumn(1).width=22; ws.getColumn(2).width=28; ws.getColumn(3).width=22;
-  for(let i=0;i<Ly.n;i++){ const c=4+4*i; ws.getColumn(c).width=8; ws.getColumn(c+1).width=13; ws.getColumn(c+2).width=13; ws.getColumn(c+3).width=9; }
+  [22,28,10,26].forEach((w,i)=>{ ws.getColumn(i+1).width=w; });
+  for(let i=0;i<Ly.n;i++){ const c=LC+1+4*i; ws.getColumn(c).width=8; ws.getColumn(c+1).width=13; ws.getColumn(c+2).width=13; ws.getColumn(c+3).width=9; }
   ws.getColumn(Ly.T+1).width=18; ws.getColumn(Ly.T+2).width=15; ws.getColumn(Ly.T+3).width=14;
   ws.autoFilter={from:{row:6,column:1},to:{row:6,column:NC}};
   return new Blob([await wb.xlsx.writeBuffer()],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
@@ -565,7 +565,7 @@ function lowPlain(Ly){
   const ws=XLSX.utils.aoa_to_sheet(Ly.aoa);
   Object.keys(ws).forEach(k=>{ if(k[0]==='!') return; const c=ws[k]; if(c.t==='s'&&c.v[0]==='='){ c.f=c.v.slice(1); c.t='n'; c.v=0; } });
   ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:Ly.aoa.length-1,c:Ly.T+2}});
-  ws['!cols']=[{wch:22},{wch:28},{wch:22}].concat(Array.from({length:Ly.n},()=>[{wch:8},{wch:13},{wch:13},{wch:9}]).flat(),[{wch:18},{wch:15},{wch:14}]);
+  ws['!cols']=[{wch:22},{wch:28},{wch:10},{wch:26}].concat(Array.from({length:Ly.n},()=>[{wch:8},{wch:13},{wch:13},{wch:9}]).flat(),[{wch:18},{wch:15},{wch:14}]);
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Di bawah 60% MTD');
   return new Blob([XLSX.write(wb,{type:'array',bookType:'xlsx'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
 }
