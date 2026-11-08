@@ -735,7 +735,7 @@ function buildCl(){
 /* Daily Report Closing Region 1 (tabel, bisa disalin sebagai gambar) */
 function buildRg(r,d,act,ly){
   const y=+d.slice(0,4), m=+d.slice(5,7), day=+d.slice(8), bud=budgetDay(d), kb=KB.get(d)||{};
-  const n=x=>x==null||isNaN(x)?'-':en(x), p0=x=>x==null||!isFinite(x)?'-':Math.round(x*100)+'%', p2=x=>x==null||!isFinite(x)?'-':(x*100).toFixed(2)+'%';
+  const n2=x=>x==null||isNaN(x)?'-':x.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}), n=x=>x==null||isNaN(x)?'-':en(x), p0=x=>x==null||!isFinite(x)?'-':Math.round(x*100)+'%', p2=x=>x==null||!isFinite(x)?'-':(x*100).toFixed(2)+'%';
   const g=(a,l)=>l?a/l-1:null, v=id=>clVal(id)!=null?clVal(id):(waVal(id)!=null?waVal(id):null);
   const lc=ly?ly.cin:0, lt=ly?ly.tr:0, lS=ly?ly.sx:0, eF=r.cin?r.tr/r.cin:null, eL=lc?lt/lc:null, bk=r.tr?act/r.tr:null, bkL=lt?lS/lt:null;
   const dm=(dim,val)=>sum(DIMD.filter(z=>z.d===d&&z.dim===dim&&z.v===val).map(z=>z.s));
@@ -753,7 +753,7 @@ function buildRg(r,d,act,ly){
   // 2 inventory
   const inv=RGINV.map(([k])=>v('rgI'+k)), invT=sum(inv.map(x=>x||0)), anyInv=inv.some(x=>x!=null);
   h+=tag('VALUE INVENTORY CLASS A')+T('w2',row(th('STORE',1,'st')+th('VALUE INVENTORY CLASS A BY CATEGORY',12)+th('TOTAL INV CLASS A'))+row(th('')+RGINV.map(([k])=>th(k)).join('')+th(''))
-    +row(td('PCN','store')+inv.map(x=>td(n(x),'num')).join('')+td(anyInv?n(invT):'-','num'))+row(td('TOTAL','tot')+inv.map(x=>td(n(x),'tot num')).join('')+td(anyInv?n(invT):'-','tot num')));
+    +row(td('PCN','store')+inv.map(x=>td(n2(x),'num')).join('')+td(anyInv?n2(invT):'-','num'))+row(td('TOTAL','tot')+inv.map(x=>td(n(x),'tot num')).join('')+td(anyInv?n(invT):'-','tot num')));
   // 3 service level
   const pd=clVal('clPdd'), ot=clVal('clOt'), p2d=v('rgP2'), o2d=v('rgO2');
   const rs=['rgRi','rgRk','rgRd','rgRs','rgRl'].map(i=>v(i)), rsT=sum(rs.map(x=>x||0));
