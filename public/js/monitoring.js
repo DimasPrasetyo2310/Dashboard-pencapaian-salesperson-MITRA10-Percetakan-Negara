@@ -388,10 +388,53 @@ document.addEventListener('click',e=>{
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('ckPanel')&&!$('ckPanel').hidden){$('ckPanel').hidden=true;$('ckBtn').focus()}});
 
 $('upBtn').addEventListener('click',()=>$('file').click());
+/* Penanda sedang diunggah: satu orang per waktu, kunci berlaku 10 menit dan diperpanjang selama proses */
+let ME='', LOCKBUSY=null, lockTimer=null;
+const LOCKMIN=10, tmx=iso=>new Date(iso).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}).replace('.',':');
+function showLock(l){
+  LOCKBUSY=l&&l.user_email!==ME?l:null;
+  const bar=$('lockBar'); if(!bar) return;
+  const mine=l&&l.user_email===ME;
+  bar.hidden=!l; bar.className=mine?'lock mine':'lock';
+  if(l) bar.textContent=mine?'Anda sedang mengunggah data…':'Sedang diunggah oleh '+l.user_email+' sejak '+tmx(l.started_at)+'. Tunggu selesai agar data tidak bentrok, lalu muat ulang halaman.';
+  $('upBtn').disabled=!!LOCKBUSY; $('upBtn').title=LOCKBUSY?'Sedang diunggah oleh '+LOCKBUSY.user_email:'';
+}
+async function readLock(){
+  if(!SB||window.__DEMO) return null;
+  try{const {data}=await SB.from('store_upload_lock').select('user_email,started_at,expires_at').eq('store_code',STORE).maybeSingle();
+    return data&&new Date(data.expires_at)>new Date()?data:null}catch(e){return null}
+}
+async function acquireLock(){
+  if(!SB||window.__DEMO||!ME) return {ok:true};
+  const exp=()=>new Date(Date.now()+LOCKMIN*60000).toISOString();
+  try{
+    await SB.from('store_upload_lock').delete().eq('store_code',STORE).lt('expires_at',new Date().toISOString());
+    const {error}=await SB.from('store_upload_lock').insert({store_code:STORE,user_email:ME,expires_at:exp()});
+    if(!error) return {ok:true};
+    if(error.code==='23505'){
+      const cur=await readLock();
+      if(cur&&cur.user_email!==ME) return {ok:false,lock:cur};
+      await SB.from('store_upload_lock').upsert({store_code:STORE,user_email:ME,started_at:new Date().toISOString(),expires_at:exp()},{onConflict:'store_code'});
+    }
+    return {ok:true};
+  }catch(e){return {ok:true}}
+}
+const extendLock=async()=>{try{await SB.from('store_upload_lock').update({expires_at:new Date(Date.now()+LOCKMIN*60000).toISOString()}).eq('store_code',STORE).eq('user_email',ME)}catch(e){}};
+async function releaseLock(){try{clearInterval(lockTimer);if(SB&&!window.__DEMO&&ME)await SB.from('store_upload_lock').delete().eq('store_code',STORE).eq('user_email',ME)}catch(e){}}
+async function pollLock(){showLock(await readLock())}
+setInterval(()=>{if(!document.hidden&&ME)pollLock()},15000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ME)pollLock()});
 $('file').addEventListener('change',async e=>{
   const files=[...e.target.files]; e.target.value='';
   if(!files.length||!canWrite) return;
   if(!window.XLSX){showMsg('Pembaca Excel belum termuat. Muat ulang halaman lalu coba lagi.','err');return}
+  const lk=await acquireLock();
+  if(!lk.ok){showLock(lk.lock);showMsg('Sedang diunggah oleh '+lk.lock.user_email+' sejak '+tmx(lk.lock.started_at)+'. Tunggu selesai lalu coba lagi.','err');return}
+  showLock({user_email:ME,started_at:new Date().toISOString()});
+  lockTimer=setInterval(extendLock,60000);
+  try{await doUpload(files)}finally{await releaseLock();pollLock()}
+});
+async function doUpload(files){
   showMsg('Membaca '+files.length+' file…','info');
   const ok=[],bad=[];
   for(const f of files){try{const r=await parseFile(f);ok.push(...r);r.skipped.forEach(x=>bad.push(f.name+' / '+x))}catch(err){bad.push(f.name+': '+explain(err))}}
@@ -413,7 +456,7 @@ $('file').addEventListener('change',async e=>{
   if(parts.length&&!bad.length) showMsg('Berhasil disimpan. '+parts.join(' · ')+'. Data tanggal yang sama diganti dengan yang baru.','ok');
   else if(parts.length) showMsg('Sebagian disimpan. '+parts.join(' · ')+'. Gagal: '+bad.join('; '),'err');
   else showMsg('Tidak ada yang tersimpan. '+bad.join('; ')+'. Gunakan file Report Compare FFC and Nav, Sales Detail Report, atau file Budget.','err');
-});
+}
 
 /* ---------- Filter tanggal ---------- */
 $('from').addEventListener('change',e=>{let a=e.target.value,b=$('to').value;if(!a)return;if(b&&a>b)b=a;setRange(a,b)});
@@ -792,10 +835,10 @@ $('logout').addEventListener('click',signOut);$('boot-out').addEventListener('cl
     const {data:roleRow,error}=await SB.from('user_roles').select('role').eq('user_id',session.user.id).maybeSingle();
     if(error||!roleRow){bootMsg('Akun Anda belum punya peran. Hubungi admin.',true);return}
     canWrite=roleRow.role==='admin'||roleRow.role==='editor';
-    $('who-name').textContent=session.user.email||'';$('who-role').textContent=roleRow.role;
+    ME=session.user.email||'';$('who-name').textContent=ME;$('who-role').textContent=roleRow.role;
     $('upbox').hidden=!canWrite;
     if(window.__DEMO){$('lnk-sp').hidden=true;$('logout').hidden=true;$('who-role').textContent='pratinjau';$('uphint').textContent='Pratinjau: unggahan tersimpan di browser ini saja.'}
-    await loadData();
+    await loadData();pollLock();
     $('boot').hidden=true;$('app').hidden=false;
     const r=presetRange(DATA.D.length>31?'month':'all');setRange(r[0],r[1]);
     if(!DATA.D.length) showMsg(canWrite?'Belum ada data. Unggah Report Compare FFC and Nav dan Sales Detail Report.':'Belum ada data. Minta admin atau editor mengunggahnya.','info');
