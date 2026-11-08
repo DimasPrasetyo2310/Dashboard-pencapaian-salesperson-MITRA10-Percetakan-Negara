@@ -162,13 +162,19 @@ function renderTarget(rows){
     const a=act[c]||0,b=bud[c]||0,pc=b?a/b:null,cl=pc==null?'':pc>=1?'good':pc>=.9?'warn':'crit',l=lyc[c];
     return `<tr data-cat="${esc(c)}" tabindex="0" title="Klik untuk rincian master brand"${first?' class="zs"':''}>${first?`<td class="zona z${zn(c)}" rowspan="${zcount[zn(c)]+1}">${zn(c)<99?'Zona '+zn(c):'–'}</td>`:''}<td>${esc(title(c))}</td><td class="r num">${b?fu(b):'–'}</td><td class="r num">${fu(a)}</td><td class="c num">${pc==null?'–':`<span class="pill ${cl}">${dec(pc*100,1)}%</span>`}</td><td class="r num">${b?sel(a-b):'–'}</td><td class="r num">${l?fu(l):'–'}</td><td class="r num">${l?lyp(a,l):'–'}</td>${mx(c)}</tr>${sub}`}).join('');
   const aT=sum(list.map(c=>act[c]||0)), bT=sum(list.map(c=>bud[c]||0)), lT=sum(list.map(c=>lyc[c]||0));
+  const dsum=(dim,val,ds)=>sum(DIMD.filter(z=>z.dim===dim&&z.v===val&&ds.has(z.d)).map(z=>z.s));
+  const lyset=new Set(dates.map(lyDate)), hasDim=DIMD.some(z=>set.has(z.d)&&z.dim==='source');
+  const pjA=dsum('source','Sales Project',set), pjB=sum(dates.map(d=>(KB.get(d)||{}).pj||0));
+  const pbA=dsum('typebrand','Private Brand',set), pbL=dsum('typebrand','Private Brand',lyset);
+  const pjCard=hasDim?tile('Sales Project · kontribusi',(nav?dec(pjA/nav*100,1):'0,0')+'%',rp(pjA)+(pjB?' vs budget '+rp(pjB)+' ('+dec(pjA/pjB*100,1)+'%)':' · budget belum ada')):tile('Sales Project','–','Unggah laporan detail penjualan');
+  const pbCard=hasDim?(pbL?tile('Private Brand vs '+lyYear(dates[0]),(pbA/pbL-1>=0?'▲ ':'▼ ')+dec(Math.abs(pbA/pbL-1)*100,1)+'%',rp(pbA)+' vs '+rp(pbL)+' tahun lalu · kontribusi '+(nav?dec(pbA/nav*100,1):'0,0')+'%'):tile('Private Brand',rp(pbA),'kontribusi '+(nav?dec(pbA/nav*100,1):'0,0')+'% · data tahun lalu belum ada')):tile('Private Brand','–','Unggah laporan detail penjualan');
   box.innerHTML=`<div class="tg-top">
     <div class="tg-main"><span class="l">Pencapaian vs budget periode</span><span class="big ${cls}">${dec(ach*100,1)}%</span>
       <div class="pbar" role="img" aria-label="Pencapaian ${dec(ach*100,1)} persen"><i class="${cls}" style="width:${Math.min(ach,1)*100}%"></i></div>
       <span class="s">${rp(nav)} dari budget ${rp(bTot)} · ${ach>=1?'lebih':'kurang'} ${rp(Math.abs(nav-bTot))}</span></div>
     ${tile('Target '+MON[m-1]+' '+y,rp(mTarget),'target bulan penuh, exclude tax')}
-    ${tile('Tercapai bulan ini',dec(mTarget?mtd/mTarget*100:0,1)+'%',rp(mtd)+' s/d '+fd(last))}
-    ${tile('Sisa target',mTarget>mtd?rp(mTarget-mtd):'Tercapai',left>0?(mTarget>mtd?rp(need)+' per hari untuk '+left+' hari lagi':left+' hari lagi'):'bulan sudah lewat')}
+    ${pjCard}
+    ${pbCard}
     ${lySum?tile('Sales vs '+lyYear(dates[0]),(nav/lySum-1>=0?'▲ ':'▼ ')+dec(Math.abs(nav/lySum-1)*100,1)+'%',rp(lySum)+' tahun lalu'):''}
   </div>
   <div class="tbl"><table class="tgt"><thead><tr class="grp"><th colspan="2"></th><th colspan="6" class="r">Periode terpilih</th><th colspan="6" class="r msep">MTD · 1 – ${fd(last)}</th></tr><tr><th>Zonasi</th><th>Kategori</th><th class="r">Budget periode</th><th class="r">Actual</th><th class="c">Achievement</th><th class="r">Selisih</th><th class="r">Tahun lalu</th><th class="r">vs tahun lalu</th><th class="r msep">Budget MTD</th><th class="r">Actual MTD</th><th class="c">Achievement MTD</th><th class="r">Selisih MTD</th><th class="r">MTD tahun lalu</th><th class="r">vs tahun lalu</th></tr></thead><tbody>${trs}</tbody>
@@ -279,7 +285,7 @@ function parseSheet(f,sh,sn){
   if(h>=0){
     const out=[], num=x=>typeof x==='number'&&isFinite(x)?x:null;
     rows.slice(h+3).forEach(r=>{const d=r&&toISO(r[2]);if(!d)return;
-      const o={store_code:STORE,budget_date:d,traffic:num(r[3]),invoice:num(r[11]),effect:num(r[16]),basket:num(r[21]),prot_qty:num(r[27]),source:src};
+      const o={store_code:STORE,budget_date:d,traffic:num(r[3]),invoice:num(r[11]),effect:num(r[16]),basket:num(r[21]),prot_qty:num(r[27]),project:num(r[34]),pb:num(r[40]),source:src};
       if(d>='2000'&&(o.traffic||o.invoice||o.basket||o.prot_qty))out.push(o)});
     if(!out.length) throw new Error('tidak ada budget traffic/invoice yang terbaca');
     return {kind:'kpibudget',name:src,rows:out,month:out[0].budget_date.slice(0,7)};
@@ -758,9 +764,9 @@ async function loadData(){
     fetchAll('store_budget_monthly','year,month,category,budget',['year','month']),
     fetchAll('store_budget_phasing','phase_date,pct',['phase_date']),
     fetchAll('store_day_dim','sale_date,dim,dim_value,sales',['sale_date','dim','dim_value']),
-    fetchAll('store_budget_kpi_daily','budget_date,traffic,invoice,effect,basket,prot_qty',['budget_date']).catch(()=>[])
+    fetchAll('store_budget_kpi_daily','budget_date,traffic,invoice,effect,basket,prot_qty,project,pb',['budget_date']).catch(()=>[])
   ]);
-  KB=new Map();kb.forEach(r=>KB.set(r.budget_date,{tr:+r.traffic||null,iv:+r.invoice||null,ef:+r.effect||null,bs:+r.basket||null,pq:+r.prot_qty||null}));
+  KB=new Map();kb.forEach(r=>KB.set(r.budget_date,{tr:+r.traffic||null,iv:+r.invoice||null,ef:+r.effect||null,bs:+r.basket||null,pq:+r.prot_qty||null,pj:+r.project||null,pb:+r.pb||null}));
   DIMD=dm.map(r=>({d:r.sale_date,dim:r.dim,v:r.dim_value,s:+r.sales}));
   const DS=new Map();c.forEach(r=>DS.set(r.sale_date,(DS.get(r.sale_date)||0)+ +r.sales));
   const D=d.map(r=>({d:r.sale_date,sx:DS.has(r.sale_date)?Math.max(DS.get(r.sale_date),+r.nav_sales):+r.nav_sales,nav:+r.nav_sales,tr:+r.nav_trx,ffc:+r.ffc_sales,ffct:+r.ffc_trx,cin:+r.counter_in,cout:+r.counter_out}));
