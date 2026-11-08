@@ -281,22 +281,22 @@ function mppSummary(list){
     return {n,hi,mid,lo,hiP:n?hi/n:0,midP:n?mid/n:0,loP:n?lo/n:0,ipd:wd?rc/wd:0,bz:rc?s/rc:0}; };
   const rows=zs.map(z=>{ const num=(z.match(/\d+/)||[''])[0]; const l=list.filter(p=>p.zona===z);
     const cats=[...new Set(SCH.people.filter(e=>e.zona===z).map(e=>title(e.cat||'')).filter(Boolean))];
-    return Object.assign({z:num||z, cat:ZLAB[num]||cats.join(', ')}, agg(l)); });
+    return Object.assign({z:num||z, zn:z, cat:ZLAB[num]||cats.join(', ')}, agg(l)); });
   return {rows, tot:agg(list)};
 }
-function mppTable(name,color,list){
+function mppTable(name,color,list,key){
   const {rows,tot}=mppSummary(list), pc=v=>Math.round(v*100)+'%', ip=v=>v?v.toFixed(2).replace('.',','):'0', bz=v=>v?fmtN.format(Math.round(v)):'0';
-  const tr=r=>'<td class="num">'+r.n+'</td><td class="num '+(r.hi?'ok':'')+'">'+r.hi+'</td><td class="num g">'+pc(r.hiP)+'</td><td class="num">'+r.mid+'</td><td class="num a">'+pc(r.midP)+'</td><td class="num">'+r.lo+'</td><td class="num r">'+pc(r.loP)+'</td><td class="num">'+ip(r.ipd)+'</td><td class="num">'+bz(r.bz)+'</td>';
+  const tr=r=>'<td class="num" data-b="all">'+r.n+'</td><td class="num '+(r.hi?'ok':'')+'" data-b="hi">'+r.hi+'</td><td class="num g" data-b="hi">'+pc(r.hiP)+'</td><td class="num" data-b="mid">'+r.mid+'</td><td class="num a" data-b="mid">'+pc(r.midP)+'</td><td class="num" data-b="lo">'+r.lo+'</td><td class="num r" data-b="lo">'+pc(r.loP)+'</td><td class="num">'+ip(r.ipd)+'</td><td class="num">'+bz(r.bz)+'</td>';
   return '<div class="mpp"><div class="mpph"><i style="background:'+color+'"></i>'+esc(name)+'</div><div class="scroll" style="max-height:none"><table class="mt"><thead><tr><th class="l">Zona</th><th class="l">Category</th><th>Actual MPP</th><th>Salper ≥100%</th><th>Cont</th><th>Salper 75–99%</th><th>Cont</th><th>Salper &lt;75%</th><th>Cont</th><th>IPD</th><th>BZ</th></tr></thead><tbody>'+
-    rows.map(r=>'<tr><td class="l">'+esc(r.z)+'</td><td class="l cat">'+esc(r.cat)+'</td>'+tr(r)+'</tr>').join('')+
-    '<tr class="tot"><td class="l" colspan="2">Total</td>'+tr(tot)+'</tr></tbody></table></div></div>';
+    rows.map(r=>'<tr class="mpp-r" tabindex="0" data-set="'+key+'" data-z="'+esc(r.zn)+'" data-lbl="'+esc('Zona '+r.z+' · '+r.cat)+'" title="Klik untuk melihat daftar salesperson"><td class="l">'+esc(r.z)+'</td><td class="l cat">'+esc(r.cat)+'</td>'+tr(r)+'</tr>').join('')+
+    '<tr class="tot mpp-r" tabindex="0" data-set="'+key+'" data-z="" data-lbl="Semua zona" title="Klik untuk melihat daftar salesperson"><td class="l" colspan="2">Total</td>'+tr(tot)+'</tr></tbody></table></div></div>';
 }
 function renderMPP(){
   const body=$('mpp-body');
   if(!SCH.people.length){ body.innerHTML='<p class="note">Unggah file jadwal &amp; target untuk menampilkan summary ini.</p>'; $('mpp-sub').textContent=''; $('mpp-note').textContent=''; return; }
   const mem=P.filter(p=>p.hasSch && p.target>0);
   $('mpp-sub').textContent = (M.days? (M.days===1? 'Daily · '+fd(M.from,{day:'numeric',month:'short',year:'numeric'}) : fd(M.from,{day:'numeric',month:'short'})+' sampai '+fd(M.to,{day:'numeric',month:'short',year:'numeric'})+' · '+M.days+' hari') : 'tidak ada data')+' · berdasarkan achievement penjualan';
-  body.innerHTML = mppTable('Summary all salesperson, all staff (PB & eksternal)','#f0a500',mem)+mppTable('Summary all salesperson, Private Brand only','#2a9de0',mem.filter(p=>String(p.brand||'').toUpperCase()==='PRIVATE BRAND'));
+  body.innerHTML = mppTable('Summary all salesperson, all staff (PB & eksternal)','#f0a500',mem,'all')+mppTable('Summary all salesperson, Private Brand only','#2a9de0',mem.filter(p=>String(p.brand||'').toUpperCase()==='PRIVATE BRAND'),'pb');
   }
 
 const COLS = [
@@ -587,6 +587,20 @@ async function lowCopy(){
 }
 $('low-xlsx').addEventListener('click',lowDownload);
 $('low-copy').addEventListener('click',lowCopy);
+/* ---- Summary per MPP: klik baris atau kolom untuk daftar salesperson ---- */
+function openMpp(tr,bandKey){
+  const set=tr.dataset.set, zn=tr.dataset.z;
+  let l=P.filter(p=>p.hasSch&&p.target>0); if(set==='pb') l=l.filter(p=>String(p.brand||'').toUpperCase()==='PRIVATE BRAND'); if(zn) l=l.filter(p=>p.zona===zn);
+  const bandOf=p=>{ const a=p.sales/p.target; return a>=1?'hi':a<.75?'lo':'mid'; }, cnt={hi:0,mid:0,lo:0}; l.forEach(p=>cnt[bandOf(p)]++);
+  const lab={hi:'≥100%',mid:'75–99%',lo:'<75%'}, cls={hi:'gd',mid:'am',lo:'bd'}, bk=(bandKey&&bandKey!=='all')? bandKey : '';
+  const f=(bk? l.filter(p=>bandOf(p)===bk) : l).slice().sort((a,b)=>b.sales/b.target-a.sales/a.target);
+  const rows=f.map((p,i)=>{ const b=bandOf(p); return kRow(p,['<td class="num mut">'+(i+1)+'</td>','<td>'+esc(p.id)+'</td>','<td>'+esc(p.name)+'</td>','<td>'+esc(p.zona||'–')+'</td>','<td>'+esc(p.brand?title(p.brand):'–')+'</td>',kNum(rp(p.target)),kNum(rp(p.sales)),'<td class="num rt '+cls[b]+'">'+pct(p.sales/p.target)+'</td>','<td class="'+cls[b]+'">'+lab[b]+'</td>']); });
+  kShow('Daftar salesperson · '+tr.dataset.lbl+(set==='pb'?' · Private Brand':'')+(bk?' · '+lab[bk]:''),
+    [['Actual MPP',String(l.length)],['≥100%',String(cnt.hi)],['75–99%',String(cnt.mid)],['<75%',String(cnt.lo)]],
+    rows.length? kTbl([['#'],['Sales ID'],['Salesperson'],['Zonasi'],['Master brand'],['Target',1],['Penjualan',1],['Capaian',1],['Kelompok']],rows)+'<p class="note" style="padding:8px 4px">Klik salah satu baris untuk melihat detail item. Urut dari capaian tertinggi.</p>' : '<p class="note" style="padding:14px 4px">Tidak ada salesperson pada kelompok ini.</p>',tr);
+}
+$('mpp-body').addEventListener('click',e=>{ const tr=e.target.closest('tr.mpp-r'); if(!tr) return; const c=e.target.closest('td[data-b]'); openMpp(tr,c?c.dataset.b:''); });
+$('mpp-body').addEventListener('keydown',e=>{ if(e.key!=='Enter') return; const tr=e.target.closest('tr.mpp-r'); if(tr) openMpp(tr,''); });
 function renderProt(){
   const rows=Object.values(M.prot||{}).sort((a,b)=>b.s-a.s);
   const tq=rows.reduce((s,r)=>s+r.q,0), ts=rows.reduce((s,r)=>s+r.s,0);
