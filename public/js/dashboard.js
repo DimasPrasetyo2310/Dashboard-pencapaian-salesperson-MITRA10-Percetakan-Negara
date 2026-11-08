@@ -494,7 +494,7 @@ function lowCalc(){
   try{
     aggregate(from,to);
     const T=P.filter(p=>p.hasSch&&p.target>0); tot=T.length;
-    rows=T.filter(p=>p.sales/p.target<LOWT).map(p=>({id:p.id,name:p.name,zona:p.zona||'',tpd:p.tpe||0,target:p.target,sales:p.sales,pct:p.sales/p.target,codes:(SCH.dates||[]).map(d=>codeOn(p.id,d))}));
+    rows=T.filter(p=>p.sales/p.target<LOWT).map(p=>{ const codes=(SCH.dates||[]).map(d=>codeOn(p.id,d)); return {id:p.id,name:p.name,zona:p.zona||'',tpd:p.tpe||0,target:p.target,sales:p.sales,pct:p.sales/p.target,codes,full:codes.reduce((a,c)=>a+(isWork(c)?(p.tpe||0):0),0)}; });
   } finally { P=saved.P; M=saved.M; H=saved.H; curSel=saved.curSel; }
   rows.sort((a,b)=>a.pct-b.pct);
   return {rows,tot,from,to};
@@ -507,33 +507,44 @@ function renderLow(){
   const multi=sd.length&&sd[0].slice(0,7)!==sd[sd.length-1].slice(0,7), dl=d=>multi? (+d.slice(8))+'/'+(+d.slice(5,7)) : String(+d.slice(8));
   $('low-sub').textContent='MTD '+fd(r.from,{day:'numeric',month:'short'})+' sampai '+fd(r.to,{day:'numeric',month:'short',year:'numeric'})+' · '+r.rows.length+' dari '+r.tot+' orang bertarget · jadwal sampai '+(sd.length? fd(sd[sd.length-1],{day:'numeric',month:'long'}) : '–');
   if(!r.rows.length){ el.innerHTML='<p class="note" style="padding:14px 4px">Tidak ada salesperson di bawah 60% pada rentang ini.</p>'; $('low-note').textContent=''; return; }
-  const head='<tr><th>#</th><th>Sales ID</th><th>Salesperson</th><th>Zonasi</th><th class="rt">Target harian</th><th class="rt">Target MTD</th><th class="rt">Actual MTD</th><th class="rt">%</th>'+sd.map((d,i)=>'<th class="sc'+(i===0?' sep':'')+'" title="'+esc(fd(d))+'">'+dl(d)+'</th>').join('')+'</tr>';
-  const body=r.rows.map((p,i)=>'<tr><td class="num mut">'+(i+1)+'</td><td>'+esc(p.id)+'</td><td>'+esc(p.name)+'</td><td>'+esc(p.zona||'–')+'</td><td class="num rt">'+rp(p.tpd)+'</td><td class="num rt">'+rp(p.target)+'</td><td class="num rt">'+rp(p.sales)+'</td><td class="num rt bd">'+pct(p.pct)+'</td>'+p.codes.map((c,j)=>'<td class="sc'+(j===0?' sep':'')+' '+(isWork(c)?'on':'off')+'">'+esc(c||'')+'</td>').join('')+'</tr>').join('');
+  const tl=sd.length? fd(sd[sd.length-1],{day:'numeric',month:'short'}) : 'akhir jadwal';
+  const head='<tr><th>#</th><th>Sales ID</th><th>Salesperson</th><th>Zonasi</th><th class="rt">Target harian</th><th class="rt">Target MTD</th><th class="rt">Actual MTD</th><th class="rt">%</th>'+sd.map((d,i)=>'<th class="sc'+(i===0?' sep':'')+'" title="'+esc(fd(d))+'">'+dl(d)+'</th>').join('')+'<th class="rt sep">Target s/d '+esc(tl)+'</th><th class="rt">Actual</th><th class="rt">Achievement</th></tr>';
+  const body=r.rows.map((p,i)=>'<tr><td class="num mut">'+(i+1)+'</td><td>'+esc(p.id)+'</td><td>'+esc(p.name)+'</td><td>'+esc(p.zona||'–')+'</td><td class="num rt">'+rp(p.tpd)+'</td><td class="num rt">'+rp(p.target)+'</td><td class="num rt">'+rp(p.sales)+'</td><td class="num rt bd">'+pct(p.pct)+'</td>'+p.codes.map((c,j)=>'<td class="sc'+(j===0?' sep':'')+' '+(isWork(c)?'on':'off')+'">'+esc(c||'')+'</td>').join('')+'<td class="num rt sep">'+rp(p.full)+'</td><td class="num rt lo-in"></td><td class="num rt"></td></tr>').join('');
   el.innerHTML='<table class="pt"><thead>'+head+'</thead><tbody>'+body+'</tbody></table>';
-  $('low-note').textContent='Urut dari pencapaian terendah. Kolom kanan adalah jadwal harian (S/P/M = masuk kerja, selain itu libur atau cuti) sampai akhir jadwal.';
+  $('low-note').textContent='Urut dari pencapaian terendah. Setelah kolom jadwal harian (S/P/M = masuk kerja, selain itu libur atau cuti) ada Target sampai akhir jadwal, Actual (dikosongkan, diisi manual di spreadsheet), dan Achievement (otomatis di spreadsheet).';
 }
+const colL=n=>{ let s=''; n++; while(n>0){ const m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26); } return s; };
+const lowTL=()=>{ const sd=(SCH&&SCH.dates)||[]; return sd.length? ckLab(sd[sd.length-1]) : 'akhir jadwal'; };
+const lowFormula=(base,r)=>'=IF(AND(ISNUMBER('+colL(base+1)+r+'),'+colL(base)+r+'>0),'+colL(base+1)+r+'/'+colL(base)+r+',"")';
 function lowAoa(){
   const sd=(SCH&&SCH.dates)||[], r=lowInfo;
-  return [['Sales ID','Salesperson','Zonasi','Target harian','Target MTD','Actual MTD','%'].concat(sd.map(ckLab))].concat(r.rows.map(p=>[p.id,p.name,p.zona,Math.round(p.tpd),Math.round(p.target),Math.round(p.sales),p.pct].concat(p.codes.map(c=>c||''))));
+  return [['Sales ID','Salesperson','Zonasi','Target harian','Target MTD','Actual MTD','%'].concat(sd.map(ckLab),['Target s/d '+lowTL(),'Actual','Achievement'])].concat(r.rows.map(p=>[p.id,p.name,p.zona,Math.round(p.tpd),Math.round(p.target),Math.round(p.sales),p.pct].concat(p.codes.map(c=>c||''),[Math.round(p.full),null,null])));
 }
 async function lowDownload(){
   if(!lowInfo||!lowInfo.rows.length) return;
   if(!window.XLSX){ $('low-note').textContent='Pembaca Excel belum termuat. Coba lagi sebentar.'; return; }
   try{
-    const aoa=lowAoa(), sd=(SCH&&SCH.dates)||[], ws=XLSX.utils.aoa_to_sheet(aoa);
-    aoa.forEach((r,i)=>{ if(!i) return; [3,4,5].forEach(c=>{ const a=XLSX.utils.encode_cell({r:i,c}); if(ws[a]) ws[a].z='#,##0'; }); const a=XLSX.utils.encode_cell({r:i,c:6}); if(ws[a]) ws[a].z='0.0%'; });
-    ws['!cols']=[{wch:20},{wch:26},{wch:10},{wch:14},{wch:14},{wch:14},{wch:8}].concat(sd.map(()=>({wch:6})));
+    const aoa=lowAoa(), sd=(SCH&&SCH.dates)||[], base=7+sd.length, ws=XLSX.utils.aoa_to_sheet(aoa);
+    aoa.forEach((r,i)=>{ if(!i) return;
+      [3,4,5,base].forEach(c=>{ const a=XLSX.utils.encode_cell({r:i,c}); if(ws[a]) ws[a].z='#,##0'; });
+      const a=XLSX.utils.encode_cell({r:i,c:6}); if(ws[a]) ws[a].z='0.0%';
+      ws[XLSX.utils.encode_cell({r:i,c:base+2})]={t:'n',f:lowFormula(base,i+1).slice(1),z:'0.0%'};
+    });
+    ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:aoa.length-1,c:base+2}});
+    ws['!cols']=[{wch:20},{wch:26},{wch:10},{wch:14},{wch:14},{wch:14},{wch:8}].concat(sd.map(()=>({wch:6})),[{wch:18},{wch:14},{wch:14}]);
     const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Di bawah 60% MTD');
     const out=XLSX.write(wb,{type:'array',bookType:'xlsx'});
     await saveBlob(new Blob([out],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),'salesperson-di-bawah-60-mtd-'+lowInfo.to+'.xlsx');
-    $('low-note').textContent='Spreadsheet diunduh. Untuk Google Sheets: buka sheets.google.com, pilih File, Impor, lalu unggah file ini.';
+    $('low-note').textContent='Spreadsheet diunduh. Kolom Actual dikosongkan untuk diisi manual, kolom Achievement terisi otomatis. Untuk Google Sheets: buka sheets.google.com, pilih File, Impor, lalu unggah file ini.';
   }catch(e){ $('low-note').textContent='Spreadsheet gagal dibuat.'; }
 }
 async function lowCopy(){
   if(!lowInfo||!lowInfo.rows.length) return;
-  const aoa=lowAoa().map((r,i)=>i? r.map((v,j)=>j===6? Math.floor(v*100)+'%' : v) : r), tsv=aoa.map(r=>r.join('\t')).join('\n');
-  try{ await navigator.clipboard.writeText(tsv); $('low-note').textContent='Tabel disalin. Buka Google Sheets, klik sel A1, lalu tekan Ctrl+V.'; }
-  catch(e){ const t=document.createElement('textarea'); t.value=tsv; t.style.position='fixed'; t.style.opacity='0'; document.body.appendChild(t); t.select(); let ok=false; try{ ok=document.execCommand('copy'); }catch(x){} t.remove(); $('low-note').textContent=ok? 'Tabel disalin. Buka Google Sheets, klik sel A1, lalu tekan Ctrl+V.' : 'Browser tidak mengizinkan menyalin. Gunakan tombol Unduh spreadsheet.'; }
+  const base=7+(((SCH&&SCH.dates)||[]).length);
+  const aoa=lowAoa().map((r,i)=>{ if(!i) return r; const x=r.map((v,j)=>j===6? Math.trunc(v*100)+'%' : (v==null?'':v)); x[base+2]=lowFormula(base,i+1); return x; }), tsv=aoa.map(r=>r.join('\t')).join('\n');
+  const msg='Tabel disalin. Buka Google Sheets, klik sel A1, lalu tekan Ctrl+V. Kolom Actual kosong untuk diisi manual, Achievement terisi otomatis.';
+  try{ await navigator.clipboard.writeText(tsv); $('low-note').textContent=msg; }
+  catch(e){ const t=document.createElement('textarea'); t.value=tsv; t.style.position='fixed'; t.style.opacity='0'; document.body.appendChild(t); t.select(); let ok=false; try{ ok=document.execCommand('copy'); }catch(x){} t.remove(); $('low-note').textContent=ok? msg : 'Browser tidak mengizinkan menyalin. Gunakan tombol Unduh spreadsheet.'; }
 }
 $('low-xlsx').addEventListener('click',lowDownload);
 $('low-copy').addEventListener('click',lowCopy);
