@@ -642,8 +642,9 @@ const pc2=x=>(x*100).toFixed(2)+'%';
 const gp2=(a,l)=>{if(!l)return '-';const g=(a/l-1)*100;return (g>=0?'+':'')+g.toFixed(2)+'%'};
 const pad2=n=>String(n).padStart(2,'0');
 let WAQ=null, WAM=0;
-const CLK=['clTt','clIt','clBt','clSm','clWi','clPdd','clOt','clD0','clD1','clD2','clD3','clLate'];
-const clVal=id=>{const e=$(id);if(id==='clLate')return e.value.trim();return e.value===''?null:+e.value};
+const RGK=['rgMr', 'rgMn', 'rgWt', 'rgDr', 'rgW10', 'rgP2', 'rgO2', 'rgRi', 'rgRk', 'rgRd', 'rgRs', 'rgRl', 'rgSa', 'rgS2', 'rgIAP', 'rgIBT', 'rgIBM', 'rgIDW', 'rgIEL', 'rgIFW', 'rgIHW', 'rgIHS', 'rgIKC', 'rgIPS', 'rgIPL', 'rgITL'], RGINV=[["AP", "Appliances"], ["BT", "Bathroom"], ["BM", "Building Material"], ["DW", "Doors And Windows"], ["EL", "Electrical And Lighting"], ["FW", "Flooring And Wall"], ["HW", "Hardware"], ["HS", "Houseware & Hobbies"], ["KC", "Kitchen"], ["PS", "Paint And Sundries"], ["PL", "Plumbing"], ["TL", "Tools"]];
+const CLK=['clTt','clIt','clBt','clSm','clWi','clPdd','clOt','clD0','clD1','clD2','clD3','clLate',...RGK];
+const clVal=id=>{const e=$(id);if(id==='clLate'||id==='rgWt')return e.value.trim();return e.value===''?null:+e.value};
 const WAK=[['waFfc','traffic_manual'],['waQt','prot_qty_t'],['waQa','prot_qty_a'],['waMt','member_t'],['waMa','member_a']];
 let WAD=null, WAT=null;
 function waVal(id){const v=$(id).value;return v===''?null:+v}
@@ -728,7 +729,57 @@ function buildCl(){
     'Terima Kasih yaallah atas nikmatmu ya diberikan pada hari ini','Semoga Omset dihari berikut selalu tercapai'
   ];
   $('clText').value=L.join('\n');
+  buildRg(r,d,act,ly);
 }
+
+/* Daily Report Closing Region 1 (tabel, bisa disalin sebagai gambar) */
+function buildRg(r,d,act,ly){
+  const y=+d.slice(0,4), m=+d.slice(5,7), day=+d.slice(8), bud=budgetDay(d), kb=KB.get(d)||{};
+  const n=x=>x==null||isNaN(x)?'-':en(x), p0=x=>x==null||!isFinite(x)?'-':Math.round(x*100)+'%', p2=x=>x==null||!isFinite(x)?'-':(x*100).toFixed(2)+'%';
+  const g=(a,l)=>l?a/l-1:null, v=id=>clVal(id)!=null?clVal(id):(waVal(id)!=null?waVal(id):null);
+  const lc=ly?ly.cin:0, lt=ly?ly.tr:0, lS=ly?ly.sx:0, eF=r.cin?r.tr/r.cin:null, eL=lc?lt/lc:null, bk=r.tr?act/r.tr:null, bkL=lt?lS/lt:null;
+  const dm=(dim,val)=>sum(DIMD.filter(z=>z.d===d&&z.dim===dim&&z.v===val).map(z=>z.s));
+  const T=(cls,h)=>'<table class="rgt '+cls+'">'+h+'</table>', th=(t,c,x)=>'<th'+(c?' colspan="'+c+'"':'')+(x?' class="'+x+'"':'')+'>'+t+'</th>', td=(t,x)=>'<td'+(x?' class="'+x+'"':'')+'>'+t+'</td>';
+  const tag=t=>'<div class="rgtag">'+t+'</div>';
+  const neg=x=>x!=null&&x<0?'rneg':'';
+  const row=(a)=>'<tr>'+a+'</tr>';
+  let h='<div class="rgtitle">DAILY REPORT CLOSING REGION 1</div><div class="rgdate">'+day+' '+MON[m-1]+' '+y+'</div>';
+  // 1 TIEB
+  const gS=g(act,lS), gT=g(r.cin,lc), gI=g(r.tr,lt), gE=g(eF,eL), gB=g(bk,bkL);
+  const tieb=[bud?n(bud):'-',n(act),lS?n(lS):'-',p0(bud?act/bud:null),'<span class="'+neg(gS)+'">'+p2(gS)+'</span>',n(r.cin),n(lc),p2(gT),n(r.tr),n(lt),p2(gI),p2(eF),p2(eL),p2(gE),n(bk),n(bkL),'<span class="'+neg(gB)+'">'+p2(gB)+'</span>'];
+  const cells=(c)=>c.map((x,i)=>td(x,'num'+(i===3?' acv':'')+(i===4?' gw':''))).join('');
+  h+=tag('TIEB')+T('w1',row(th('Store',1,'st')+th('SALES',5)+th('TRAFFIC',3)+th('INVOICE',3)+th('E TRAFFIC',3)+th('BASKET SIZE',3))+row(th('')+['Budget','Actual','LY','ACV','GROWTH','ACT','LY','GRW','ACT','LY','GRW','ACT','LY','GRW','ACT','LY','GRW'].map(x=>th(x)).join(''))
+    +row(td('PCN','store')+cells(tieb))+row(td('Total','tot')+cells(tieb).replace(/class="num/g,'class="tot num')));
+  // 2 inventory
+  const inv=RGINV.map(([k])=>v('rgI'+k)), invT=sum(inv.map(x=>x||0)), anyInv=inv.some(x=>x!=null);
+  h+=tag('VALUE INVENTORY CLASS A')+T('w2',row(th('STORE',1,'st')+th('VALUE INVENTORY CLASS A BY CATEGORY',12)+th('TOTAL INV CLASS A'))+row(th('')+RGINV.map(([k])=>th(k)).join('')+th(''))
+    +row(td('PCN','store')+inv.map(x=>td(n(x),'num')).join('')+td(anyInv?n(invT):'-','num'))+row(td('TOTAL','tot')+inv.map(x=>td(n(x),'tot num')).join('')+td(anyInv?n(invT):'-','tot num')));
+  // 3 service level
+  const pd=clVal('clPdd'), ot=clVal('clOt'), p2d=v('rgP2'), o2d=v('rgO2');
+  const rs=['rgRi','rgRk','rgRd','rgRs','rgRl'].map(i=>v(i)), rsT=sum(rs.map(x=>x||0));
+  const dslc=[n(pd),n(ot),p2(pd&&ot!=null?ot/pd:null),n(p2d),n(o2d),p2(pd&&p2d!=null?p2d/pd:null),p2(p2d&&o2d!=null?o2d/p2d:null),...rs.map(n),rs.some(x=>x!=null)?n(rsT):'-'];
+  const dc=c=>c.map((x,i)=>td(x,'num'+(i===2||i===5||i===6?' acv':''))).join('');
+  h+='<div class="rgsp"></div>'+T('w3',row(th('STORE',1,'st')+th('TOTAL',3)+th('TWO DAYS DELIVERY (0-2 Hari)',4)+th('Reason keterlambatan',5)+th('Total'))+row(th('')+['PD','OT','Service level','PD','OT','CONT','Service level','Internal','Req kons','Dc','Supp','Lain 2',''].map(x=>th(x)).join(''))
+    +row(td('PCN','store')+dc(dslc))+row(td('TOTAL','tot')+dc(dslc).replace(/class="num/g,'class="tot num')));
+  // 4 project / member / waiting
+  const pj=dm('source','Sales Project'), mr=v('rgMr'), mn=v('rgMn'), sm=clVal('clSm');
+  const mem=[n(pj),p2(act?pj/act:null),n(mr),n(mn),p0(mr&&mn!=null?mn/mr:null),n(sm),p2(act&&sm!=null?sm/act:null),v('rgWt')||'-',n(v('rgDr')),n(v('rgW10'))];
+  const mc=c=>c.map((x,i)=>td(x,'num'+(i===1||i===4||i===6?' acv':''))).join('');
+  h+=tag('SALES PROJECT, MEMBER, WATING TIME')+T('w4',row(th('Store Name',1,'st')+th('Sales project',2)+th('MEMBER',5)+th('Waiting time',3))+row(th('')+['Actual Project','Contribusi','Member registrasi','New member transaksi','NEMS','Sales new member','Cont sales new member','Rata rata waktu tunggu','Total DR','> 10 MENIT'].map(x=>th(x)).join(''))
+    +row(td('PCN','store')+mc(mem))+row(td('Total','tot')+mc(mem).replace(/class="num/g,'class="tot num')));
+  // 5 protection
+  const pa=waVal('waQa'), pb=waVal('waQt')!=null?waVal('waQt'):kb.pq;
+  h+=tag('MITRA10 PROTECTION')+T('w5',row(th('Store Name',1,'st')+th('MITRA10 PROTECTION',3))+row(th('')+th('ACTUAL')+th('BUDGET')+th('MTD'))
+    +row(td('PCN','store')+td(n(pa),'num')+td(n(pb),'num')+td(WAM>0?n(WAM):'-','num'))+row(td('','tot')+td(n(pa),'tot num')+td(n(pb),'tot num')+td(WAM>0?n(WAM):'-','tot num')));
+  // 6 salper dan bathroom
+  const sa=v('rgSa'), s2=v('rgS2'), bb=budgetDay(d,'BATHROOM'), bl=LYC.get(lyDate(d)+'|BATHROOM')||0, ba=sum(DATA.C.filter(c=>c[0]===d&&c[1]==='BATHROOM').map(c=>c[2])), gb=g(ba,bl);
+  const sb=[n(sa),n(s2),p0(sa&&s2!=null?s2/sa:null),bb?n(bb):'-',bl?n(bl):'-',n(ba),p0(bb?ba/bb:null),'<span class="'+neg(gb)+'">'+(gb==null?'-':Math.round(gb*100)+'%')+'</span>'];
+  const bc=c=>c.map((x,i)=>td(x,'num'+(i===6?' acv':''))).join('');
+  h+=tag('SALPER JUALAN >2 CATEGORY &amp; SALES BATHROOM')+T('w6',row(th('STORE',1,'st')+th('SALPER JUALAN >2 CATEGORY',3)+th('SALES BATHROOM',5))+row(th('')+['ALL SALPER','SALPER >2 CAT','CTR >2 CAT','BUDGET','LAST YEARS','ACTUAL','ACV','GRW'].map(x=>th(x)).join(''))+row(td('PCN','store')+bc(sb)));
+  $('rgView').innerHTML=h;
+}
+$('rgShot').addEventListener('click',()=>runShot($('rgShot'),$('rgView'),1500,'report-closing-region-'+$('waDate').value+'.png'));
+
 async function saveWa(){
   if(!canWrite||!SB||!WAD) return;
   const row={store_code:STORE,report_date:WAD};WAK.forEach(([id,c])=>row[c]=waVal(id));
