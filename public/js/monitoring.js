@@ -880,6 +880,12 @@ async function renderWa(){
       const q=(bq||[]).filter(x=>x.sale_date===d).reduce((a,x)=>a+(+x.qty||0),0); WAQ=q>0?q:(DATA.C.some(c=>c[0]===d)?0:null); WAM=(bq||[]).reduce((a,x)=>a+(+x.qty||0),0)}catch(e){WAQ=null;WAM=0}}
     if(SB){try{const {data}=await SB.from('store_report_manual').select('*').eq('store_code',STORE).eq('report_date',d).maybeSingle();
       if(WAD===d&&data){WAK.forEach(([id,c])=>{$(id).value=data[c]==null?'':data[c]});const ex=data.extra||{};CLK.forEach(id=>{$(id).value=ex[id]==null?'':ex[id]})}}catch(e){}}
+    // Value inventory permanen: bila tanggal ini belum diisi, pakai isian terakhir yang tersimpan
+    if(SB&&WAD===d&&RGINV.every(([k])=>$('rgI'+k).value==='')){try{
+      const {data:pv}=await SB.from('store_report_manual').select('report_date,extra').eq('store_code',STORE).lt('report_date',d).order('report_date',{ascending:false}).limit(60);
+      const hit=(pv||[]).find(r=>r.extra&&RGINV.some(([k])=>r.extra['rgI'+k]!=null&&r.extra['rgI'+k]!==''));
+      if(hit&&WAD===d){RGINV.forEach(([k])=>{const x=hit.extra['rgI'+k];$('rgI'+k).value=x==null?'':x});if(canWrite){clearTimeout(WAT);WAT=setTimeout(saveWa,700)}}
+    }catch(e){}}
   }
   {const k=KB.get(d)||{},ph=(id,x)=>{$(id).placeholder=x!=null?'budget '+en(x):''};ph('waQt',k.pq);ph('clTt',k.tr);ph('clIt',k.iv);ph('clBt',k.bs)}
   if(WAQ!=null){$('waQa').value=WAQ;$('waQa').disabled=true;$('waQa').title='Otomatis dari Master Brand BCA'}else{$('waQa').title='Belum ada laporan detail tanggal ini';$('waQa').placeholder='belum ada data detail'}
