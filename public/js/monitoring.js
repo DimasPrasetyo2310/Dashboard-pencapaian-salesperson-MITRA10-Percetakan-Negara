@@ -836,12 +836,12 @@ async function renderWa(){
   if(WAD!==d){
     WAD=d; WAK.forEach(([id])=>{$(id).value=''}); CLK.forEach(id=>{$(id).value=''}); $('waQa').placeholder='';
     if(SB){try{const {data:bq}=await SB.from('store_day_brand').select('sale_date,qty').eq('store_code',STORE).eq('master_brand','BCA').gte('sale_date',d.slice(0,8)+'01').lte('sale_date',d);
-      const q=(bq||[]).filter(x=>x.sale_date===d).reduce((a,x)=>a+(+x.qty||0),0); WAQ=q>0?q:null; WAM=(bq||[]).reduce((a,x)=>a+(+x.qty||0),0)}catch(e){WAQ=null;WAM=0}}
+      const q=(bq||[]).filter(x=>x.sale_date===d).reduce((a,x)=>a+(+x.qty||0),0); WAQ=q>0?q:(DATA.C.some(c=>c[0]===d)?0:null); WAM=(bq||[]).reduce((a,x)=>a+(+x.qty||0),0)}catch(e){WAQ=null;WAM=0}}
     if(SB){try{const {data}=await SB.from('store_report_manual').select('*').eq('store_code',STORE).eq('report_date',d).maybeSingle();
       if(WAD===d&&data){WAK.forEach(([id,c])=>{$(id).value=data[c]==null?'':data[c]});const ex=data.extra||{};CLK.forEach(id=>{$(id).value=ex[id]==null?'':ex[id]})}}catch(e){}}
   }
   {const k=KB.get(d)||{},ph=(id,x)=>{$(id).placeholder=x!=null?'budget '+en(x):''};ph('waQt',k.pq);ph('clTt',k.tr);ph('clIt',k.iv);ph('clBt',k.bs)}
-  if(WAQ!=null){$('waQa').value=WAQ;$('waQa').disabled=true;$('waQa').title='Otomatis dari Master Brand BCA'}else{$('waQa').title='Belum ada data BCA, isi manual'}
+  if(WAQ!=null){$('waQa').value=WAQ;$('waQa').disabled=true;$('waQa').title='Otomatis dari Master Brand BCA'}else{$('waQa').title='Belum ada laporan detail tanggal ini';$('waQa').placeholder='belum ada data detail'}
   buildWa();
 }
 ['waDate'].forEach(id=>$(id).addEventListener('change',()=>{renderWa()}));
@@ -889,6 +889,7 @@ async function fetchAll(table,cols,order){
   return out;
 }
 async function loadData(){
+  WAD=null;
   const [d,c,b,p,dm,kb]=await Promise.all([
     fetchAll('store_daily','sale_date,nav_sales,nav_trx,ffc_sales,ffc_trx,counter_in,counter_out',['sale_date']),
     fetchAll('store_day_category','sale_date,category,sales',['sale_date','category']),
