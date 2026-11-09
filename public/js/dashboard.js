@@ -629,64 +629,74 @@ document.querySelectorAll('[data-m]').forEach(b=>b.addEventListener('click',()=>
 $('topn').addEventListener('change',e=>{ S.topn=parseInt(e.target.value,10); renderRank(); });
 $('q').addEventListener('input',e=>{ S.q=e.target.value; renderTable(); });
 // ---- Screenshot tabel detail (PNG untuk dibagikan) ----
-function shotCanvas(){
-  const rows = lastL, hasT = lastHasT, sd = lastSd;
-  const S2=Math.max(1,Math.min(2,12000/(150+36*(lastL.length+3)))), W=(hasT?1700:1040), padX=32, FONT="'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif", DISP="'Schibsted Grotesk','Public Sans',system-ui,sans-serif";
-  const cols = hasT
-    ? [['#',40,'r'],['Sales ID',175,'l'],['Salesperson',210,'l'],['Zonasi',90,'l'],['Jadwal '+shortD(sd),100,'l'],['Master brand',150,'l'],['Penjualan',170,'r'],['Penjualan master brand',185,'bt'],['Non master brand',160,'r'],['Target',160,'r'],['Pencapaian',170,'bar']]
-    : [['#',44,'r'],['Sales ID',150,'l'],['Salesperson',230,'l'],['Kategori utama',200,'l'],['Penjualan',170,'r'],['% total',100,'r'],['Struk',70,'r']];
-  const tw = cols.reduce((a,c)=>a+c[1],0), scale=(W-padX*2)/tw; cols.forEach(c=>c[1]=c[1]*scale);
+function shotPages(){
+  const rowsAll=lastL, hasT=lastHasT, sd=lastSd, PAGE=30, FONT="'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif", DISP="'Schibsted Grotesk','Public Sans',system-ui,sans-serif", padX=28;
   const q = S.q.trim();
   const f = []; f.push(S.role==='all'?'Semua peran':S.role==='Kasir'?'Kasir':'Sales'); if(S.zona) f.push('Zonasi '+S.zona);
   if(lastHasT && !S.schSel.length) f.push('Tanggal jadwal '+shortD(sd)); if(S.schSel.length) f.push('Jadwal '+schLabel()+' ('+shortD(sd)+')'); if(lastDr) f.push((S.dMode==='mtd'?'MTD':'Rentang tabel')+' '+lastM.days+' hari'); if(q) f.push('Cari "'+q+'"');
   const period = lastM.from? (lastM.from===lastM.to? fd(lastM.from) : fd(lastM.from,{day:'numeric',month:'short'})+' sampai '+fd(lastM.to)) : '';
-  const headH=116, thH=46, rowH=48, footH=58, H=headH+thH+rowH*Math.max(rows.length,1)+footH;
-  const c=document.createElement('canvas'); c.width=W*S2; c.height=H*S2; const g=c.getContext('2d'); g.scale(S2,S2);
-  g.fillStyle='#fff'; g.fillRect(0,0,W,H); g.textBaseline='middle';
-  const fit=(t,w)=>{ t=String(t); if(g.measureText(t).width<=w) return t; while(t.length>1 && g.measureText(t+'…').width>w) t=t.slice(0,-1); return t+'…'; };
-  g.fillStyle='#0b0b0b'; g.font='700 30px '+DISP; g.textAlign='left'; g.fillText('Pencapaian Salesperson',padX,34);
-  g.fillStyle='#52514e'; g.font='400 18px '+FONT;
-  g.fillText(fit(D.store+' · '+period+' · penjualan tanpa PPN',W-padX*2),padX,68);
-  g.fillStyle='#7a7975'; g.fillText(fit('Filter: '+f.join(' · ')+' · '+rows.length+' orang',W-padX*2),padX,95);
-  let y=headH; g.fillStyle='#0f2547'; g.fillRect(padX,y,W-padX*2,thH); g.fillStyle='#f5a800'; g.fillRect(padX,y+thH-3,W-padX*2,3);
-  g.font='700 12px '+FONT; g.fillStyle='#ffffff';
-  const cx=(i)=>padX+cols.slice(0,i).reduce((a,x)=>a+x[1],0);
-  cols.forEach((k,i)=>{ const x=cx(i), w=k[1]; const l=k[2]==='l'||k[2]==='bar'; g.textAlign=l?'left':'right'; g.fillText(k[0].toUpperCase(),l?x+10:x+w-10,y+thH/2); });
-  y+=thH; 
-  rows.forEach((p,r)=>{
-    const a=p.target>0? p.sales/p.target : -1, cd=codeOn(p.id,sd);
-    if(r%2) { g.fillStyle='#fafafa'; g.fillRect(padX,y,W-padX*2,rowH); }
-    g.fillStyle='#ecedeb'; g.fillRect(padX,y+rowH-1,W-padX*2,1);
-    const cells = hasT
+  const cellsOf=p=>{ const cd=codeOn(p.id,sd); return hasT
       ? [p.rank==null?'–':p.rank, p.id, p.name, p.zona||'–', cd||'–', p.brand?title(p.brand):'–', rp(p.sales), p.brand?brandSales(p):null, p.brand?rp(nonBrand(p)):'–', p.target==null?'–':p.target===0?'tidak ada':rp(p.target), null]
-      : [p.rank==null?'–':p.rank, p.id, p.name, p.cat?title(p.cat):'–', rp(p.sales), pct(p.sales/(lastM.total||1)), p.receipts];
-    cols.forEach((k,i)=>{
-      const x=cx(i), w=k[1], mid=y+rowH/2;
-      if(k[2]==='bar'){
-        const bw=w-20-62, bx=x+10;
-        g.fillStyle='#ecedeb'; g.fillRect(bx,mid-4,bw,8);
-        if(a>=0){ g.fillStyle=a>=1?'#1f8a4c':'#2a78d6'; g.fillRect(bx,mid-4,Math.min(1,a)*bw,8); g.font='600 18px '+FONT; g.textAlign='right'; g.fillStyle=a>=1?'#1f8a4c':'#0b0b0b'; g.fillText(Math.round(a*100)+'%',x+w-10,mid); }
-        else { g.font='400 18px '+FONT; g.textAlign='right'; g.fillStyle='#7a7975'; g.fillText('–',x+w-10,mid); }
-        return;
-      }
-      if(k[2]==='bt'){ g.textAlign='right'; if(cells[i]==null){ g.font='400 18px '+FONT; g.fillStyle='#7a7975'; g.fillText('–',x+w-10,mid); } else { g.font='400 18px '+FONT; g.fillStyle='#0b0b0b'; g.fillText(rp(cells[i]),x+w-10,mid-7); g.font='400 10.5px '+FONT; g.fillStyle='#7a7975'; g.fillText(fit(title(p.brand),w-20),x+w-10,mid+8); } return; }
-      const l=k[2]==='l'; g.textAlign=l?'left':'right';
-      g.font=(i===2?'500 ':'400 ')+(i===1?'14px ':'18px ')+FONT; g.fillStyle=(i===0||cells[i]==='–'||cells[i]==='tidak ada')?'#7a7975':'#0b0b0b';
-      g.fillText(fit(cells[i],w-20),l?x+10:x+w-10,mid);
+      : [p.rank==null?'–':p.rank, p.id, p.name, p.cat?title(p.cat):'–', rp(p.sales), pct(p.sales/(lastM.total||1)), p.receipts]; };
+  const mc=document.createElement('canvas').getContext('2d'), mw=(t,f)=>{ mc.font=f; return mc.measureText(String(t)).width; };
+  const HF='700 15px '+FONT, bodyF=i=>(i===1?'400 18px ':(i===2?'500 24px ':'400 24px '))+FONT;
+  const spec = hasT
+    ? [['#','r',44,60],['Sales ID','l',150,230],['Salesperson','l',190,300],['Zonasi','l',92,130],['Jadwal '+shortD(sd),'l',92,150],['Master brand','l',140,220],['Penjualan (Rp)','r',130,230],['Penjualan master brand (Rp)','bt',150,240],['Non master brand (Rp)','r',130,230],['Target (Rp)','r',130,230],['Pencapaian','bar',190,190]]
+    : [['#','r',44,60],['Sales ID','l',150,230],['Salesperson','l',190,300],['Kategori utama','l',180,300],['Penjualan (Rp)','r',130,230],['% total','r',100,160],['Struk','r',80,120]];
+  const hl=h=>{ const t=h.toUpperCase(), w=t.split(' '); if(w.length<2||mw(t,HF)<=118) return [t]; const m=Math.ceil(w.length/2); return [w.slice(0,m).join(' '),w.slice(m).join(' ')]; };
+  const rn=v=>typeof v==='string'? v.replace(/^Rp\s?/,'') : v, RI=hasT? [6,8,9] : [4];
+  const allCells=rowsAll.map(p=>cellsOf(p).map((v,i)=>RI.includes(i)? rn(v) : v));
+  const cols=spec.map((k,i)=>{ let w=Math.max(...hl(k[0]).map(t=>mw(t,HF)));
+    allCells.forEach((c,r)=>{ if(k[1]==='bar') return; const v=c[i]; if(v==null) return; const t=k[1]==='bt'? rn(rp(v)) : v; w=Math.max(w,mw(t,bodyF(i))); });
+    w=k[1]==='bar'? k[2] : Math.min(k[3],Math.max(k[2],Math.ceil(w)+24)); return {h:k[0],al:k[1],w,lines:hl(k[0])}; });
+  let tw=cols.reduce((a,c)=>a+c.w,0); const W=Math.max(1320,Math.round(tw+padX*2)); const sc=(W-padX*2)/tw; cols.forEach(c=>c.w=c.w*sc); tw=W-padX*2;
+  const pages=Math.max(1,Math.ceil(rowsAll.length/PAGE)), headH=124, thH=64, rowH=58, footH=64, out=[];
+  for(let pg=0;pg<pages;pg++){
+    const rows=rowsAll.slice(pg*PAGE,(pg+1)*PAGE), H=headH+thH+rowH*Math.max(rows.length,1)+footH, S2=Math.max(1,Math.min(2,12000/H,9000/W));
+    const c=document.createElement('canvas'); c.width=Math.round(W*S2); c.height=Math.round(H*S2); const g=c.getContext('2d'); g.scale(S2,S2);
+    g.fillStyle='#fff'; g.fillRect(0,0,W,H); g.textBaseline='middle';
+    const fit=(t,w)=>{ t=String(t); if(g.measureText(t).width<=w) return t; while(t.length>1 && g.measureText(t+'…').width>w) t=t.slice(0,-1); return t+'…'; };
+    g.fillStyle='#0b0b0b'; g.font='700 34px '+DISP; g.textAlign='left'; g.fillText('Pencapaian Salesperson',padX,36);
+    if(pages>1){ g.textAlign='right'; g.font='700 22px '+FONT; g.fillStyle='#0f2547'; g.fillText('Halaman '+(pg+1)+' dari '+pages+' · nomor '+(pg*PAGE+1)+'–'+(pg*PAGE+rows.length),W-padX,36); g.textAlign='left'; }
+    g.fillStyle='#52514e'; g.font='400 20px '+FONT;
+    g.fillText(fit(D.store+' · '+period+' · penjualan tanpa PPN',W-padX*2),padX,74);
+    g.fillStyle='#7a7975'; g.fillText(fit('Filter: '+f.join(' · ')+' · '+rowsAll.length+' orang',W-padX*2),padX,102);
+    let y=headH; g.fillStyle='#0f2547'; g.fillRect(padX,y,tw,thH); g.fillStyle='#f5a800'; g.fillRect(padX,y+thH-3,tw,3);
+    g.font=HF; g.fillStyle='#ffffff';
+    const cx=i=>padX+cols.slice(0,i).reduce((a,x)=>a+x.w,0);
+    cols.forEach((k,i)=>{ const x=cx(i), l=k.al==='l'; g.textAlign=l?'left':'right'; k.lines.forEach((t,j)=>g.fillText(t,l?x+12:x+k.w-12,y+(thH-3)/2+(j-(k.lines.length-1)/2)*18)); });
+    y+=thH;
+    rows.forEach((p,r)=>{
+      const a=p.target>0? p.sales/p.target : -1, cells=allCells[pg*PAGE+r];
+      if(r%2){ g.fillStyle='#fafafa'; g.fillRect(padX,y,tw,rowH); }
+      g.fillStyle='#ecedeb'; g.fillRect(padX,y+rowH-1,tw,1);
+      cols.forEach((k,i)=>{
+        const x=cx(i), w=k.w, mid=y+rowH/2;
+        if(k.al==='bar'){
+          const bw=w-24-74, bx=x+12;
+          if(a>=0){ g.fillStyle='#ecedeb'; g.fillRect(bx,mid-5,bw,10); g.fillStyle=a>=1?'#1f8a4c':'#2a78d6'; g.fillRect(bx,mid-5,Math.min(1,a)*bw,10); g.font='700 22px '+FONT; g.textAlign='right'; g.fillStyle=a>=1?'#1f8a4c':'#0b0b0b'; g.fillText(Math.round(a*100)+'%',x+w-12,mid); }
+          else { g.font='400 24px '+FONT; g.textAlign='right'; g.fillStyle='#7a7975'; g.fillText('–',x+w-12,mid); }
+          return;
+        }
+        if(k.al==='bt'){ g.textAlign='right'; if(cells[i]==null){ g.font=bodyF(i); g.fillStyle='#7a7975'; g.fillText('–',x+w-12,mid); } else { g.font=bodyF(i); g.fillStyle='#0b0b0b'; g.fillText(rn(rp(cells[i])),x+w-12,mid-9); g.font='400 15px '+FONT; g.fillStyle='#7a7975'; g.fillText(fit(title(p.brand),w-24),x+w-12,mid+13); } return; }
+        const l=k.al==='l'; g.textAlign=l?'left':'right';
+        g.font=bodyF(i); g.fillStyle=(i===0||cells[i]==='–'||cells[i]==='tidak ada')?'#7a7975':'#0b0b0b';
+        g.fillText(fit(cells[i],w-24),l?x+12:x+w-12,mid);
+      });
+      y+=rowH;
     });
-    y+=rowH;
-  });
-  if(!rows.length){ g.fillStyle='#7a7975'; g.textAlign='center'; g.font='400 18px '+FONT; g.fillText('Tidak ada orang yang cocok dengan filter.',W/2,y+rowH/2); y+=rowH; }
-  g.fillStyle='#7a7975'; g.font='400 14px '+FONT; g.textAlign='left';
-  const now=new Date().toLocaleString('id-ID',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
-  g.fillText('Dibuat '+now+(hasT?' · target harian dari file jadwal':''),padX,y+footH/2+4);
-  return c;
+    if(!rows.length){ g.fillStyle='#7a7975'; g.textAlign='center'; g.font='400 22px '+FONT; g.fillText('Tidak ada orang yang cocok dengan filter.',W/2,y+rowH/2); y+=rowH; }
+    g.fillStyle='#7a7975'; g.font='400 16px '+FONT; g.textAlign='left';
+    const now=new Date().toLocaleString('id-ID',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    g.fillText('Dibuat '+now+(hasT?' · target harian dari file jadwal':'')+(pages>1?' · halaman '+(pg+1)+'/'+pages:''),padX,y+footH/2+4);
+    out.push(c);
+  }
+  return out;
 }
 let toastT=0;
 const shotMsg=(t,k)=>{ const s=$('shot-msg'); clearTimeout(toastT); s.textContent=t||''; s.hidden=!t; if(t&&k) toastT=setTimeout(()=>{ s.hidden=true; },4500); };
 const shotName=()=>'print-screen-'+(lastM.from||'data')+(lastM.to&&lastM.to!==lastM.from?'_'+lastM.to:'')+(S.schSel.length?'_'+S.schSel.join('-').replace(/[^A-Za-z0-9-]/g,''):'')+'.png';
 const toBlob=c=>new Promise((ok,no)=>c.toBlob(b=>b?ok(b):no(new Error('gagal')),'image/png'));
-const shotBlob=async()=>{ try{ await document.fonts.ready; }catch(e){} return toBlob(shotCanvas()); };
 // ---- Gambar summary MPP
 function mppCanvas(){
   const mem=P.filter(p=>p.hasSch && p.target>0), sets=[['Summary all salesperson, all staff (PB & eksternal)','#f5a800','#2a1d00',mem],['Summary all salesperson, Private Brand only','#2a9de0','#ffffff',mem.filter(p=>String(p.brand||'').toUpperCase()==='PRIVATE BRAND')]];
@@ -755,8 +765,45 @@ async function shotAction(make,name,mode,btns){
   btns.forEach(b=>b.disabled=false);
 }
 const bDet=[$('ps'),$('ps-dl')], bMpp=[$('mpp-copy'),$('mpp-dl')];
-$('ps').addEventListener('click',()=>shotAction(shotBlob,shotName(),'copy',bDet));
-$('ps-dl').addEventListener('click',()=>shotAction(shotBlob,shotName(),'save',bDet));
+const shotPageBlobs=async()=>{ try{ await document.fonts.ready; }catch(e){} return Promise.all(shotPages().map(toBlob)); };
+const shotBlob=async()=>(await shotPageBlobs())[0];
+const shotPgName=(nm,i,n)=>n>1? nm+'-hal'+(i+1) : nm;
+let shotURLs=[];
+function shotPreview(arr,nm){
+  shotURLs.forEach(u=>URL.revokeObjectURL(u)); shotURLs=arr.map(b=>URL.createObjectURL(b));
+  const html='<div class="ckacts" style="margin:0 0 10px"><button type="button" class="btn primary sm" data-shot="all">Unduh semua halaman</button></div>'+arr.map((b,i)=>'<figure style="margin:0 0 16px"><figcaption style="font-weight:700;margin:0 0 6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">Halaman '+(i+1)+' dari '+arr.length+'<button type="button" class="btn sm" data-shot="copy" data-i="'+i+'">Salin halaman '+(i+1)+'</button><button type="button" class="btn sm" data-shot="dl" data-i="'+i+'">Unduh</button></figcaption><img src="'+shotURLs[i]+'" alt="Print Screen halaman '+(i+1)+'" style="width:100%;border:1px solid var(--line);border-radius:8px;display:block"></figure>').join('');
+  kShow('Print Screen · '+arr.length+' halaman',[['Jumlah halaman',String(arr.length)],['Orang',String(lastL.length)],['Per halaman','30 orang']],html,$('ps'));
+  shotLast={arr,nm};
+}
+let shotLast=null;
+$('kpop-body').addEventListener('click',async e=>{ const b=e.target.closest('[data-shot]'); if(!b||!shotLast) return; const {arr,nm}=shotLast, i=+b.dataset.i;
+  try{
+    if(b.dataset.shot==='all'){ for(let k=0;k<arr.length;k++) await saveBlob(arr[k],shotPgName(nm,k,arr.length)+'.png'); shotMsg('Semua halaman disimpan.','ok'); }
+    else if(b.dataset.shot==='dl'){ await saveBlob(arr[i],shotPgName(nm,i,arr.length)+'.png'); shotMsg('Halaman '+(i+1)+' disimpan.','ok'); }
+    else { await navigator.clipboard.write([new ClipboardItem({'image/png':arr[i]})]); shotMsg('Halaman '+(i+1)+' disalin. Tempel di WhatsApp dengan Ctrl+V.','ok'); }
+  }catch(x){ shotMsg(x&&x.code==='declined'?'Dibatalkan.':'Tidak bisa menyalin di sini. Gunakan tombol Unduh.','warn'); }
+});
+async function shotDetail(mode){
+  bDet.forEach(b=>b.disabled=true); shotMsg('Membuat gambar…');
+  const pp=shotPageBlobs(), nm=shotName();
+  try{
+    let copied=false;
+    if(mode==='copy'){ try{ if(navigator.clipboard&&window.ClipboardItem){ await navigator.clipboard.write([new ClipboardItem({'image/png':pp.then(a=>a[0])})]); copied=true; } }catch(e){ copied=false; } }
+    const arr=await pp, n=arr.length;
+    if(mode==='copy'&&copied){
+      if(n>1) shotPreview(arr,nm);
+      shotMsg(n>1? 'Halaman 1 dari '+n+' sudah disalin. Tempel di WhatsApp, lalu salin halaman berikutnya dari jendela yang terbuka.' : 'Gambar disalin. Buka WhatsApp lalu tempel dengan Ctrl+V (di ponsel: tekan lama lalu Tempel).','ok');
+    } else {
+      try{ for(let i=0;i<n;i++) await saveBlob(arr[i],shotPgName(nm,i,n)+'.png');
+        shotMsg(mode==='copy'? 'Browser tidak mengizinkan menyalin, jadi '+(n>1?n+' halaman disimpan sebagai file':'gambar disimpan sebagai file')+'. Kirim file itu di WhatsApp.' : (n>1? n+' halaman disimpan.' : 'Gambar disimpan.'),'ok'); }
+      catch(e){ shotMsg(e&&e.code==='declined'?'Dibatalkan.':'Penyimpanan gambar tidak tersedia di sini.','warn'); }
+      if(n>1&&mode==='copy') shotPreview(arr,nm);
+    }
+  }catch(e){ shotMsg('Gambar gagal dibuat.','warn'); }
+  bDet.forEach(b=>b.disabled=false);
+}
+$('ps').addEventListener('click',()=>shotDetail('copy'));
+$('ps-dl').addEventListener('click',()=>shotDetail('save'));
 $('mpp-copy').addEventListener('click',()=>shotAction(mppBlob,mppName(),'copy',bMpp));
 $('mpp-dl').addEventListener('click',()=>shotAction(mppBlob,mppName(),'save',bMpp));
 
