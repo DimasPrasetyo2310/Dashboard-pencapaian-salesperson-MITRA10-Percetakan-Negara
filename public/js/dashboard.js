@@ -144,8 +144,11 @@ const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&g
 const fd = (d,o) => new Date(d+'T00:00:00').toLocaleDateString('id-ID',o||{day:'numeric',month:'long',year:'numeric'});
 let SCH = {dates:[],people:[]}, SCHM = {}, curSel = [], lastL = [], lastHasT = false, lastSd = '', lastM = {}, lastDr = null;
 const isWork = c => /^[SPM](?:[\/.].*)?$/.test(String(c||''));
+// Salesperson yang sudah tidak di toko: tidak ditampilkan (tetap aman bila file jadwal di-upload ulang)
+const RESIGNED = new Set(['S10005-0000000706','S10005-0000000517','S10005-0000000704']);
 function setSched(s){
   SCH = s || {dates:[],people:[]}; SCHM = {};
+  if(SCH.people && SCH.people.some(e=>RESIGNED.has(e.id))) SCH = Object.assign({},SCH,{people:SCH.people.filter(e=>!RESIGNED.has(e.id))});
   SCH.people.forEach(e=>{ const by={}; SCH.dates.forEach((d,i)=>{ by[d]=e.c[i]; }); const wdays=SCH.dates.filter((d,i)=>isWork(e.c[i])).length; SCHM[e.id]=Object.assign({},e,{by,wdays,tpe: e.tpd>0? e.tpd : (e.tpm>0? e.tpm/30 : 0)}); });
   const zs=[...new Set(SCH.people.map(e=>e.zona).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'id',{numeric:true}));
   const sel=$('zona'); if(S.zona && !zs.includes(S.zona)) S.zona='';
@@ -183,6 +186,7 @@ function aggregate(from,to){
     if(!Array.isArray(x.prot)) m.protMiss++;
     else x.prot.forEach(q=>{ const k=q.id||'-'; const a=m.prot[k]||(m.prot[k]={id:q.id,name:q.name,q:0,s:0}); a.q+=q.q; a.s+=q.s; if(q.name) a.name=q.name; });
     x.people.forEach(p=>{
+      if(RESIGNED.has(p.id)) return;
       const a = map[p.id] || (map[p.id]={id:p.id,name:p.name,role:p.role,sales:0,excl:0,qty:0,receipts:0,lines:0,disc:0,cats:{},brands:{},pb:0});
       for(const k of ['sales','excl','qty','receipts','lines','disc','pb']) a[k]+=(p[k]||0);
       for(const b in (p.brands||{})) a.brands[b]=(a.brands[b]||0)+p.brands[b];
