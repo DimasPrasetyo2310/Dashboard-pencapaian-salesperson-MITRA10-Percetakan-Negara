@@ -197,7 +197,9 @@ tr[data-cat]:focus-visible{outline:2px solid var(--accent,#1f5fbf);outline-offse
 .br-kpi{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:12px}
 .br-body{overflow:auto;min-height:0}
 .br-panel.shot .br-body{overflow:visible;max-height:none}
-.brtbl thead th{position:sticky;top:0;z-index:1}
+.br-body .brtbl{overflow:visible}
+.brtbl thead th{position:sticky;top:0;z-index:3}
+.brtbl thead th:first-child{border-top-left-radius:9px}.brtbl thead th:last-child{border-top-right-radius:9px}
 @media (max-width:900px){.br-kpi{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .shot-host{position:fixed;left:-20000px;top:0;pointer-events:none;background:#fff}
 .shot-host .br-panel{width:100%;max-height:none;box-shadow:none;display:block}
