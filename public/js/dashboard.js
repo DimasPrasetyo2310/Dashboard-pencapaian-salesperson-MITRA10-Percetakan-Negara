@@ -365,7 +365,8 @@ function renderTableInner(dr){
     return '<th scope="col" class="'+(TXT.has(c[0])?'l':'')+'"'+(act?' aria-sort="'+(S.dir<0?'descending':'ascending')+'"':'')+'><button type="button" data-s="'+c[0]+'">'+label+(act?(S.dir<0?' ↓':' ↑'):'')+'</button></th>';
   }).join('');
   const q = S.q.trim().toLowerCase();
-  let base = filtered().filter(p=>!S.zona||p.zona===S.zona);
+  // Tabel ini hanya menampilkan salesperson aktif: ada di jadwal, bukan kasir (kecuali peran Kasir dipilih)
+  let base = filtered().filter(p=>(!S.zona||p.zona===S.zona) && (S.role==='Kasir' || !hasT || (p.hasSch && p.role!=='Kasir')));
   if(S.schSel.length){
     const have=new Set(base.map(p=>p.id));
     Object.values(SCHM).forEach(e=>{ if(!have.has(e.id) && (S.role!=='Kasir') && (!S.zona||e.zona===S.zona) && !P.some(p=>p.id===e.id)) base.push(ghost(e)); });
