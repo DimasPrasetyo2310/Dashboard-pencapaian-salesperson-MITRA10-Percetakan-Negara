@@ -120,7 +120,9 @@ function renderDims(rows){
   });
 }
 
+let TGS={k:-1,dir:1},TGROWS=null;
 function renderTarget(rows){
+  TGROWS=rows;
   const box=$('tg');
   if(!rows.length){$('tgPeriod').textContent='';box.innerHTML='<div class="empty">Tidak ada data pada rentang tanggal ini.</div>';return}
   $('tgPeriod').textContent=fdy(rows[0].d)+' – '+fdy(rows[rows.length-1].d)+' · '+rows.length+' hari';
@@ -149,18 +151,26 @@ function renderTarget(rows){
   const need=left>0&&mTarget>mtd?(mTarget-mtd)/left:0;
   const lySum=sum(dates.map(d=>(LYD.get(lyDate(d))||{sx:0}).sx));
   const tile=(l,v,s,k)=>`<div class="tg-t${k?' sum':''}"${k?` data-sum="${k}" tabindex="0" role="button" title="Klik untuk rincian per hari"`:''}><span class="l">${l}</span><span class="v">${v}</span><span class="s">${s}</span></div>`;
-  const list=cats.filter(c=>bud[c]>0||act[c]>0).sort((a,b)=>zn(a)-zn(b)||(bud[b]||act[b])-(bud[a]||act[a]));
+  const base=(a,b)=>(bud[b]||act[b])-(bud[a]||act[a]);
+  const flat=TGS.k>=1;
+  let list=cats.filter(c=>bud[c]>0||act[c]>0).sort((a,b)=>(zn(a)-zn(b))*(TGS.k===0?TGS.dir:1)||base(a,b));
+  if(flat){
+    const V=c=>{const a=act[c]||0,b=bud[c]||0,l=lyc[c]||0,aM=actM[c]||0,bM=budM[c]||0,lM=lycM[c]||0;
+      return [zn(c),title(c),b||null,a,b?a/b:null,b?a-b:null,l||null,l?a/l:null,bM||null,aM,bM?aM/bM:null,bM?aM-bM:null,lM||null,lM?aM/lM:null][TGS.k]};
+    list=list.map(c=>[c,V(c)]).sort((x,y)=>{const p=x[1],q=y[1];if(p==null||q==null)return p==null&&q==null?base(x[0],y[0]):p==null?1:-1;
+      const r=typeof p==='string'?p.localeCompare(q,'id'):p-q;return r*TGS.dir||base(x[0],y[0])}).map(x=>x[0]);
+  }
   const zcount={};list.forEach(c=>{zcount[zn(c)]=(zcount[zn(c)]||0)+1});let zprev=null;
   const cell=(a,b,l)=>{const pc=b?a/b:null,cl=pc==null?'':pc>=1?'good':pc>=.9?'warn':'crit';return `<td class="r num">${b?fu(b):'–'}</td><td class="r num">${fu(a)}</td><td class="c num">${pc==null?'–':`<span class="pill ${cl}">${dec(pc*100,1)}%</span>`}</td><td class="r num">${b?sel(a-b):'–'}</td><td class="r num">${l?fu(l):'–'}</td><td class="r num">${l?lyp(a,l):'–'}</td>`};
   const mcell=(a,b,l)=>cell(a,b,l).replace('<td class="r num">','<td class="r num msep">');
   const mx=x=>mcell(actM[x]||0,budM[x]||0,lycM[x]||0), msum=zs=>mcell(sum(zs.map(x=>actM[x]||0)),sum(zs.map(x=>budM[x]||0)),sum(zs.map(x=>lycM[x]||0)));
   const trs=list.map((c,i)=>{
-    const first=zn(c)!==zprev;zprev=zn(c);
-    const last=i===list.length-1||zn(list[i+1])!==zn(c);
+    const first=flat||zn(c)!==zprev;zprev=zn(c);
+    const last=!flat&&(i===list.length-1||zn(list[i+1])!==zn(c));
     const zs=list.filter(x=>zn(x)===zn(c));
     const sub=last?`<tr class="zt"><td>Total ${zn(c)<99?'Zona '+zn(c):'lainnya'}</td>${cell(sum(zs.map(x=>act[x]||0)),sum(zs.map(x=>bud[x]||0)),sum(zs.map(x=>lyc[x]||0)))}${msum(zs)}</tr>`:'';
     const a=act[c]||0,b=bud[c]||0,pc=b?a/b:null,cl=pc==null?'':pc>=1?'good':pc>=.9?'warn':'crit',l=lyc[c];
-    return `<tr data-cat="${esc(c)}" tabindex="0" title="Klik untuk rincian master brand"${first?' class="zs"':''}>${first?`<td class="zona z${zn(c)}" rowspan="${zcount[zn(c)]+1}">${zn(c)<99?'Zona '+zn(c):'–'}</td>`:''}<td>${esc(title(c))}</td><td class="r num">${b?fu(b):'–'}</td><td class="r num">${fu(a)}</td><td class="c num">${pc==null?'–':`<span class="pill ${cl}">${dec(pc*100,1)}%</span>`}</td><td class="r num">${b?sel(a-b):'–'}</td><td class="r num">${l?fu(l):'–'}</td><td class="r num">${l?lyp(a,l):'–'}</td>${mx(c)}</tr>${sub}`}).join('');
+    return `<tr data-cat="${esc(c)}" tabindex="0" title="Klik untuk rincian master brand"${first&&!flat?' class="zs"':''}>${first?`<td class="zona z${zn(c)}" rowspan="${flat?1:zcount[zn(c)]+1}">${zn(c)<99?'Zona '+zn(c):'–'}</td>`:''}<td>${esc(title(c))}</td><td class="r num">${b?fu(b):'–'}</td><td class="r num">${fu(a)}</td><td class="c num">${pc==null?'–':`<span class="pill ${cl}">${dec(pc*100,1)}%</span>`}</td><td class="r num">${b?sel(a-b):'–'}</td><td class="r num">${l?fu(l):'–'}</td><td class="r num">${l?lyp(a,l):'–'}</td>${mx(c)}</tr>${sub}`}).join('');
   const aT=sum(list.map(c=>act[c]||0)), bT=sum(list.map(c=>bud[c]||0)), lT=sum(list.map(c=>lyc[c]||0));
   const dsum=(dim,val,ds)=>sum(DIMD.filter(z=>z.dim===dim&&z.v===val&&ds.has(z.d)).map(z=>z.s));
   const lyset=new Set(dates.map(lyDate)), hasDim=DIMD.some(z=>set.has(z.d)&&z.dim==='source');
@@ -177,8 +187,22 @@ function renderTarget(rows){
     ${pbCard}
     ${lySum?tile('Sales vs '+lyYear(dates[0]),(nav/lySum-1>=0?'▲ ':'▼ ')+dec(Math.abs(nav/lySum-1)*100,1)+'%',rp(lySum)+' tahun lalu','ly'):''}
   </div>
-  <div class="tbl"><table class="tgt"><thead><tr class="grp"><th colspan="2"></th><th colspan="6" class="r">Periode terpilih</th><th colspan="6" class="r msep">MTD · 1 – ${fd(last)}</th></tr><tr><th>Zonasi</th><th>Kategori</th><th class="r">Budget periode</th><th class="r">Actual</th><th class="c">Achievement</th><th class="r">Selisih</th><th class="r">Tahun lalu</th><th class="r">vs tahun lalu</th><th class="r msep">Budget MTD</th><th class="r">Actual MTD</th><th class="c">Achievement MTD</th><th class="r">Selisih MTD</th><th class="r">MTD tahun lalu</th><th class="r">vs tahun lalu</th></tr></thead><tbody>${trs}</tbody>
+  <div class="tbl"><table class="tgt"><thead><tr class="grp"><th colspan="2"></th><th colspan="6" class="r">Periode terpilih</th><th colspan="6" class="r msep">MTD · 1 – ${fd(last)}</th></tr><tr><th data-tg="0">Zonasi</th><th data-tg="1">Kategori</th><th data-tg="2" class="r">Budget periode</th><th data-tg="3" class="r">Actual</th><th data-tg="4" class="c">Achievement</th><th data-tg="5" class="r">Selisih</th><th data-tg="6" class="r">Tahun lalu</th><th data-tg="7" class="r">vs tahun lalu</th><th data-tg="8" class="r msep">Budget MTD</th><th data-tg="9" class="r">Actual MTD</th><th data-tg="10" class="c">Achievement MTD</th><th data-tg="11" class="r">Selisih MTD</th><th data-tg="12" class="r">MTD tahun lalu</th><th data-tg="13" class="r">vs tahun lalu</th></tr></thead><tbody>${trs}</tbody>
   <tfoot><tr><td colspan="2">Total</td><td class="r num">${fu(bT)}</td><td class="r num">${fu(aT)}</td><td class="r num">${bT?dec(aT/bT*100,1)+'%':'–'}</td><td class="r num">${sel(aT-bT)}</td><td class="r num">${lT?fu(lT):'–'}</td><td class="r num">${lT?lyp(aT,lT):'–'}</td>${mcell(sum(list.map(c=>actM[c]||0)),sum(list.map(c=>budM[c]||0)),sum(list.map(c=>lycM[c]||0)))}</tr></tfoot></table></div>`;
+  tgMark();
+}
+function tgMark(){
+  const box=$('tg');box.querySelectorAll('th[data-tg]').forEach(th=>{const i=+th.dataset.tg;th.tabIndex=0;th.title='Klik untuk mengurutkan';
+    if(i===TGS.k)th.setAttribute('aria-sort',TGS.dir>0?'ascending':'descending');else th.removeAttribute('aria-sort')});
+}
+function tgSort(i){
+  const txt=i<=1; // kolom teks: naik dulu; kolom angka: terbesar dulu
+  const first=txt?1:-1;
+  if(TGS.k!==i)TGS={k:i,dir:first};else if(TGS.dir===first)TGS={k:i,dir:-first};else TGS={k:-1,dir:1};
+  const sc=box=>box&&box.scrollLeft, tb=$('tg').querySelector('.tbl'), l=tb?tb.scrollLeft:0;
+  renderTarget(TGROWS);
+  const nb=$('tg').querySelector('.tbl');if(nb)nb.scrollLeft=l;
+  const th=$('tg').querySelector('th[data-tg="'+i+'"]');if(th&&TGS.k===i)th.focus({preventScroll:true});
 }
 function renderRows(rows){
   $('rows').innerHTML=rows.map(d=>{
@@ -515,7 +539,7 @@ async function runShot(btn,el,width,name,prep){
   try{ btn.textContent=await deliverImage(shotImage(el,width,name,prep),name) }catch(err){ btn.textContent='Gagal membuat gambar' }
   setTimeout(()=>{btn.textContent=old;btn.disabled=false},2800);
 }
-$('tgShot').addEventListener('click',()=>runShot($('tgShot'),$('tgCard'),1680,'target-vs-actual-'+new Date().toISOString().slice(0,10)+'.png'));
+$('tgShot').addEventListener('click',()=>runShot($('tgShot'),$('tgCard'),1900,'target-vs-actual-'+new Date().toISOString().slice(0,10)+'.png'));
 
 /* Popup rincian master brand per kategori */
 async function loadBrands(){
@@ -552,8 +576,8 @@ async function openBrand(cat){
   <tfoot><tr><td></td><td>Total (${brs.length} brand)</td><td class="r num">${fu(A)}</td><td class="r num">${A?'100%':'–'}</td><td class="r num">${L?fu(L):'–'}</td><td class="r num">${sel(A-L)}</td><td class="r num">${L?lyp(A,L):'–'}</td></tr></tfoot></table></div>`;
 }
 function closeBrand(){closeItems();$('brOv').hidden=true;document.body.style.overflow='';brCat=null}
-$('tg').addEventListener('click',e=>{const r=e.target.closest('tr[data-cat]');if(r)openBrand(r.dataset.cat)});
-$('tg').addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const r=e.target.closest('tr[data-cat]');if(r){e.preventDefault();openBrand(r.dataset.cat)}});
+$('tg').addEventListener('click',e=>{const h=e.target.closest('th[data-tg]');if(h){tgSort(+h.dataset.tg);return}const r=e.target.closest('tr[data-cat]');if(r)openBrand(r.dataset.cat)});
+$('tg').addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const h=e.target.closest('th[data-tg]');if(h){e.preventDefault();tgSort(+h.dataset.tg);return}const r=e.target.closest('tr[data-cat]');if(r){e.preventDefault();openBrand(r.dataset.cat)}});
 
 /* Popup rincian per hari untuk kartu KPI */
 const KM={
@@ -644,6 +668,39 @@ $('bkBtn').addEventListener('click',async()=>{
   setTimeout(()=>{b.textContent=old;b.disabled=false},3000);
 });
 
+
+/* Urut kolom untuk tabel di popup dan tabel rincian: klik header (naik/turun/semula) */
+const SVN=s=>{s=s.replace(/\s+/g,' ').trim();if(!s||s==='–'||s==='Baru'||s==='-')return null;
+  if(/^[A-Za-z]{3}, \d/.test(s))return 'D';
+  const m=s.replace(/^▲\s*/,'').replace(/^Rp\s*/,'').match(/^(−|-)?\s*(\d[\d.]*)(,\d+)?/);
+  if(!m)return 'T';return (m[1]?-1:1)*parseFloat(m[2].replace(/\./g,'')+(m[3]?m[3].replace(',','.'):''))};
+function sortTable(th){
+  const tb=th.closest('table').tBodies[0];if(!tb)return;
+  const ci=[...th.parentElement.children].indexOf(th), rows=[...tb.rows];
+  rows.forEach((r,i)=>{if(r.dataset.oi==null)r.dataset.oi=i});
+  const raw=rows.map(r=>r.cells[ci]?SVN(r.cells[ci].textContent):null);
+  const date=raw.includes('D'), text=!date&&raw.includes('T');
+  const first=text?1:(date?1:-1), cur=th.getAttribute('aria-sort');
+  let dir=0;
+  if(!cur)dir=first;else if((cur==='ascending')===(first===1))dir=-first;
+  th.parentElement.querySelectorAll('th').forEach(x=>x.removeAttribute('aria-sort'));
+  let arr;
+  if(!dir)arr=rows.map(r=>[r,+r.dataset.oi]).sort((a,b)=>a[1]-b[1]);
+  else{
+    th.setAttribute('aria-sort',dir>0?'ascending':'descending');
+    const key=rows.map((r,i)=>date?+r.dataset.oi:text?(r.cells[ci].textContent.trim()||null):(typeof raw[i]==='number'?raw[i]:null));
+    arr=rows.map((r,i)=>[r,key[i]]).sort((a,b)=>{const p=a[1],q=b[1];
+      if(p==null||q==null)return p==null&&q==null?a[0].dataset.oi-b[0].dataset.oi:p==null?1:-1;
+      const c=text?p.localeCompare(q,'id',{numeric:true}):p-q;return c*dir||a[0].dataset.oi-b[0].dataset.oi});
+  }
+  arr.forEach(x=>tb.appendChild(x[0]));
+}
+document.addEventListener('click',e=>{const th=e.target.closest&&e.target.closest('table.tgt thead tr:not(.grp) th');if(th&&!th.dataset.tg)sortTable(th)});
+document.addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const th=e.target.closest&&e.target.closest('table.tgt thead tr:not(.grp) th');if(th&&!th.dataset.tg){e.preventDefault();sortTable(th)}});
+let sortArm=false;
+new MutationObserver(()=>{if(sortArm)return;sortArm=true;requestAnimationFrame(()=>{sortArm=false;
+  document.querySelectorAll('table.tgt thead tr:not(.grp) th:not([data-tg]):not([tabindex])').forEach(th=>{th.tabIndex=0;th.title='Klik untuk mengurutkan'})})}).observe(document.body,{childList:true,subtree:true});
+
 /* Popup detail item per master brand */
 const itN=n=>Math.round(n*100)/100===Math.round(n)?nf.format(Math.round(n)):dec(n,2);
 let itKey=null;
@@ -681,7 +738,7 @@ $('brBody').addEventListener('click',e=>{const r=e.target.closest('tr[data-b]');
 $('brBody').addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const r=e.target.closest('tr[data-b]');if(r){e.preventDefault();openItems(r.dataset.b)}});
 $('itClose').addEventListener('click',closeItems);
 $('itOv').addEventListener('click',e=>{if(e.target===$('itOv'))closeItems()});
-$('itShot').addEventListener('click',()=>runShot($('itShot'),$('itPanel'),1100,'item-'+String(itKey||'brand').toLowerCase().replace(/\W+/g,'-')+'.png',c=>{
+$('itShot').addEventListener('click',()=>runShot($('itShot'),$('itPanel'),1240,'item-'+String(itKey||'brand').toLowerCase().replace(/\W+/g,'-')+'.png',c=>{
   const rs=[...c.querySelectorAll('tbody tr')]; if(rs.length>30){rs.slice(30).forEach(r=>r.remove());const n=document.createElement('p');n.className='hint';n.style.margin='8px 0 0';n.textContent='30 item teratas dari '+rs.length+' item (urut dari penjualan tertinggi).';c.querySelector('.tbl').after(n)}}));
 
 /* Laporan WhatsApp harian */
@@ -905,7 +962,7 @@ $('waSend').addEventListener('click',()=>{window.open('https://wa.me/?text='+enc
 $('brClose').addEventListener('click',closeBrand);
 $('brOv').addEventListener('click',e=>{if(e.target===$('brOv'))closeBrand()});
 document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(!$('itOv').hidden)closeItems();else if(!$('brOv').hidden)closeBrand()});
-$('brShot').addEventListener('click',()=>runShot($('brShot'),$('brPanel'),1060,'brand-'+String(brCat||'kategori').toLowerCase().replace(/\W+/g,'-')+'.png'));
+$('brShot').addEventListener('click',()=>runShot($('brShot'),$('brPanel'),1140,'brand-'+String(brCat||'kategori').toLowerCase().replace(/\W+/g,'-')+'.png'));
 $('partChk').addEventListener('change',e=>{skipPartial=e.target.checked;render()});
 $('chips').addEventListener('click',e=>{const c=e.target.closest('.chip');if(!c)return;const r=presetRange(c.dataset.p);setRange(r[0],r[1])});
 

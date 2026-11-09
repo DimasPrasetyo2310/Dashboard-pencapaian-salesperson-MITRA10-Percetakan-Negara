@@ -179,6 +179,27 @@ table.tgt td.zona{border:1px solid #c9d1e3}
 table.tgt tr.zs td{border-top:2px solid #aeb9d1}
 table.tgt tr.zs:first-child td{border-top:1px solid #c9d1e3}
 
+/* Tabel lebih besar dan tebal + header bisa diurutkan */
+table.tgt td{font-size:15px;font-weight:600;padding:11px 12px;color:#14213d}
+table.tgt td.num{font-weight:700}
+table.tgt tbody td:nth-child(2),table.tgt td.zona,table.tgt tfoot td:first-child{font-weight:800}
+table.tgt th{font-size:12.5px;font-weight:800;padding:13px 12px}
+table.tgt thead tr.grp th{font-size:12.5px}
+table.tgt tr.zt td,table.tgt tfoot td{font-weight:800;font-size:15.5px}
+table.tgt tr.zt td,table.tgt tfoot td{color:#fff}
+table.tgt .pill,table.tgt .negbox,table.tgt .posbox{font-size:13.5px;font-weight:800}
+table.tgt .mut{font-size:12.5px;font-weight:600}
+table.tgt thead tr:not(.grp) th{cursor:pointer;user-select:none;white-space:nowrap;position:relative;padding-right:22px}
+table.tgt thead tr:not(.grp) th::after{content:'↕';position:absolute;right:7px;top:50%;transform:translateY(-50%);opacity:.35;font-size:11px}
+table.tgt thead tr:not(.grp) th:hover::after{opacity:.8}
+table.tgt thead th[aria-sort]::after{opacity:1;color:var(--amber,#f5b301);font-size:12px}
+table.tgt thead th[aria-sort=ascending]::after{content:'▲'}
+table.tgt thead th[aria-sort=descending]::after{content:'▼'}
+table.tgt thead tr:not(.grp) th:hover{filter:brightness(1.15)}
+table.tgt thead tr:not(.grp) th:focus-visible{outline:2px solid var(--amber,#f5b301);outline-offset:-3px}
+#tg table.tgt td:not(.zona):not(.num):not(.c){white-space:nowrap}
+
+
 tr[data-cat],tr[data-b]{cursor:pointer}
 tr[data-b]:hover td{background:#eef3fb}
 #itOv{z-index:60}
