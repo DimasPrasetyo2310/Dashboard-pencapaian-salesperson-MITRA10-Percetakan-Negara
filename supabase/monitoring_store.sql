@@ -58,3 +58,15 @@ create policy store_cat_delete on public.store_day_category for delete to authen
 -- store_budget_kpi_daily.project dan .pb: budget harian Sales Project dan Private Brand (kolom AI dan AO di file budget)
 -- store_upload_lock (store_code pk, user_email, started_at, expires_at): penanda sedang diunggah, berlaku 10 menit dan diperpanjang selama proses
 -- store_report_manual.extra juga menyimpan isian Daily Report Closing Region 1 (kunci rg*)
+
+-- Hitung salesperson harian untuk tabel "Salper jualan >2 category" (Report Closing)
+-- all_salper = salesperson dengan penjualan > 0; salper_gt2 = salesperson yang menjual di > 2 kategori.
+create or replace function public.salper_day_counts(p_store text, p_date date)
+returns table(all_salper int, salper_gt2 int)
+language sql stable security invoker set search_path = public as $$
+  select count(*) filter (where coalesce((p->>'sales')::numeric,0) > 0)::int,
+         count(*) filter (where (select count(*) from jsonb_each(coalesce(p->'cats','{}'::jsonb)) c where (c.value)::text::numeric > 0) > 2)::int
+  from public.dashboard_days d, jsonb_array_elements(d.doc->'people') p
+  where d.store_code = p_store and d.sale_date = p_date
+$$;
+grant execute on function public.salper_day_counts(text,date) to authenticated;
