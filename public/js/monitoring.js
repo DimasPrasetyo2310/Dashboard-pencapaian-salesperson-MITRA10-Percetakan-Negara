@@ -206,23 +206,23 @@ function tgSort(i){
 }
 function renderRows(rows){
   $('rows').innerHTML=rows.map(d=>{
-    const diff=d.nav-d.ffc, ok=Math.abs(diff)<1;
-    return `<tr><td class="num">${fdy(d.d)}</td><td class="r num">${nf.format(d.cin)}</td><td class="r num">${nf.format(d.cout)}</td><td class="r num">${nf.format(d.tr)}</td><td class="r num">${d.cin?dec(d.tr/d.cin*100,1)+'%':'–'}</td><td class="r num">${d.tr?jt(d.nav/d.tr):'–'}</td><td class="r num">${jt(d.nav)}</td><td class="r num">${jt(d.ffc)}</td><td>${ok?'<span class="pill good">✓ Cocok</span>':`<span class="pill warn">! Selisih ${jt(diff)}</span>`}</td></tr>`}).join('');
-  const cin=sum(rows.map(d=>d.cin)),trn=sum(rows.map(d=>d.tr)),nav=sum(rows.map(d=>d.nav)),ffc=sum(rows.map(d=>d.ffc));
-  $('foot').innerHTML=`<tr><td>Total</td><td class="r num">${nf.format(cin)}</td><td class="r num">${nf.format(sum(rows.map(d=>d.cout)))}</td><td class="r num">${nf.format(trn)}</td><td class="r num">${cin?dec(trn/cin*100,1)+'%':'–'}</td><td class="r num">${trn?jt(nav/trn):'–'}</td><td class="r num">${jt(nav)}</td><td class="r num">${jt(ffc)}</td><td></td></tr>`;
+    const diff=d.navr-d.ffc, ok=Math.abs(diff)<1;
+    return `<tr><td class="num">${fdy(d.d)}</td><td class="r num">${nf.format(d.cin)}</td><td class="r num">${nf.format(d.cout)}</td><td class="r num">${nf.format(d.tr)}</td><td class="r num">${d.cin?dec(d.tr/d.cin*100,1)+'%':'–'}</td><td class="r num">${d.tr?jt(d.nav/d.tr):'–'}</td><td class="r num">${jt(d.navr)}</td><td class="r num">${jt(d.ffc)}</td><td>${ok?'<span class="pill good">✓ Cocok</span>':`<span class="pill warn">! Selisih ${jt(diff)}</span>`}</td></tr>`}).join('');
+  const cin=sum(rows.map(d=>d.cin)),trn=sum(rows.map(d=>d.tr)),nav=sum(rows.map(d=>d.nav)),navr=sum(rows.map(d=>d.navr)),ffc=sum(rows.map(d=>d.ffc));
+  $('foot').innerHTML=`<tr><td>Total</td><td class="r num">${nf.format(cin)}</td><td class="r num">${nf.format(sum(rows.map(d=>d.cout)))}</td><td class="r num">${nf.format(trn)}</td><td class="r num">${cin?dec(trn/cin*100,1)+'%':'–'}</td><td class="r num">${trn?jt(nav/trn):'–'}</td><td class="r num">${jt(navr)}</td><td class="r num">${jt(ffc)}</td><td></td></tr>`;
 }
 let tgR={from:null,to:null};
 function tgRows(base){
   if(!tgR.from&&!tgR.to) return base;
   let r=DATA.D.filter(x=>(!tgR.from||x.d>=tgR.from)&&(!tgR.to||x.d<=tgR.to)).sort((a,b)=>a.d<b.d?-1:1);
-  if(skipPartial) r=r.filter(x=>Math.abs(x.nav-x.ffc)<1);
+  if(skipPartial) r=r.filter(x=>Math.abs(x.navr-x.ffc)<1);
   return r;
 }
 function render(){
   try{renderCk()}catch(e){}
   let rows=DATA.D.filter(x=>x.d>=from&&x.d<=to).sort((a,b)=>a.d<b.d?-1:1);
-  const nPart=rows.filter(r=>Math.abs(r.nav-r.ffc)>=1).length;
-  if(skipPartial) rows=rows.filter(r=>Math.abs(r.nav-r.ffc)<1);
+  const nPart=rows.filter(r=>Math.abs(r.navr-r.ffc)>=1).length;
+  if(skipPartial) rows=rows.filter(r=>Math.abs(r.navr-r.ffc)<1);
   $('partWrap').hidden=!nPart&&!skipPartial;$('partLbl').textContent='Abaikan hari yang belum sinkron NAV dan FFC ('+nPart+' hari)';
   document.querySelectorAll('.chip').forEach(c=>{const r=presetRange(c.dataset.p);c.setAttribute('aria-pressed',String(r[0]===from&&r[1]===to))});
   const ds=allDates();
@@ -350,12 +350,12 @@ function ckItems(){
   const Dm=new Map(DATA.D.map(r=>[r.d,r])), cs=new Map(); DATA.C.forEach(c=>cs.set(c[0],(cs.get(c[0])||0)+c[2]));
   const lyc=new Set(); LYC.forEach((v,k)=>lyc.add(k.slice(0,10)));
   const out=[], mk=(id,title,file,bad,warn,okTxt,badTxt,lines,tpl)=>out.push({id,title,file,state:bad.length?'bad':(warn&&warn.length?'warn':'ok'),summary:bad.length?badTxt:(warn&&warn.length?warn[0]:okTxt),lines,tpl});
-  const miss=exp.filter(d=>!Dm.has(d)), unsync=exp.filter(d=>Dm.has(d)&&Math.abs(Dm.get(d).nav-Dm.get(d).ffc)>=1);
+  const miss=exp.filter(d=>!Dm.has(d)), unsync=exp.filter(d=>Dm.has(d)&&Math.abs(Dm.get(d).navr-Dm.get(d).ffc)>=1);
   mk('nav','Report Compare FFC dan NAV (harian)','File: Report Compare FFC And Nav',miss,unsync.length?[unsync.length+' hari belum sinkron NAV dan FFC']:null,'Lengkap sampai '+dlab(P.ref),miss.length+' tanggal belum ada',
     [miss.length?'Belum ada: '+dlist(miss):'Semua tanggal 1 sampai '+dlab(P.ref)+' sudah ada.',unsync.length?'Belum sinkron NAV dan FFC: '+dlist(unsync):'','Isi: sales NAV dan FFC, transaksi, traffic masuk dan keluar.'].filter(Boolean),['nav']);
-  const dm=[],inc=[]; exp.forEach(d=>{const r=Dm.get(d);if(!r)return;if(!cs.has(d))dm.push(d);else if(cs.get(d)<r.nav*0.99)inc.push(d+' ('+Math.round(cs.get(d)/r.nav*100)+'%)')});
+  const dm=[],inc=[]; exp.forEach(d=>{const r=Dm.get(d);if(!r)return;if(!cs.has(d))dm.push(d);});
   const bad2=dm.concat(inc);
-  mk('detail','Sales Detail Report (per transaksi)','File: Sales Detail Report (kolom Receipt Date)',bad2,null,'Lengkap, total sesuai NAV',bad2.length+' tanggal belum ada atau belum lengkap',
+  mk('detail','Sales Detail Report (per transaksi)','File: Sales Detail Report (kolom Receipt Date)',bad2,null,'Lengkap',bad2.length+' tanggal belum ada atau belum lengkap',
     [dm.length?'Belum ada: '+dlist(dm):'',inc.length?'Total lebih kecil dari NAV (laporan ditarik sebelum hari selesai): '+inc.slice(0,12).join(', '):'',!bad2.length?'Semua tanggal ada dan totalnya sesuai NAV.':'','Isi: sales per kategori, master brand, item, source type, master type brand, dan qty. Tarik setelah hari selesai.'].filter(Boolean),['detail']);
   const nb=[...BM.keys()].filter(k=>k.startsWith(P.y+'|'+P.m+'|')).length;
   mk('budget','Budget bulanan per kategori','File: Budget (sheet berisi baris Category dan kolom JAN sampai DEC)',nb?[]:['x'],null,nb+' kategori terisi','Belum ada untuk '+MON[P.m-1]+' '+P.y,
@@ -1082,7 +1082,7 @@ async function fetchAll(table,cols,order){
   return out;
 }
 
-/* Pengecekan otomatis: total NAV vs kategori/brand/item, transaksi NAV vs FFC, dan data yang belum lengkap */
+/* Pengecekan otomatis: transaksi NAV vs FFC dan tanggal yang belum punya laporan detail. Sales memakai Sales Detail, bukan NAV */
 const QCTOL=1000;
 function qcIssues(){
   const out=[], D=DATA.D||[]; if(!D.length) return out;
@@ -1090,8 +1090,7 @@ function qcIssues(){
   DATA.C.forEach(c=>{if(set.has(c[0]))cs.set(c[0],(cs.get(c[0])||0)+c[2])});
   const lab=d=>fd(d).replace(/ \d{4}$/,'');
   D.filter(r=>set.has(r.d)).sort((a,b)=>a.d<b.d?-1:1).forEach(r=>{
-    if(!cs.has(r.d)) out.push(lab(r.d)+': NAV ada, laporan detail penjualan belum diunggah');
-    else{const df=cs.get(r.d)-r.nav; if(Math.abs(df)>QCTOL) out.push(lab(r.d)+': total detail '+(df>0?'lebih besar ':'lebih kecil ')+rp(Math.abs(df))+' dari NAV')}
+    if(!cs.has(r.d)) out.push(lab(r.d)+': laporan detail penjualan belum diunggah (sales memakai detail)');
     if(r.ffct&&r.tr&&r.tr!==r.ffct) out.push(lab(r.d)+': transaksi NAV '+nf.format(r.tr)+' berbeda dari FFC '+nf.format(r.ffct));
   });
   return out;
@@ -1113,7 +1112,7 @@ async function loadData(){
   KB=new Map();kb.forEach(r=>KB.set(r.budget_date,{tr:+r.traffic||null,iv:+r.invoice||null,ef:+r.effect||null,bs:+r.basket||null,pq:+r.prot_qty||null,pj:+r.project||null,pb:+r.pb||null}));
   DIMD=dm.map(r=>({d:r.sale_date,dim:r.dim,v:r.dim_value,s:+r.sales}));
   const DS=new Map();c.forEach(r=>DS.set(r.sale_date,(DS.get(r.sale_date)||0)+ +r.sales));
-  const D=d.map(r=>({d:r.sale_date,sx:DS.has(r.sale_date)?Math.max(DS.get(r.sale_date),+r.nav_sales):+r.nav_sales,nav:+r.nav_sales,tr:+r.nav_trx,ffc:+r.ffc_sales,ffct:+r.ffc_trx,cin:+r.counter_in,cout:+r.counter_out}));
+  const D=d.map(r=>({d:r.sale_date,sx:DS.has(r.sale_date)?DS.get(r.sale_date):+r.nav_sales,nav:DS.has(r.sale_date)?DS.get(r.sale_date):+r.nav_sales,navr:+r.nav_sales,tr:+r.nav_trx,ffc:+r.ffc_sales,ffct:+r.ffc_trx,cin:+r.counter_in,cout:+r.counter_out}));
   const yr=D.length?Math.max(...D.map(r=>+r.d.slice(0,4))):0;
   LYD=new Map();LYC=new Map();PH=new Map();BM=new Map();BRD=null;
   D.filter(r=>+r.d.slice(0,4)<yr).forEach(r=>LYD.set(r.d,r));
