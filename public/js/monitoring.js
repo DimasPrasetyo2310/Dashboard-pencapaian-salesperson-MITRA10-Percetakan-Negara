@@ -747,7 +747,7 @@ const en=n=>Math.round(n).toLocaleString('en-US');
 const pc2=x=>(x*100).toFixed(2)+'%';
 const gp2=(a,l)=>{if(!l)return '-';const g=(a/l-1)*100;return (g>=0?'+':'')+g.toFixed(2)+'%'};
 const pad2=n=>String(n).padStart(2,'0');
-let WAQ=null, WAM=0;
+let WAQ=null, WAM=0, WSP=null;
 // Value inventory Class A: angka tetap (permanen)
 const RGVAL={AP:853112424.18,BT:1777219291.35,BM:476637964.89,DW:250966869.14,EL:906010979.28,FW:1212636161.43,HW:95061808.9,HS:17249138.36,KC:283096061.84,PS:3792603075.41,PL:902919696.79,TL:311040361.83};
 const RGK=['rgMr', 'rgMn', 'rgWt', 'rgDr', 'rgW10', 'rgP2', 'rgO2', 'rgRi', 'rgRk', 'rgRd', 'rgRs', 'rgRl', 'rgSa', 'rgS2'], RGINV=[["AP", "Appliances"], ["BT", "Bathroom"], ["BM", "Building Material"], ["DW", "Doors And Windows"], ["EL", "Electrical And Lighting"], ["FW", "Flooring And Wall"], ["HW", "Hardware"], ["HS", "Houseware & Hobbies"], ["KC", "Kitchen"], ["PS", "Paint And Sundries"], ["PL", "Plumbing"], ["TL", "Tools"]];
@@ -937,9 +937,12 @@ async function renderWa(){
     WAD=d; WAK.forEach(([id])=>{$(id).value=''}); CLK.forEach(id=>{$(id).value=''}); $('waQa').placeholder='';
     if(SB){try{const {data:bq}=await SB.from('store_day_brand').select('sale_date,qty').eq('store_code',STORE).eq('master_brand','BCA').gte('sale_date',d.slice(0,8)+'01').lte('sale_date',d);
       const q=(bq||[]).filter(x=>x.sale_date===d).reduce((a,x)=>a+(+x.qty||0),0); WAQ=q>0?q:(DATA.C.some(c=>c[0]===d)?0:null); WAM=(bq||[]).reduce((a,x)=>a+(+x.qty||0),0)}catch(e){WAQ=null;WAM=0}}
+    WSP=null;
+    if(SB){try{const {data:sp}=await SB.rpc('salper_day_counts',{p_store:STORE,p_date:d});const x=Array.isArray(sp)?sp[0]:sp;if(WAD===d&&x&&x.all_salper>0)WSP=x}catch(e){}}
     if(SB){try{const {data}=await SB.from('store_report_manual').select('*').eq('store_code',STORE).eq('report_date',d).maybeSingle();
       if(WAD===d&&data){WAK.forEach(([id,c])=>{$(id).value=data[c]==null?'':data[c]});const ex=data.extra||{};CLK.forEach(id=>{$(id).value=ex[id]==null?'':ex[id]})}}catch(e){}}
   }
+  if(WSP){$('rgSa').value=WSP.all_salper;$('rgS2').value=WSP.salper_gt2;$('rgSa').disabled=$('rgS2').disabled=true;$('rgSa').title=$('rgS2').title='Otomatis dari data penjualan salesperson harian'}else{$('rgSa').title=$('rgS2').title='Belum ada data salesperson tanggal ini, isi manual'}
   {const k=KB.get(d)||{},ph=(id,x)=>{$(id).placeholder=x!=null?'budget '+en(x):''};ph('waQt',k.pq);ph('clTt',k.tr);ph('clIt',k.iv);ph('clBt',k.bs)}
   if(WAQ!=null){$('waQa').value=WAQ;$('waQa').disabled=true;$('waQa').title='Otomatis dari Master Brand BCA'}else{$('waQa').title='Belum ada laporan detail tanggal ini';$('waQa').placeholder='belum ada data detail'}
   buildWa();
