@@ -691,7 +691,9 @@ const pc2=x=>(x*100).toFixed(2)+'%';
 const gp2=(a,l)=>{if(!l)return '-';const g=(a/l-1)*100;return (g>=0?'+':'')+g.toFixed(2)+'%'};
 const pad2=n=>String(n).padStart(2,'0');
 let WAQ=null, WAM=0;
-const RGK=['rgMr', 'rgMn', 'rgWt', 'rgDr', 'rgW10', 'rgP2', 'rgO2', 'rgRi', 'rgRk', 'rgRd', 'rgRs', 'rgRl', 'rgSa', 'rgS2', 'rgIAP', 'rgIBT', 'rgIBM', 'rgIDW', 'rgIEL', 'rgIFW', 'rgIHW', 'rgIHS', 'rgIKC', 'rgIPS', 'rgIPL', 'rgITL'], RGINV=[["AP", "Appliances"], ["BT", "Bathroom"], ["BM", "Building Material"], ["DW", "Doors And Windows"], ["EL", "Electrical And Lighting"], ["FW", "Flooring And Wall"], ["HW", "Hardware"], ["HS", "Houseware & Hobbies"], ["KC", "Kitchen"], ["PS", "Paint And Sundries"], ["PL", "Plumbing"], ["TL", "Tools"]];
+// Value inventory Class A: angka tetap (permanen)
+const RGVAL={AP:853112424.18,BT:1777219291.35,BM:476637964.89,DW:250966869.14,EL:906010979.28,FW:1212636161.43,HW:95061808.9,HS:17249138.36,KC:283096061.84,PS:3792603075.41,PL:902919696.79,TL:311040361.83};
+const RGK=['rgMr', 'rgMn', 'rgWt', 'rgDr', 'rgW10', 'rgP2', 'rgO2', 'rgRi', 'rgRk', 'rgRd', 'rgRs', 'rgRl', 'rgSa', 'rgS2'], RGINV=[["AP", "Appliances"], ["BT", "Bathroom"], ["BM", "Building Material"], ["DW", "Doors And Windows"], ["EL", "Electrical And Lighting"], ["FW", "Flooring And Wall"], ["HW", "Hardware"], ["HS", "Houseware & Hobbies"], ["KC", "Kitchen"], ["PS", "Paint And Sundries"], ["PL", "Plumbing"], ["TL", "Tools"]];
 const CLK=['clTt','clIt','clBt','clSm','clWi','clPdd','clOt','clD0','clD1','clD2','clD3','clLate',...RGK];
 const clVal=id=>{const e=$(id);if(id==='clLate'||id==='rgWt')return e.value.trim();return e.value===''?null:+e.value};
 const WAK=[['waFfc','traffic_manual'],['waQt','prot_qty_t'],['waQa','prot_qty_a'],['waMt','member_t'],['waMa','member_a']];
@@ -800,7 +802,7 @@ function buildRg(r,d,act,ly){
   h+=tag('TIEB')+T('w1',row(th('Store',1,'st')+th('SALES',5)+th('TRAFFIC',3)+th('INVOICE',3)+th('E TRAFFIC',3)+th('BASKET SIZE',3))+row(th('')+['Budget','Actual','LY','ACV','GROWTH','ACT','LY','GRW','ACT','LY','GRW','ACT','LY','GRW','ACT','LY','GRW'].map(x=>th(x)).join(''))
     +row(td('PCN','store')+cells(tieb))+row(td('Total','tot')+cells(tieb).replace(/class="num/g,'class="tot num')));
   // 2 inventory
-  const inv=RGINV.map(([k])=>v('rgI'+k)), invT=sum(inv.map(x=>x||0)), anyInv=inv.some(x=>x!=null);
+  const inv=RGINV.map(([k])=>RGVAL[k]), invT=sum(inv.map(x=>x||0)), anyInv=inv.some(x=>x!=null);
   h+=tag('VALUE INVENTORY CLASS A')+T('w2',row(th('STORE',1,'st')+th('VALUE INVENTORY CLASS A BY CATEGORY',12)+th('TOTAL INV CLASS A'))+row(th('')+RGINV.map(([k])=>th(k)).join('')+th(''))
     +row(td('PCN','store')+inv.map(x=>td(n2(x),'num')).join('')+td(anyInv?n2(invT):'-','num'))+row(td('TOTAL','tot')+inv.map(x=>td(n(x),'tot num')).join('')+td(anyInv?n(invT):'-','tot num')));
   // 3 service level
@@ -880,12 +882,6 @@ async function renderWa(){
       const q=(bq||[]).filter(x=>x.sale_date===d).reduce((a,x)=>a+(+x.qty||0),0); WAQ=q>0?q:(DATA.C.some(c=>c[0]===d)?0:null); WAM=(bq||[]).reduce((a,x)=>a+(+x.qty||0),0)}catch(e){WAQ=null;WAM=0}}
     if(SB){try{const {data}=await SB.from('store_report_manual').select('*').eq('store_code',STORE).eq('report_date',d).maybeSingle();
       if(WAD===d&&data){WAK.forEach(([id,c])=>{$(id).value=data[c]==null?'':data[c]});const ex=data.extra||{};CLK.forEach(id=>{$(id).value=ex[id]==null?'':ex[id]})}}catch(e){}}
-    // Value inventory permanen: bila tanggal ini belum diisi, pakai isian terakhir yang tersimpan
-    if(SB&&WAD===d&&RGINV.every(([k])=>$('rgI'+k).value==='')){try{
-      const {data:pv}=await SB.from('store_report_manual').select('report_date,extra').eq('store_code',STORE).lt('report_date',d).order('report_date',{ascending:false}).limit(60);
-      const hit=(pv||[]).find(r=>r.extra&&RGINV.some(([k])=>r.extra['rgI'+k]!=null&&r.extra['rgI'+k]!==''));
-      if(hit&&WAD===d){RGINV.forEach(([k])=>{const x=hit.extra['rgI'+k];$('rgI'+k).value=x==null?'':x});if(canWrite){clearTimeout(WAT);WAT=setTimeout(saveWa,700)}}
-    }catch(e){}}
   }
   {const k=KB.get(d)||{},ph=(id,x)=>{$(id).placeholder=x!=null?'budget '+en(x):''};ph('waQt',k.pq);ph('clTt',k.tr);ph('clIt',k.iv);ph('clBt',k.bs)}
   if(WAQ!=null){$('waQa').value=WAQ;$('waQa').disabled=true;$('waQa').title='Otomatis dari Master Brand BCA'}else{$('waQa').title='Belum ada laporan detail tanggal ini';$('waQa').placeholder='belum ada data detail'}
