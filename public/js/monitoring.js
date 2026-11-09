@@ -905,13 +905,91 @@ function rgExcelParts(){
   });
   return {html,text:lines.join('\n')};
 }
+/* ===== Penulis XLSX mini (tanpa library): sel, warna, border, sel gabungan ===== */
+const XL={
+  crcT:null,
+  crc(u){if(!XL.crcT){XL.crcT=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;XL.crcT[n]=c>>>0}}let c=0xFFFFFFFF;for(let i=0;i<u.length;i++)c=XL.crcT[(c^u[i])&255]^(c>>>8);return(c^0xFFFFFFFF)>>>0},
+  zip(files){const enc=new TextEncoder(),parts=[],cen=[];let off=0;
+    const w16=(a,v)=>a.push(v&255,(v>>8)&255), w32=(a,v)=>a.push(v&255,(v>>8)&255,(v>>16)&255,(v>>>24)&255);
+    files.forEach(([name,txt])=>{const nb=enc.encode(name),d=enc.encode(txt),crc=XL.crc(d),h=[];
+      w32(h,0x04034b50);w16(h,20);w16(h,0x0800);w16(h,0);w16(h,0);w16(h,0x21);w32(h,crc);w32(h,d.length);w32(h,d.length);w16(h,nb.length);w16(h,0);
+      parts.push(new Uint8Array(h),nb,d);
+      const c=[];w32(c,0x02014b50);w16(c,20);w16(c,20);w16(c,0x0800);w16(c,0);w16(c,0);w16(c,0x21);w32(c,crc);w32(c,d.length);w32(c,d.length);w16(c,nb.length);w16(c,0);w16(c,0);w16(c,0);w16(c,0);w32(c,0);w32(c,off);
+      cen.push(new Uint8Array(c),nb);off+=h.length+nb.length+d.length});
+    let cl=0;cen.forEach(x=>cl+=x.length);const e=[];w32(e,0x06054b50);w16(e,0);w16(e,0);w16(e,files.length);w16(e,files.length);w32(e,cl);w32(e,off);w16(e,0);
+    return new Blob([...parts,...cen,new Uint8Array(e)],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})},
+  esc:s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g,''),
+  col(i){let s='';i++;while(i>0){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26)}return s},
+  /* rows: [[{t,v,bg,fg,b,sz,al,bd,cs,rs,nf}]] ; cs/rs = colspan/rowspan ; v = angka (opsional) */
+  build(rows,colW,name){
+    const fonts=['<font><sz val="10"/><name val="Calibri"/></font>'],fills=['<fill><patternFill patternType="none"/></fill>','<fill><patternFill patternType="gray125"/></fill>'],borders=['<border><left/><right/><top/><bottom/><diagonal/></border>'],xfs=['<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'],nfs=[];
+    const mp={font:{},fill:{},bd:{},xf:{},nf:{}};
+    const idx=(arr,m,key,xml)=>{if(m[key]==null){m[key]=arr.length;arr.push(xml)}return m[key]};
+    const hex=c=>c?String(c).replace('#','').toUpperCase().padStart(6,'0'):null;
+    const style=c=>{
+      const fg=hex(c.fg),bg=hex(c.bg),bd=hex(c.bd);
+      const f=idx(fonts,mp.font,[c.b?1:0,fg,c.sz||10].join('|'),'<font>'+(c.b?'<b/>':'')+'<sz val="'+(c.sz||10)+'"/>'+(fg?'<color rgb="FF'+fg+'"/>':'')+'<name val="Calibri"/></font>');
+      const fl=bg?idx(fills,mp.fill,bg,'<fill><patternFill patternType="solid"><fgColor rgb="FF'+bg+'"/><bgColor indexed="64"/></patternFill></fill>'):0;
+      const b=bd?idx(borders,mp.bd,bd,'<border>'+['left','right','top','bottom'].map(s=>'<'+s+' style="thin"><color rgb="FF'+bd+'"/></'+s+'>').join('')+'<diagonal/></border>'):0;
+      let nf=0;if(c.nf){if(mp.nf[c.nf]==null){mp.nf[c.nf]=164+nfs.length;nfs.push('<numFmt numFmtId="'+mp.nf[c.nf]+'" formatCode="'+XL.esc(c.nf)+'"/>')}nf=mp.nf[c.nf]}
+      const al=c.al==='center'?'center':c.al==='right'?'right':'left';
+      return idx(xfs,mp.xf,[f,fl,b,nf,al].join('|'),'<xf numFmtId="'+nf+'" fontId="'+f+'" fillId="'+fl+'" borderId="'+b+'" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyNumberFormat="1" applyAlignment="1"><alignment horizontal="'+al+'" vertical="center" wrapText="1"/></xf>')};
+    const occ={},merges=[];let sheet='';
+    rows.forEach((r,ri)=>{let ci=0,x='';
+      if(r.h)sheet+='';
+      r.forEach(c=>{while(occ[ri+','+ci])ci++;
+        const cs=c.cs||1,rs=c.rs||1,s=style(c),ref=XL.col(ci)+(ri+1);
+        if(c.v!=null&&c.v!==''&&typeof c.v==='number')x+='<c r="'+ref+'" s="'+s+'"><v>'+c.v+'</v></c>';
+        else if(c.t!=null&&c.t!=='')x+='<c r="'+ref+'" s="'+s+'" t="inlineStr"><is><t xml:space="preserve">'+XL.esc(c.t)+'</t></is></c>';
+        else x+='<c r="'+ref+'" s="'+s+'"/>';
+        for(let a=0;a<rs;a++)for(let b2=0;b2<cs;b2++){if(a||b2){occ[(ri+a)+','+(ci+b2)]=s;if(!a)x+='<c r="'+XL.col(ci+b2)+(ri+1)+'" s="'+s+'"/>'}}
+        if(cs>1||rs>1)merges.push(ref+':'+XL.col(ci+cs-1)+(ri+rs));
+        ci+=cs});
+      // sel yang tertutup rowspan dari baris atas
+      const extra=[];Object.keys(occ).forEach(k=>{const [a,b2]=k.split(',').map(Number);if(a===ri&&!r.some((_,i)=>0)&&occ[k]!=null&&typeof occ[k]==='number'&&!x.includes('r="'+XL.col(b2)+(ri+1)+'"'))extra.push([b2,'<c r="'+XL.col(b2)+(ri+1)+'" s="'+occ[k]+'"/>'])});
+      const all=[];const re=/<c r="([A-Z]+)\d+"[\s\S]*?(?:\/>|<\/c>)/g;let m;const cells=[];
+      // urutkan sel per kolom
+      const seg=x.match(/<c r="[A-Z]+\d+"[^>]*?(?:\/>|>[\s\S]*?<\/c>)/g)||[];
+      const colN=s=>{const L=s.match(/r="([A-Z]+)/)[1];let n=0;for(const ch of L)n=n*26+ch.charCodeAt(0)-64;return n};
+      const merged=seg.concat(extra.map(e=>e[1])).sort((p,q)=>colN(p)-colN(q));
+      sheet+='<row r="'+(ri+1)+'">'+merged.join('')+'</row>'});
+    const maxc=Math.max(...rows.map(r=>r.reduce((a,c)=>a+(c.cs||1),0)),1);
+    const cols='<cols>'+Array.from({length:maxc},(_,i)=>'<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+((colW&&colW[i])||14)+'" customWidth="1"/>').join('')+'</cols>';
+    const sh='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView showGridLines="0" workbookViewId="0"/></sheetViews>'+cols+'<sheetData>'+sheet+'</sheetData>'+(merges.length?'<mergeCells count="'+merges.length+'">'+merges.map(m=>'<mergeCell ref="'+m+'"/>').join('')+'</mergeCells>':'')+'</worksheet>';
+    const st='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+(nfs.length?'<numFmts count="'+nfs.length+'">'+nfs.join('')+'</numFmts>':'')+'<fonts count="'+fonts.length+'">'+fonts.join('')+'</fonts><fills count="'+fills.length+'">'+fills.join('')+'</fills><borders count="'+borders.length+'">'+borders.join('')+'</borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="'+xfs.length+'">'+xfs.join('')+'</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+    const H='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+    return XL.zip([
+      ['[Content_Types].xml',H+'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'],
+      ['_rels/.rels',H+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
+      ['xl/workbook.xml',H+'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="'+XL.esc(name||'Sheet1')+'" sheetId="1" r:id="rId1"/></sheets></workbook>'],
+      ['xl/_rels/workbook.xml.rels',H+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'],
+      ['xl/styles.xml',st],['xl/worksheets/sheet1.xml',sh]])}
+};
+
+function rgXlsxRows(){
+  const src=$('rgView'); if(!src.querySelector('table')) return null;
+  const hx=c=>{const m=String(c).match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);if(!m||(m[4]!=null&&+m[4]===0))return null;return [m[1],m[2],m[3]].map(x=>(+x).toString(16).padStart(2,'0')).join('')};
+  const cellOf=el=>{const cs=getComputedStyle(el),t=el.innerText.replace(/\s+/g,' ').trim(),tn=t.replace(/,/g,'');
+    const o={t,bg:hx(cs.backgroundColor),fg:hx(cs.color),b:(+cs.fontWeight>=600)?1:0,sz:Math.max(8,Math.min(14,Math.round(parseFloat(cs.fontSize)*0.75))),al:cs.textAlign==='center'?'center':(cs.textAlign==='right'||cs.textAlign==='end')?'right':'left',bd:hx(cs.borderTopColor)||'C9D1E3',cs:+el.getAttribute('colspan')||1,rs:+el.getAttribute('rowspan')||1};
+    if(/^-?\d{1,3}(,\d{3})*(\.\d+)?$/.test(t)||/^-?\d+(\.\d+)?$/.test(t)){o.v=+tn;o.nf=/\./.test(t)?'#,##0.00':'#,##0';o.al=o.al==='left'?'right':o.al}
+    return o};
+  const rows=[];
+  src.querySelectorAll(':scope > *').forEach(el=>{
+    if(el.tagName==='TABLE') el.querySelectorAll('tr').forEach(tr=>rows.push([...tr.querySelectorAll('th,td')].map(cellOf)));
+    else if(el.classList.contains('rgsp')) rows.push([]);
+    else {const c=cellOf(el);c.cs=3;c.b=1;c.bd=null;c.al='left';rows.push([c]);}
+  });
+  return rows;
+}
 $('rgExcel').addEventListener('click',()=>{
-  const b=$('rgExcel'), old=b.textContent, parts=rgExcelParts(); if(!parts) return;
-  const name='report-closing-region-'+$('waDate').value+'.xls';
-  const html=parts.html.replace('<html>','<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">').replace('<head>','<head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Report Closing</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->');
-  const url=URL.createObjectURL(new Blob(['\ufeff'+html],{type:'application/vnd.ms-excel;charset=utf-8'}));
-  const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);
-  b.textContent='Excel terunduh'; setTimeout(()=>{b.textContent=old},3000);
+  const b=$('rgExcel'), old=b.textContent;
+  try{
+    const rows=rgXlsxRows(); if(!rows) return;
+    const blob=XL.build(rows.map(r=>r.length?r:[{t:''}]),[14,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16],'Report Closing');
+    const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='report-closing-region-'+$('waDate').value+'.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);
+    b.textContent='Excel terunduh';
+  }catch(e){b.textContent='Gagal membuat Excel'}
+  setTimeout(()=>{b.textContent=old},3000);
 });
 $('rgShot').addEventListener('click',()=>runShot($('rgShot'),$('rgView'),1500,'report-closing-region-'+$('waDate').value+'.png'));
 
