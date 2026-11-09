@@ -366,7 +366,7 @@ function renderTableInner(dr){
   }).join('');
   const q = S.q.trim().toLowerCase();
   // Tabel ini hanya menampilkan salesperson aktif: ada di jadwal, bukan kasir (kecuali peran Kasir dipilih)
-  let base = filtered().filter(p=>(!S.zona||p.zona===S.zona) && (S.role==='Kasir' || !hasT || (p.hasSch && p.role!=='Kasir')));
+  let base = filtered().filter(p=>(!S.zona||p.zona===S.zona) && (S.role==='Kasir' || !hasT || (p.hasSch && p.zona && p.role!=='Kasir')));
   if(S.schSel.length){
     const have=new Set(base.map(p=>p.id));
     Object.values(SCHM).forEach(e=>{ if(!have.has(e.id) && (S.role!=='Kasir') && (!S.zona||e.zona===S.zona) && !P.some(p=>p.id===e.id)) base.push(ghost(e)); });
