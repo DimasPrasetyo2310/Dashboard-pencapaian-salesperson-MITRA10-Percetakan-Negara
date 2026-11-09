@@ -148,7 +148,7 @@ function renderTarget(rows){
   const ach=nav/bTot, cls=ach>=1?'good':ach>=.9?'warn':'crit';
   const need=left>0&&mTarget>mtd?(mTarget-mtd)/left:0;
   const lySum=sum(dates.map(d=>(LYD.get(lyDate(d))||{sx:0}).sx));
-  const tile=(l,v,s)=>`<div class="tg-t"><span class="l">${l}</span><span class="v">${v}</span><span class="s">${s}</span></div>`;
+  const tile=(l,v,s,k)=>`<div class="tg-t${k?' sum':''}"${k?` data-sum="${k}" tabindex="0" role="button" title="Klik untuk rincian per hari"`:''}><span class="l">${l}</span><span class="v">${v}</span><span class="s">${s}</span></div>`;
   const list=cats.filter(c=>bud[c]>0||act[c]>0).sort((a,b)=>zn(a)-zn(b)||(bud[b]||act[b])-(bud[a]||act[a]));
   const zcount={};list.forEach(c=>{zcount[zn(c)]=(zcount[zn(c)]||0)+1});let zprev=null;
   const cell=(a,b,l)=>{const pc=b?a/b:null,cl=pc==null?'':pc>=1?'good':pc>=.9?'warn':'crit';return `<td class="r num">${b?fu(b):'–'}</td><td class="r num">${fu(a)}</td><td class="c num">${pc==null?'–':`<span class="pill ${cl}">${dec(pc*100,1)}%</span>`}</td><td class="r num">${b?sel(a-b):'–'}</td><td class="r num">${l?fu(l):'–'}</td><td class="r num">${l?lyp(a,l):'–'}</td>`};
@@ -166,16 +166,16 @@ function renderTarget(rows){
   const lyset=new Set(dates.map(lyDate)), hasDim=DIMD.some(z=>set.has(z.d)&&z.dim==='source');
   const pjA=dsum('source','Sales Project',set), pjB=sum(dates.map(d=>(KB.get(d)||{}).pj||0));
   const pbA=dsum('typebrand','Private Brand',set), pbL=dsum('typebrand','Private Brand',lyset);
-  const pjCard=hasDim?tile('Sales Project · kontribusi',(nav?dec(pjA/nav*100,1):'0,0')+'%',rp(pjA)+(pjB?' vs budget '+rp(pjB)+' ('+dec(pjA/pjB*100,1)+'%)':' · budget belum ada')):tile('Sales Project','–','Unggah laporan detail penjualan');
-  const pbCard=hasDim?(pbL?tile('Private Brand vs '+lyYear(dates[0]),(pbA/pbL-1>=0?'▲ ':'▼ ')+dec(Math.abs(pbA/pbL-1)*100,1)+'%',rp(pbA)+' vs '+rp(pbL)+' tahun lalu · kontribusi '+(nav?dec(pbA/nav*100,1):'0,0')+'%'):tile('Private Brand',rp(pbA),'kontribusi '+(nav?dec(pbA/nav*100,1):'0,0')+'% · data tahun lalu belum ada')):tile('Private Brand','–','Unggah laporan detail penjualan');
+  const pjCard=hasDim?tile('Sales Project · kontribusi',(nav?dec(pjA/nav*100,1):'0,0')+'%',rp(pjA)+(pjB?' vs budget '+rp(pjB)+' ('+dec(pjA/pjB*100,1)+'%)':' · budget belum ada'),'pj'):tile('Sales Project','–','Unggah laporan detail penjualan','pj');
+  const pbCard=hasDim?(pbL?tile('Private Brand vs '+lyYear(dates[0]),(pbA/pbL-1>=0?'▲ ':'▼ ')+dec(Math.abs(pbA/pbL-1)*100,1)+'%',rp(pbA)+' vs '+rp(pbL)+' tahun lalu · kontribusi '+(nav?dec(pbA/nav*100,1):'0,0')+'%','pb'):tile('Private Brand',rp(pbA),'kontribusi '+(nav?dec(pbA/nav*100,1):'0,0')+'% · data tahun lalu belum ada','pb')):tile('Private Brand','–','Unggah laporan detail penjualan','pb');
   box.innerHTML=`<div class="tg-top">
-    <div class="tg-main"><span class="l">Pencapaian vs budget periode</span><span class="big ${cls}">${dec(ach*100,1)}%</span>
+    <div class="tg-main sum" data-sum="ach" tabindex="0" role="button" title="Klik untuk rincian per hari"><span class="l">Pencapaian vs budget periode</span><span class="big ${cls}">${dec(ach*100,1)}%</span>
       <div class="pbar" role="img" aria-label="Pencapaian ${dec(ach*100,1)} persen"><i class="${cls}" style="width:${Math.min(ach,1)*100}%"></i></div>
       <span class="s">${rp(nav)} dari budget ${rp(bTot)} · ${ach>=1?'lebih':'kurang'} ${rp(Math.abs(nav-bTot))}</span></div>
-    ${tile('Target '+MON[m-1]+' '+y,rp(mTarget),'target bulan penuh, exclude tax')}
+    ${tile('Target '+MON[m-1]+' '+y,rp(mTarget),'target bulan penuh, exclude tax','tgt')}
     ${pjCard}
     ${pbCard}
-    ${lySum?tile('Sales vs '+lyYear(dates[0]),(nav/lySum-1>=0?'▲ ':'▼ ')+dec(Math.abs(nav/lySum-1)*100,1)+'%',rp(lySum)+' tahun lalu'):''}
+    ${lySum?tile('Sales vs '+lyYear(dates[0]),(nav/lySum-1>=0?'▲ ':'▼ ')+dec(Math.abs(nav/lySum-1)*100,1)+'%',rp(lySum)+' tahun lalu','ly'):''}
   </div>
   <div class="tbl"><table class="tgt"><thead><tr class="grp"><th colspan="2"></th><th colspan="6" class="r">Periode terpilih</th><th colspan="6" class="r msep">MTD · 1 – ${fd(last)}</th></tr><tr><th>Zonasi</th><th>Kategori</th><th class="r">Budget periode</th><th class="r">Actual</th><th class="c">Achievement</th><th class="r">Selisih</th><th class="r">Tahun lalu</th><th class="r">vs tahun lalu</th><th class="r msep">Budget MTD</th><th class="r">Actual MTD</th><th class="c">Achievement MTD</th><th class="r">Selisih MTD</th><th class="r">MTD tahun lalu</th><th class="r">vs tahun lalu</th></tr></thead><tbody>${trs}</tbody>
   <tfoot><tr><td colspan="2">Total</td><td class="r num">${fu(bT)}</td><td class="r num">${fu(aT)}</td><td class="r num">${bT?dec(aT/bT*100,1)+'%':'–'}</td><td class="r num">${sel(aT-bT)}</td><td class="r num">${lT?fu(lT):'–'}</td><td class="r num">${lT?lyp(aT,lT):'–'}</td>${mcell(sum(list.map(c=>actM[c]||0)),sum(list.map(c=>budM[c]||0)),sum(list.map(c=>lycM[c]||0)))}</tr></tfoot></table></div>`;
@@ -586,6 +586,47 @@ function openKpi(key){
   const note=key==='nav'?'<p class="hint">Sales dihitung dari laporan detail penjualan yang diunggah (kolom Amount Exclude Sales), sama dengan tabel Target vs actual. Hari yang belum punya laporan detail memakai Sales Exclude Tax (NAV).</p>':'';
   $('brBody').innerHTML=note+`<div class="tbl brtbl"><table class="tgt"><thead><tr><th>Tanggal</th><th class="r">${m.l}</th><th class="r">Tahun lalu</th><th class="r">Selisih</th>${m.pts?'':'<th class="r">Growth</th>'}</tr></thead><tbody>${trs}</tbody><tfoot>${tfoot}</tfoot></table></div>`;
 }
+
+/* Kartu ringkasan interaktif: klik untuk rincian per hari */
+function openSum(key){
+  if(key==='ly'){openKpi('nav');return}
+  const ctx=LASTTG; if(!ctx||!ctx.dates.length) return;
+  const dates=ctx.dates.slice().sort(), first=dates[0], last=dates[dates.length-1], mk=last.slice(0,7);
+  const Dm=new Map(DATA.D.map(r=>[r.d,r])), sx=d=>(Dm.get(d)||{sx:0}).sx, lysx=d=>(LYD.get(lyDate(d))||{sx:0}).sx;
+  const dsum=(dim,val,d)=>sum(DIMD.filter(z=>z.d===d&&z.dim===dim&&z.v===val).map(z=>z.s));
+  const t=(k,v)=>`<div class="tg-t"><span class="l">${k}</span><span class="v">${v}</span></div>`;
+  const pct=(a,b)=>b?dec(a/b*100,1)+'%':'–', sel=v=>pil(v,fu(Math.abs(v))), gr=(a,l)=>l?pil((a/l-1)*100,dec(Math.abs(a/l-1)*100,1)+'%'):'–';
+  const tbl=(head,rows,foot)=>`<div class="tbl brtbl"><table class="tgt"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody>${foot?`<tfoot>${foot}</tfoot>`:''}</table></div>`;
+  const H=(a)=>a.map((x,i)=>`<th${i?' class="r"':''}>${x}</th>`).join(''), R=(d,c)=>`<tr><td>${hari(d)}, ${fdy(d)}</td>${c.map(x=>`<td class="r num">${x}</td>`).join('')}</tr>`, F=(l,c)=>`<tr><td>${l}</td>${c.map(x=>`<td class="r num">${x}</td>`).join('')}</tr>`;
+  brCat='sum-'+key; $('brOv').hidden=false; document.body.style.overflow='hidden';
+  let title='',period=fdy(first)+' – '+fdy(last)+' · '+dates.length+' hari',kpi='',body='';
+  if(key==='ach'){
+    title='Pencapaian vs budget periode';
+    const B=sum(dates.map(d=>budgetDay(d))), A=sum(dates.map(sx)), L=sum(dates.map(lysx));
+    kpi=t('Budget periode',fu(B))+t('Actual',fu(A))+t('Achievement',pct(A,B))+t(A>=B?'Lebih':'Kurang',fu(Math.abs(A-B)))+t('Tahun lalu',L?fu(L):'–')+t('Growth',gr(A,L));
+    body=tbl(H(['Tanggal','Budget','Actual','Achievement','Selisih','Tahun lalu','Growth']),dates.map(d=>{const b=budgetDay(d),a=sx(d),l=lysx(d);return R(d,[fu(b),fu(a),pct(a,b),sel(a-b),l?fu(l):'–',gr(a,l)])}).join(''),F('Total',[fu(B),fu(A),pct(A,B),sel(A-B),L?fu(L):'–',gr(A,L)]));
+  } else if(key==='tgt'){
+    const y=+mk.slice(0,4), m=+mk.slice(5), dim=new Date(y,m,0).getDate(), all=[...Array(dim)].map((_,i)=>mk+'-'+pad2(i+1));
+    title='Target '+MON[m-1]+' '+y+' per hari'; period=MON[m-1]+' '+y+' · '+dim+' hari · sales sampai '+fdy(last);
+    const T=sum(all.map(d=>budgetDay(d))), M=sum(all.filter(d=>d<=last).map(sx)), left=all.filter(d=>d>last).length, need=left?Math.max(T-M,0)/left:0;
+    kpi=t('Target bulan penuh',fu(T))+t('Tercapai s/d '+fd(last),fu(M))+t('Achievement bulan',pct(M,T))+t('Sisa target',M>=T?'Tercapai':fu(T-M))+t('Hari tersisa',left)+t('Butuh per hari',left&&M<T?fu(need):'–');
+    let cb=0,ca=0;
+    body=tbl(H(['Tanggal','Budget harian','Budget kumulatif','Actual','Actual kumulatif','Achievement kumulatif']),all.map(d=>{const b=budgetDay(d);cb+=b;const has=d<=last;if(has)ca+=sx(d);return R(d,[fu(b),fu(cb),has?fu(sx(d)):'–',has?fu(ca):'–',has?pct(ca,cb):'–'])}).join(''),F('Total',[fu(T),fu(T),fu(M),fu(M),pct(M,T)]));
+  } else if(key==='pj'){
+    title='Sales Project per hari';
+    const A=sum(dates.map(d=>dsum('source','Sales Project',d))), N=sum(dates.map(sx)), B=sum(dates.map(d=>(KB.get(d)||{}).pj||0));
+    kpi=t('Actual project',fu(A))+t('Kontribusi',pct(A,N))+t('Budget project',B?fu(B):'–')+t('Achievement',pct(A,B))+t(A>=B?'Lebih':'Kurang',B?fu(Math.abs(A-B)):'–')+t('Total sales',fu(N));
+    body=tbl(H(['Tanggal','Actual project','Kontribusi','Budget project','Achievement','Selisih']),dates.map(d=>{const a=dsum('source','Sales Project',d),b=(KB.get(d)||{}).pj||0;return R(d,[fu(a),pct(a,sx(d)),b?fu(b):'–',pct(a,b),b?sel(a-b):'–'])}).join(''),F('Total',[fu(A),pct(A,N),B?fu(B):'–',pct(A,B),B?sel(A-B):'–']));
+  } else if(key==='pb'){
+    title='Private Brand per hari';
+    const lyd=d=>dsum('typebrand','Private Brand',lyDate(d)), A=sum(dates.map(d=>dsum('typebrand','Private Brand',d))), L=sum(dates.map(lyd)), N=sum(dates.map(sx)), B=sum(dates.map(d=>(KB.get(d)||{}).pb||0));
+    kpi=t('Actual Private Brand',fu(A))+t('Tahun lalu',L?fu(L):'–')+t('Growth',gr(A,L))+t('Kontribusi',pct(A,N))+t('Budget (file budget)',B?fu(B):'–')+t('Achievement budget',pct(A,B));
+    body=tbl(H(['Tanggal','Actual','Tahun lalu','Selisih','Growth','Kontribusi','Budget','Achievement']),dates.map(d=>{const a=dsum('typebrand','Private Brand',d),l=lyd(d),b=(KB.get(d)||{}).pb||0;return R(d,[fu(a),l?fu(l):'–',l?sel(a-l):'–',gr(a,l),pct(a,sx(d)),b?fu(b):'–',pct(a,b)])}).join(''),F('Total',[fu(A),L?fu(L):'–',L?sel(A-L):'–',gr(A,L),pct(A,N),B?fu(B):'–',pct(A,B)]));
+  } else return;
+  $('brTitle').textContent=title; $('brPeriod').textContent=period; $('brKpi').innerHTML=kpi; $('brBody').innerHTML=body;
+}
+$('tg').addEventListener('click',e=>{const k=e.target.closest('[data-sum]');if(k)openSum(k.dataset.sum)});
+$('tg').addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const k=e.target.closest('[data-sum]');if(k){e.preventDefault();openSum(k.dataset.sum)}});
 $('kpis').addEventListener('click',e=>{const k=e.target.closest('.kpi[data-kpi]');if(k)openKpi(k.dataset.kpi)});
 $('kpis').addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const k=e.target.closest('.kpi[data-kpi]');if(k){e.preventDefault();openKpi(k.dataset.kpi)}});
 
