@@ -58,6 +58,8 @@ input[type=date]{font:inherit;color:var(--ink);background:var(--bg);border:1px s
 input:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .banner a:focus-visible,.banner button:focus-visible{outline-color:#fff}
 .hint2{font-size:12px;color:var(--ink3)}
+.qcbar{margin:0 0 12px;padding:10px 14px;border-radius:10px;background:#fff4d6;border:1.5px solid #e9b949;color:#6a4a00;font-size:13.5px}.qcbar ul{margin:6px 0 4px 18px;padding:0}.qcbar span{font-size:12px;opacity:.85}
+body.dropping::after{content:"Lepaskan file Excel di sini untuk mengunggah";position:fixed;inset:12px;display:flex;align-items:center;justify-content:center;font:700 22px system-ui;color:#1f5bd8;background:rgba(31,91,216,.08);border:3px dashed #1f5bd8;border-radius:16px;z-index:9999;pointer-events:none}
 .msg{font-size:13px;padding:9px 14px;border-radius:10px}
 .msg.ok{background:var(--good-bg);color:var(--good)}.msg.err{background:var(--crit-bg);color:var(--crit)}.msg.info{background:var(--accent-soft);color:var(--accent-ink)}
 .note{background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:9px 14px;font-size:13px}
@@ -340,6 +342,7 @@ table.rgt .rneg{color:#c0392b;font-weight:700}table.rgt td.tot .rneg{color:#ff9b
     </div>
   </section>
   <div id="lockBar" role="status" aria-live="polite" hidden></div>
+  <div id="qcBar" class="qcbar" role="status" hidden></div>
   <div id="msg" role="status" aria-live="polite" hidden></div>
 
   <section class="kpis" id="kpis" aria-label="Ringkasan utama"></section>

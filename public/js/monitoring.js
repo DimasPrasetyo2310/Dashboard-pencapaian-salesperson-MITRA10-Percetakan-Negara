@@ -448,8 +448,15 @@ async function releaseLock(){try{clearInterval(lockTimer);if(SB&&!window.__DEMO&
 async function pollLock(){showLock(await readLock())}
 setInterval(()=>{if(!document.hidden&&ME)pollLock()},15000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ME)pollLock()});
-$('file').addEventListener('change',async e=>{
-  const files=[...e.target.files]; e.target.value='';
+$('file').addEventListener('change',e=>{const f=[...e.target.files]; e.target.value=''; handleFiles(f)});
+/* Seret dan lepas banyak file sekaligus ke halaman; jenis file dikenali otomatis */
+let dragN=0;
+document.addEventListener('dragenter',e=>{if(canWrite&&e.dataTransfer&&[...e.dataTransfer.types].includes('Files')){dragN++;document.body.classList.add('dropping')}});
+document.addEventListener('dragleave',()=>{dragN=Math.max(0,dragN-1);if(!dragN)document.body.classList.remove('dropping')});
+document.addEventListener('dragover',e=>{if(canWrite&&e.dataTransfer&&[...e.dataTransfer.types].includes('Files'))e.preventDefault()});
+document.addEventListener('drop',e=>{if(!e.dataTransfer||!e.dataTransfer.files.length)return;e.preventDefault();dragN=0;document.body.classList.remove('dropping');
+  const f=[...e.dataTransfer.files].filter(x=>/\.xlsx?$/i.test(x.name)); if(f.length)handleFiles(f); else showMsg('Hanya file Excel (.xlsx atau .xls) yang bisa diunggah.','err')});
+async function handleFiles(files){
   if(!files.length||!canWrite) return;
   if(!window.XLSX){showMsg('Pembaca Excel belum termuat. Muat ulang halaman lalu coba lagi.','err');return}
   const lk=await acquireLock();
@@ -457,7 +464,7 @@ $('file').addEventListener('change',async e=>{
   showLock({user_email:ME,started_at:new Date().toISOString()});
   lockTimer=setInterval(extendLock,60000);
   try{await doUpload(files)}finally{await releaseLock();pollLock()}
-});
+}
 async function doUpload(files){
   showMsg('Membaca '+files.length+' file…','info');
   const ok=[],bad=[];
@@ -477,7 +484,9 @@ async function doUpload(files){
     }catch(err){bad.push(r.name+': '+explain(err))}
   }
   if(parts.length){await loadData();const r=presetRange('all');setRange(r[0],r[1])}
-  if(parts.length&&!bad.length) showMsg('Berhasil disimpan. '+parts.join(' · ')+'. Data tanggal yang sama diganti dengan yang baru.','ok');
+  const qc=parts.length?qcIssues():[];
+  if(parts.length&&!bad.length&&qc.length) showMsg('Tersimpan, tetapi ada data yang perlu dicek: '+qc.slice(0,5).join(' · ')+(qc.length>5?' · +'+(qc.length-5)+' lainnya':'')+'. '+parts.join(' · '),'err');
+  else if(parts.length&&!bad.length) showMsg('Berhasil disimpan dan lolos pengecekan otomatis. '+parts.join(' · ')+'. Data tanggal yang sama diganti dengan yang baru.','ok');
   else if(parts.length) showMsg('Sebagian disimpan. '+parts.join(' · ')+'. Gagal: '+bad.join('; '),'err');
   else showMsg('Tidak ada yang tersimpan. '+bad.join('; ')+'. Gunakan file Report Compare FFC and Nav, Sales Detail Report, atau file Budget.','err');
 }
@@ -1072,6 +1081,25 @@ async function fetchAll(table,cols,order){
   }
   return out;
 }
+
+/* Pengecekan otomatis: total NAV vs kategori/brand/item, transaksi NAV vs FFC, dan data yang belum lengkap */
+const QCTOL=1000;
+function qcIssues(){
+  const out=[], D=DATA.D||[]; if(!D.length) return out;
+  const last=D.map(r=>r.d).sort().slice(-14), set=new Set(last), cs=new Map();
+  DATA.C.forEach(c=>{if(set.has(c[0]))cs.set(c[0],(cs.get(c[0])||0)+c[2])});
+  const lab=d=>fd(d).replace(/ \d{4}$/,'');
+  D.filter(r=>set.has(r.d)).sort((a,b)=>a.d<b.d?-1:1).forEach(r=>{
+    if(!cs.has(r.d)) out.push(lab(r.d)+': NAV ada, laporan detail penjualan belum diunggah');
+    else{const df=cs.get(r.d)-r.nav; if(Math.abs(df)>QCTOL) out.push(lab(r.d)+': total detail '+(df>0?'lebih besar ':'lebih kecil ')+rp(Math.abs(df))+' dari NAV')}
+    if(r.ffct&&r.tr&&r.tr!==r.ffct) out.push(lab(r.d)+': transaksi NAV '+nf.format(r.tr)+' berbeda dari FFC '+nf.format(r.ffct));
+  });
+  return out;
+}
+function renderQc(){
+  const el=$('qcBar'); if(!el) return; const q=qcIssues();
+  el.hidden=!q.length; el.innerHTML=q.length?'<b>Pengecekan data otomatis ('+q.length+' temuan, 14 hari terakhir)</b><ul>'+q.map(x=>'<li>'+x.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</li>').join('')+'</ul><span>Toleransi selisih Rp '+nf.format(QCTOL)+'. Unggah ulang file yang benar untuk memperbaiki.</span>':'';
+}
 async function loadData(){
   WAD=null;
   const [d,c,b,p,dm,kb]=await Promise.all([
@@ -1097,6 +1125,7 @@ async function loadData(){
     C:c.filter(r=>+r.sale_date.slice(0,4)===yr).map(r=>[r.sale_date,r.category,+r.sales]),
     B:b
   };
+  try{renderQc()}catch(e2){}
 }
 const signOut=async()=>{try{if(SB)await SB.auth.signOut()}catch(e){}location.replace('index.html')};
 $('logout').addEventListener('click',signOut);$('boot-out').addEventListener('click',signOut);
