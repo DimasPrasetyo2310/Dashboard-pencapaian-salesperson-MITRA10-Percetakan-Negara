@@ -938,11 +938,16 @@ async function renderWa(){
     if(SB){try{const {data:bq}=await SB.from('store_day_brand').select('sale_date,qty').eq('store_code',STORE).eq('master_brand','BCA').gte('sale_date',d.slice(0,8)+'01').lte('sale_date',d);
       const q=(bq||[]).filter(x=>x.sale_date===d).reduce((a,x)=>a+(+x.qty||0),0); WAQ=q>0?q:(DATA.C.some(c=>c[0]===d)?0:null); WAM=(bq||[]).reduce((a,x)=>a+(+x.qty||0),0)}catch(e){WAQ=null;WAM=0}}
     WSP=null;
-    if(SB){try{const {data:sp}=await SB.rpc('salper_day_counts',{p_store:STORE,p_date:d});const x=Array.isArray(sp)?sp[0]:sp;if(WAD===d&&x&&x.all_salper>0)WSP=x}catch(e){}}
+    if(SB){try{const {data:sp}=await SB.rpc('salper_day_counts',{p_store:STORE,p_date:d});const x=Array.isArray(sp)?sp[0]:sp;
+      if(x&&x.all_salper>0){x.src='penjualan';
+        // total salper = salesperson yang terjadwal masuk (S/P/M) di jadwal project salesperson
+        try{const {data:sc}=await SB.from('dashboard_schedule').select('doc').eq('store_code',STORE).maybeSingle();const doc=sc&&sc.doc,i=doc&&Array.isArray(doc.dates)?doc.dates.indexOf(d):-1;
+          if(i>=0&&Array.isArray(doc.people)){const RS=['S10005-0000000706','S10005-0000000517','S10005-0000000704'];const c=doc.people.filter(e=>!RS.includes(e.id)&&/^[SPM](?:[\/.].*)?$/.test(String((e.c||[])[i]||''))).length;if(c>0){x.all_salper=c;x.src='jadwal'}}}catch(e2){}
+        if(WAD===d)WSP=x}}catch(e){}}
     if(SB){try{const {data}=await SB.from('store_report_manual').select('*').eq('store_code',STORE).eq('report_date',d).maybeSingle();
       if(WAD===d&&data){WAK.forEach(([id,c])=>{$(id).value=data[c]==null?'':data[c]});const ex=data.extra||{};CLK.forEach(id=>{$(id).value=ex[id]==null?'':ex[id]})}}catch(e){}}
   }
-  if(WSP){$('rgSa').value=WSP.all_salper;$('rgS2').value=WSP.salper_gt2;$('rgSa').disabled=$('rgS2').disabled=true;$('rgSa').title=$('rgS2').title='Otomatis dari data penjualan salesperson harian'}else{$('rgSa').title=$('rgS2').title='Belum ada data salesperson tanggal ini, isi manual'}
+  if(WSP){$('rgSa').value=WSP.all_salper;$('rgS2').value=WSP.salper_gt2;$('rgSa').disabled=$('rgS2').disabled=true;$('rgSa').title=$('rgS2').title=(WSP.src==='jadwal'?'All salper: salesperson terjadwal masuk (jadwal project salesperson). >2 kategori: dari penjualan harian':'Otomatis dari data penjualan salesperson harian')}else{$('rgSa').title=$('rgS2').title='Belum ada data salesperson tanggal ini, isi manual'}
   {const k=KB.get(d)||{},ph=(id,x)=>{$(id).placeholder=x!=null?'budget '+en(x):''};ph('waQt',k.pq);ph('clTt',k.tr);ph('clIt',k.iv);ph('clBt',k.bs)}
   if(WAQ!=null){$('waQa').value=WAQ;$('waQa').disabled=true;$('waQa').title='Otomatis dari Master Brand BCA'}else{$('waQa').title='Belum ada laporan detail tanggal ini';$('waQa').placeholder='belum ada data detail'}
   buildWa();
