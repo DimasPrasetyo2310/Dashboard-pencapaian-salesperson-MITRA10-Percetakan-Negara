@@ -905,15 +905,13 @@ function rgExcelParts(){
   });
   return {html,text:lines.join('\n')};
 }
-$('rgExcel').addEventListener('click',async()=>{
-  const b=$('rgExcel'), old=b.textContent, parts=rgExcelParts(); if(!parts){return}
-  let msg='Tersalin. Tempel di Excel (Ctrl+V)';
-  try{await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([parts.html],{type:'text/html'}),'text/plain':new Blob([parts.text],{type:'text/plain'})})])}
-  catch(e){
-    try{const r=document.createRange();r.selectNodeContents($('rgView'));const sel=getSelection();sel.removeAllRanges();sel.addRange(r);document.execCommand('copy');sel.removeAllRanges()}
-    catch(e2){msg='Tidak bisa menyalin. Blok tabel lalu salin manual'}
-  }
-  b.textContent=msg; setTimeout(()=>{b.textContent=old},3000);
+$('rgExcel').addEventListener('click',()=>{
+  const b=$('rgExcel'), old=b.textContent, parts=rgExcelParts(); if(!parts) return;
+  const name='report-closing-region-'+$('waDate').value+'.xls';
+  const html=parts.html.replace('<html>','<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">').replace('<head>','<head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Report Closing</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->');
+  const url=URL.createObjectURL(new Blob(['\ufeff'+html],{type:'application/vnd.ms-excel;charset=utf-8'}));
+  const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);
+  b.textContent='Excel terunduh'; setTimeout(()=>{b.textContent=old},3000);
 });
 $('rgShot').addEventListener('click',()=>runShot($('rgShot'),$('rgView'),1500,'report-closing-region-'+$('waDate').value+'.png'));
 
