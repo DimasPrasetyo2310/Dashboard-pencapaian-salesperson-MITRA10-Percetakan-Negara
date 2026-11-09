@@ -771,7 +771,7 @@ const shotPgName=(nm,i,n)=>n>1? nm+'-hal'+(i+1) : nm;
 let shotURLs=[];
 function shotPreview(arr,nm){
   shotURLs.forEach(u=>URL.revokeObjectURL(u)); shotURLs=arr.map(b=>URL.createObjectURL(b));
-  const html='<div class="ckacts" style="margin:0 0 10px"><button type="button" class="btn primary sm" data-shot="all">Unduh semua halaman</button></div>'+arr.map((b,i)=>'<figure style="margin:0 0 16px"><figcaption style="font-weight:700;margin:0 0 6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">Halaman '+(i+1)+' dari '+arr.length+'<button type="button" class="btn sm" data-shot="copy" data-i="'+i+'">Salin halaman '+(i+1)+'</button><button type="button" class="btn sm" data-shot="dl" data-i="'+i+'">Unduh</button></figcaption><img src="'+shotURLs[i]+'" alt="Print Screen halaman '+(i+1)+'" style="width:100%;border:1px solid var(--line);border-radius:8px;display:block"></figure>').join('');
+  const html='<p class="note" style="margin:0 0 12px;font-size:14px">Klik <b>Salin halaman</b>, lalu tempel (Ctrl+V) di WhatsApp. Ulangi untuk halaman berikutnya. Tidak perlu mengunduh.</p>'+arr.map((b,i)=>'<figure style="margin:0 0 16px"><figcaption style="font-weight:700;margin:0 0 6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">Halaman '+(i+1)+' dari '+arr.length+'<button type="button" class="btn primary sm" data-shot="copy" data-i="'+i+'">Salin halaman '+(i+1)+'</button><button type="button" class="btn sm" data-shot="dl" data-i="'+i+'" title="Simpan sebagai file jika salin tidak berhasil">Simpan file</button></figcaption><img src="'+shotURLs[i]+'" alt="Print Screen halaman '+(i+1)+'" style="width:100%;border:1px solid var(--line);border-radius:8px;display:block"></figure>').join('')+'<p class="note" style="font-size:13px">Jika salin tidak berhasil di perangkat Anda: <button type="button" class="btn sm" data-shot="all">Simpan semua halaman sebagai file</button></p>';
   kShow('Print Screen · '+arr.length+' halaman',[['Jumlah halaman',String(arr.length)],['Orang',String(lastL.length)],['Per halaman','30 orang']],html,$('ps'));
   shotLast={arr,nm};
 }
@@ -780,7 +780,7 @@ $('kpop-body').addEventListener('click',async e=>{ const b=e.target.closest('[da
   try{
     if(b.dataset.shot==='all'){ for(let k=0;k<arr.length;k++) await saveBlob(arr[k],shotPgName(nm,k,arr.length)+'.png'); shotMsg('Semua halaman disimpan.','ok'); }
     else if(b.dataset.shot==='dl'){ await saveBlob(arr[i],shotPgName(nm,i,arr.length)+'.png'); shotMsg('Halaman '+(i+1)+' disimpan.','ok'); }
-    else { await navigator.clipboard.write([new ClipboardItem({'image/png':arr[i]})]); shotMsg('Halaman '+(i+1)+' disalin. Tempel di WhatsApp dengan Ctrl+V.','ok'); }
+    else { await navigator.clipboard.write([new ClipboardItem({'image/png':arr[i]})]); b.textContent='✓ Halaman '+(i+1)+' tersalin'; shotMsg('Halaman '+(i+1)+' disalin. Tempel di WhatsApp dengan Ctrl+V.','ok'); }
   }catch(x){ shotMsg(x&&x.code==='declined'?'Dibatalkan.':'Tidak bisa menyalin di sini. Gunakan tombol Unduh.','warn'); }
 });
 async function shotDetail(mode){
