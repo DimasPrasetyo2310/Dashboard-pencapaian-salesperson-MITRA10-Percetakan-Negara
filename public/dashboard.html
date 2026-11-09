@@ -261,7 +261,6 @@ table.mt .ok{color:var(--good);font-weight:600}
         <label class="f" for="d-to">Sampai<input id="d-to" type="date"></label>
         <button type="button" id="d-all" class="btn">Semua tanggal</button>
       </div>
-      <label class="f" id="zona-wrap" for="zona" hidden>Zonasi<select id="zona"></select></label>
       <div class="seg" role="group" aria-label="Peran">
         <button type="button" data-role="all" aria-pressed="true">Semua</button>
         <button type="button" data-role="Sales" aria-pressed="false">Sales</button>
@@ -343,9 +342,12 @@ table.mt .ok{color:var(--good);font-weight:600}
   <section class="card">
     <div class="hd">
       <div><h2>Detail per salesperson</h2><p class="hint" id="tbl-hint"></p></div>
-      <label class="f" for="q" style="min-width:200px">Cari nama
-        <input id="q" type="search" placeholder="Ketik nama" autocomplete="off">
-      </label>
+      <div class="ctl" style="align-items:flex-end;gap:12px">
+        <label class="f" id="zona-wrap" for="zona" hidden>Zonasi<select id="zona"></select></label>
+        <label class="f" for="q" style="min-width:200px">Cari nama
+          <input id="q" type="search" placeholder="Ketik nama" autocomplete="off">
+        </label>
+      </div>
     </div>
     <div class="rngf" id="rngf">
       <label class="f" for="t-from">Dari tanggal<input id="t-from" type="date"></label>

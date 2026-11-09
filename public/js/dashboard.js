@@ -223,14 +223,14 @@ function tipHTML(p){
   } else h+='<br>Tidak ada di file jadwal, tanpa target';
   return h;
 }
-const filtered = () => P.filter(p => (S.role==='all' || p.role===S.role) && (!S.zona || p.zona===S.zona));
+const filtered = () => P.filter(p => (S.role==='all' || p.role===S.role));
 
 function renderKPI(){
   const L = filtered(), A = L.filter(p=>p.lines>0), tot = A.reduce((a,p)=>a+p.sales,0);
   $('k-total').textContent = jt(M.total);
   $('k-total-d').textContent = rp(M.total)+' · '+(M.from&&M.to? (M.from===M.to? fd(M.from,{day:'numeric',month:'short'}) : fd(M.from,{day:'numeric',month:'short'})+' – '+fd(M.to,{day:'numeric',month:'short'}))+' · ' : '')+fmtN.format(M.receipts)+' struk';
   $('k-n').textContent = A.length;
-  $('k-n-d').textContent = (S.role==='all'?'ada transaksi pada periode ini':'peran '+S.role)+(S.zona?' · '+S.zona:'')+(L.length>A.length?' · '+(L.length-A.length)+' terjadwal tanpa penjualan':'');
+  $('k-n-d').textContent = (S.role==='all'?'ada transaksi pada periode ini':'peran '+S.role)+(L.length>A.length?' · '+(L.length-A.length)+' terjadwal tanpa penjualan':'');
   $('k-avg').textContent = jt(tot/(A.length||1));
   const med = A.map(p=>p.sales).sort((a,b)=>a-b); const mid = med.length? (med.length%2? med[(med.length-1)/2] : (med[med.length/2-1]+med[med.length/2])/2):0;
   $('k-avg-d').textContent = 'median '+jt(mid);
@@ -365,7 +365,7 @@ function renderTableInner(dr){
     return '<th scope="col" class="'+(TXT.has(c[0])?'l':'')+'"'+(act?' aria-sort="'+(S.dir<0?'descending':'ascending')+'"':'')+'><button type="button" data-s="'+c[0]+'">'+label+(act?(S.dir<0?' ↓':' ↑'):'')+'</button></th>';
   }).join('');
   const q = S.q.trim().toLowerCase();
-  let base = filtered();
+  let base = filtered().filter(p=>!S.zona||p.zona===S.zona);
   if(S.schSel.length){
     const have=new Set(base.map(p=>p.id));
     Object.values(SCHM).forEach(e=>{ if(!have.has(e.id) && (S.role!=='Kasir') && (!S.zona||e.zona===S.zona) && !P.some(p=>p.id===e.id)) base.push(ghost(e)); });
