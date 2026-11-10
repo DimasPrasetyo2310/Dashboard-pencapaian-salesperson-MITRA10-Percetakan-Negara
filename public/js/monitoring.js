@@ -153,7 +153,7 @@ function renderTarget(rows){
   const tile=(l,v,s,k)=>`<div class="tg-t${k?' sum':''}"${k?` data-sum="${k}" tabindex="0" role="button" title="Klik untuk rincian per hari"`:''}><span class="l">${l}</span><span class="v">${v}</span><span class="s">${s}</span></div>`;
   const base=(a,b)=>(bud[b]||act[b])-(bud[a]||act[a]);
   const flat=TGS.k>=1;
-  let list=cats.filter(c=>bud[c]>0||act[c]>0).sort((a,b)=>(zn(a)-zn(b))*(TGS.k===0?TGS.dir:1)||base(a,b));
+  let list=cats.filter(c=>zn(c)<99&&(bud[c]>0||act[c]>0)).sort((a,b)=>(zn(a)-zn(b))*(TGS.k===0?TGS.dir:1)||base(a,b));
   if(flat){
     const V=c=>{const a=act[c]||0,b=bud[c]||0,l=lyc[c]||0,aM=actM[c]||0,bM=budM[c]||0,lM=lycM[c]||0;
       return [zn(c),title(c),b||null,a,b?a/b:null,b?a-b:null,l||null,l?a/l:null,bM||null,aM,bM?aM/bM:null,bM?aM-bM:null,lM||null,lM?aM/lM:null][TGS.k]};
@@ -275,11 +275,14 @@ function parseSheet(f,sh,sn){
     const iSub=hx('Sub Category'), iFn=hx('Function'), iSf=hx('Sub Function'), iBr=hx('Brand'), iQty=hx('Qty','Quantity'), iInc=hx('Amount Include Sales','Amount Inculde Sales');
     const tx=(r,i)=>i<0||r[i]==null?'':String(r[i]).trim(); let n=0,other=0;
     const iNo=hx('Item No'), iNm=hx('Item Name'), items=new Map();
-    rows.slice(h+1).forEach(r=>{const d=toISO(r[0]);if(!d||typeof r[ia]!=='number'||!r[ic])return;
+    // Kategori kadang bergeser kolom (angka masuk ke kolom Category): ambil nama kategori valid dari kolom di sebelahnya
+    const VALIDCAT=new Set(Object.keys(ZONA)), numLike=v=>/^-?[\d.,]+$/.test(String(v==null?'':v).trim());
+    const catOf=r=>{const v=r[ic]==null?'':String(r[ic]).trim(); if(!v||!numLike(v)) return r[ic]; for(const i of [iSub,iFn,iSf]){if(i>=0&&r[i]!=null&&VALIDCAT.has(String(r[i]).trim().toUpperCase()))return String(r[i]).trim()} return r[ic]};
+    rows.slice(h+1).forEach(r=>{const d=toISO(r[0]);if(!d||typeof r[ia]!=='number'||!catOf(r))return;
       if(is>=0&&r[is]!=null&&String(r[is]).trim()!==STORE){other++;return}
-      const k=d+'|'+r[ic];m.set(k,(m.get(k)||0)+r[ia]);n++;
-      if(iNo>=0&&tx(r,iNo)){const ik=JSON.stringify([d,r[ic],(tx(r,ib).toUpperCase()||'LAINNYA'),tx(r,iNo).replace(/^0+(?=\d)/,'')]);let e=items.get(ik);if(!e){e={nm:tx(r,iNm),s:0,q:0,n:0};items.set(ik,e)}e.s+=r[ia];e.q+=(iQty>=0&&typeof r[iQty]==='number')?r[iQty]:0;e.n++}
-      {const ck=JSON.stringify([d,tx(r,ic),tx(r,iSub),tx(r,iFn),tx(r,iSf),tx(r,ib),tx(r,iBr),tx(r,isr),tx(r,itb)]);let e=cube.get(ck);if(!e){e={s:0,i:0,q:0,n:0};cube.set(ck,e)}e.s+=r[ia];e.i+=(iInc>=0&&typeof r[iInc]==='number')?r[iInc]:0;e.q+=(iQty>=0&&typeof r[iQty]==='number')?r[iQty]:0;e.n++}
+      const k=d+'|'+catOf(r);m.set(k,(m.get(k)||0)+r[ia]);n++;
+      if(iNo>=0&&tx(r,iNo)){const ik=JSON.stringify([d,catOf(r),(tx(r,ib).toUpperCase()||'LAINNYA'),tx(r,iNo).replace(/^0+(?=\d)/,'')]);let e=items.get(ik);if(!e){e={nm:tx(r,iNm),s:0,q:0,n:0};items.set(ik,e)}e.s+=r[ia];e.q+=(iQty>=0&&typeof r[iQty]==='number')?r[iQty]:0;e.n++}
+      {const ck=JSON.stringify([d,catOf(r),tx(r,iSub),tx(r,iFn),tx(r,iSf),tx(r,ib),tx(r,iBr),tx(r,isr),tx(r,itb)]);let e=cube.get(ck);if(!e){e={s:0,i:0,q:0,n:0};cube.set(ck,e)}e.s+=r[ia];e.i+=(iInc>=0&&typeof r[iInc]==='number')?r[iInc]:0;e.q+=(iQty>=0&&typeof r[iQty]==='number')?r[iQty]:0;e.n++}
       const addD=(dim,ix)=>{if(ix<0)return;const dk=d+'|'+dim+'|'+(String(r[ix]==null?'':r[ix]).trim()||'Lainnya');dmap.set(dk,(dmap.get(dk)||0)+r[ia])};addD('source',isr);addD('typebrand',itb);
       if(ib>=0){const bk=k+'|'+(String(r[ib]==null?'':r[ib]).trim().toUpperCase()||'LAINNYA');{let e=bm.get(bk);if(!e){e={s:0,q:0};bm.set(bk,e)}e.s+=r[ia];e.q+=(iQty>=0&&typeof r[iQty]==='number')?r[iQty]:0}}});
     if(!n) throw new Error(other?'file ini bukan untuk toko '+STORE:'tidak ada baris penjualan yang terbaca');
