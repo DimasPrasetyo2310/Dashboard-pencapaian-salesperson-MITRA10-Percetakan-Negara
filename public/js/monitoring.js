@@ -269,7 +269,8 @@ function parseSheet(f,sh,sn){
   if(h>=0){
     const hd=rows[h].map(x=>String(x==null?'':x).trim());
     const ic=hd.indexOf('Category'), ia=hd.indexOf('Amount Exclude Sales'), is=hd.indexOf('Store No'), ib=hd.indexOf('Master Brand'), isr=hd.indexOf('Source Type Name'), itb=hd.indexOf('Master Type Brand');
-    if(ic<0||ia<0) throw new Error('kolom Category atau Amount Exclude Sales tidak ada');
+    {const need=[['Store No',is],['Category',ic],['Master Brand',ib],['Source Type Name',isr],['Master Type Brand',itb],['Amount Exclude Sales',ia]].filter(x=>x[1]<0).map(x=>x[0]);
+      if(need.length) throw new Error('DITOLAK: tidak sesuai template Sales Detail Report. Kolom wajib tidak ada: '+need.join(', ')+'. Unduh template dari tombol Checklist database')}
     const m=new Map(), bm=new Map(), dmap=new Map(), cube=new Map();
     const hx=(...ns)=>{for(const n of ns){const i=hd.indexOf(n);if(i>=0)return i}return -1};
     const iSub=hx('Sub Category'), iFn=hx('Function'), iSf=hx('Sub Function'), iBr=hx('Brand'), iQty=hx('Qty','Quantity'), iInc=hx('Amount Include Sales','Amount Inculde Sales');
@@ -278,15 +279,21 @@ function parseSheet(f,sh,sn){
     // Kategori kadang bergeser kolom (angka masuk ke kolom Category): ambil nama kategori valid dari kolom di sebelahnya
     const VALIDCAT=new Set(Object.keys(ZONA)), numLike=v=>/^-?[\d.,]+$/.test(String(v==null?'':v).trim());
     const catOf=r=>{const v=r[ic]==null?'':String(r[ic]).trim(); if(!v||!numLike(v)) return r[ic]; for(const i of [iSub,iFn,iSf]){if(i>=0&&r[i]!=null&&VALIDCAT.has(String(r[i]).trim().toUpperCase()))return String(r[i]).trim()} return r[ic]};
+    const DIMOK={source:['stationary','whatsapp','sales project'],typebrand:['non private brand','private brand','exclusive brand']};
+    let badRows=0, allRows=0;
     rows.slice(h+1).forEach(r=>{const d=toISO(r[0]);if(!d||typeof r[ia]!=='number'||!catOf(r))return;
       if(is>=0&&r[is]!=null&&String(r[is]).trim()!==STORE){other++;return}
+      allRows++;
+      {const sv=String(r[isr]==null?'':r[isr]).trim().toLowerCase(), tv=String(r[itb]==null?'':r[itb]).trim().toLowerCase();
+        if(!VALIDCAT.has(String(catOf(r)).trim().toUpperCase())||!DIMOK.source.includes(sv)||!DIMOK.typebrand.includes(tv)){badRows++;return}}
       const k=d+'|'+catOf(r);m.set(k,(m.get(k)||0)+r[ia]);n++;
       if(iNo>=0&&tx(r,iNo)){const ik=JSON.stringify([d,catOf(r),(tx(r,ib).toUpperCase()||'LAINNYA'),tx(r,iNo).replace(/^0+(?=\d)/,'')]);let e=items.get(ik);if(!e){e={nm:tx(r,iNm),s:0,q:0,n:0};items.set(ik,e)}e.s+=r[ia];e.q+=(iQty>=0&&typeof r[iQty]==='number')?r[iQty]:0;e.n++}
       {const ck=JSON.stringify([d,catOf(r),tx(r,iSub),tx(r,iFn),tx(r,iSf),tx(r,ib),tx(r,iBr),tx(r,isr),tx(r,itb)]);let e=cube.get(ck);if(!e){e={s:0,i:0,q:0,n:0};cube.set(ck,e)}e.s+=r[ia];e.i+=(iInc>=0&&typeof r[iInc]==='number')?r[iInc]:0;e.q+=(iQty>=0&&typeof r[iQty]==='number')?r[iQty]:0;e.n++}
-      const DIMOK={source:['stationary','whatsapp','sales project'],typebrand:['non private brand','private brand','exclusive brand']};
       const addD=(dim,ix)=>{if(ix<0)return;const dv=(String(r[ix]==null?'':r[ix]).trim()||'Lainnya');if(!DIMOK[dim].includes(dv.toLowerCase()))return;const dk=d+'|'+dim+'|'+dv;dmap.set(dk,(dmap.get(dk)||0)+r[ia])};addD('source',isr);addD('typebrand',itb);
       if(ib>=0){const bk=k+'|'+(String(r[ib]==null?'':r[ib]).trim().toUpperCase()||'LAINNYA');{let e=bm.get(bk);if(!e){e={s:0,q:0};bm.set(bk,e)}e.s+=r[ia];e.q+=(iQty>=0&&typeof r[iQty]==='number')?r[iQty]:0}}});
     if(!n) throw new Error(other?'file ini bukan untuk toko '+STORE:'tidak ada baris penjualan yang terbaca');
+    if(allRows&&badRows/allRows>0.01) throw new Error('DITOLAK: '+nf.format(badRows)+' dari '+nf.format(allRows)+' baris ('+dec(badRows/allRows*100,1)+'%) tidak sesuai template (Category, Source Type Name, atau Master Type Brand tidak dikenal). Perbaiki file lalu unggah ulang');
+    if(badRows) badRowsNote(src,badRows,allRows);
     return {kind:'detail',name:src,n,items:[...items].map(([k,e])=>{const a=JSON.parse(k);return {store_code:STORE,sale_date:a[0],category:a[1],master_brand:a[2],item_no:a[3],item_name:e.nm,qty:Math.round(e.q*100)/100,sales:Math.round(e.s),lines:e.n,source:src}}),cube:[...cube].map(([k,e])=>{const a=JSON.parse(k);return {store_code:STORE,sale_date:a[0],category:a[1],sub_category:a[2],func:a[3],sub_func:a[4],master_brand:a[5],brand:a[6],source_type:a[7],master_type_brand:a[8],sales:Math.round(e.s),sales_incl:Math.round(e.i),qty:Math.round(e.q*100)/100,lines:e.n,source:src}}),dims:[...dmap].map(([k,v])=>{const p=k.split('|');return {store_code:STORE,sale_date:p[0],dim:p[1],dim_value:p[2],sales:Math.round(v),source:src}}),brands:[...bm].map(([k,v])=>{const p=k.split('|');return {store_code:STORE,sale_date:p[0],category:p[1],master_brand:p[2],sales:Math.round(v.s),qty:Math.round(v.q*100)/100,source:src}}),rows:[...m].map(([k,v])=>{const p=k.split('|');return {store_code:STORE,sale_date:p[0],category:p[1],sales:Math.round(v),source:src}})};
   }
   const yr=(sn.match(/20\d\d/)||[String(new Date().getFullYear())])[0];
@@ -320,6 +327,8 @@ function parseSheet(f,sh,sn){
   }
   throw new Error('format tidak dikenali');
 }
+const BADNOTE=[];
+function badRowsNote(src,b,a){BADNOTE.push(src+': '+nf.format(b)+' dari '+nf.format(a)+' baris tidak sesuai template dan dilewati')}
 async function parseFile(f){
   const wb=XLSX.read(await f.arrayBuffer(),{type:'array',cellDates:false});
   const ok=[],bad=[];
@@ -488,7 +497,7 @@ async function doUpload(files){
     }catch(err){bad.push(r.name+': '+explain(err))}
   }
   if(parts.length){await loadData();const r=presetRange('all');setRange(r[0],r[1])}
-  const qc=parts.length?qcIssues():[];
+  const qc=parts.length?qcIssues():[]; BADNOTE.splice(0).forEach(x=>qc.push(x));
   if(parts.length&&!bad.length&&qc.length) showMsg('Tersimpan, tetapi ada data yang perlu dicek: '+qc.slice(0,5).join(' · ')+(qc.length>5?' · +'+(qc.length-5)+' lainnya':'')+'. '+parts.join(' · '),'err');
   else if(parts.length&&!bad.length) showMsg('Berhasil disimpan dan lolos pengecekan otomatis. '+parts.join(' · ')+'. Data tanggal yang sama diganti dengan yang baru.','ok');
   else if(parts.length) showMsg('Sebagian disimpan. '+parts.join(' · ')+'. Gagal: '+bad.join('; '),'err');
