@@ -360,7 +360,7 @@ function ckItems(){
   const out=[], mk=(id,title,file,bad,warn,okTxt,badTxt,lines,tpl)=>out.push({id,title,file,state:bad.length?'bad':(warn&&warn.length?'warn':'ok'),summary:bad.length?badTxt:(warn&&warn.length?warn[0]:okTxt),lines,tpl});
   const miss=exp.filter(d=>!Dm.has(d));
   mk('nav','Report Compare FFC dan NAV (harian)','File: Report Compare FFC And Nav',miss,null,'Lengkap sampai '+dlab(P.ref),miss.length+' tanggal belum ada',
-    [miss.length?'Belum ada: '+dlist(miss):'Semua tanggal 1 sampai '+dlab(P.ref)+' sudah ada.','Isi: sales NAV dan FFC, transaksi, traffic masuk dan keluar.'].filter(Boolean),['nav']);
+    [miss.length?'Belum ada: '+dlist(miss):'Semua tanggal 1 sampai '+dlab(P.ref)+' sudah ada.','Isi: transaksi (invoice) dari kolom NAV, traffic masuk dan keluar. Kolom FFC diabaikan.'].filter(Boolean),['nav']);
   const dm=[],inc=[]; exp.forEach(d=>{const r=Dm.get(d);if(!r)return;if(!cs.has(d))dm.push(d);});
   const bad2=dm.concat(inc);
   mk('detail','Sales Detail Report (per transaksi)','File: Sales Detail Report (kolom Receipt Date)',bad2,null,'Lengkap',bad2.length+' tanggal belum ada atau belum lengkap',
