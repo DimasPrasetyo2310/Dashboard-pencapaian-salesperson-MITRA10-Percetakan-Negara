@@ -1035,7 +1035,7 @@ async function boot(){
   if(roleErr){ bootMsg('Peran akun tidak bisa dibaca: '+roleErr.message,true); return; }
   if(!roleRow){ bootMsg('Akun '+session.user.email+' belum punya peran. Hubungi admin.',true); return; }
   canWrite = roleRow.role==='admin'||roleRow.role==='editor';
-  $('who-name').textContent=session.user.email; $('who-role').textContent=ROLE_LABEL[roleRow.role]||roleRow.role;
+  $('who-name').textContent=session.user.email; $('who-role').textContent=ROLE_LABEL[roleRow.role]||roleRow.role; if(window.startPresence)startPresence(SB,session.user.email,ROLE_LABEL[roleRow.role]||roleRow.role,'Salesperson');
   bootEl.hidden=true; appEl.hidden=false; $('psdock').hidden=false;
   applyWrite();
   await loadAll();
