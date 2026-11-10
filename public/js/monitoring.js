@@ -275,10 +275,12 @@ function parseSheet(f,sh,sn){
     const VALIDCAT=new Set(Object.keys(ZONA)), numLike=v=>/^-?[\d.,]+$/.test(String(v==null?'':v).trim());
     const catOf=r=>{const v=r[ic]==null?'':String(r[ic]).trim(); if(!v||!numLike(v)) return r[ic]; for(const i of [iSub,iFn,iSf]){if(i>=0&&r[i]!=null&&VALIDCAT.has(String(r[i]).trim().toUpperCase()))return String(r[i]).trim()} return r[ic]};
     const DIMOK={source:['stationary','whatsapp','sales project'],typebrand:['non private brand','private brand','exclusive brand']};
+    const irc=hx('Receipt No','Receipt No.','Receipt Number','No Receipt','Invoice No'), rcp=new Map();
     let badRows=0, allRows=0;
     rows.slice(h+1).forEach(r=>{const d=toISO(r[0]);if(!d||typeof r[ia]!=='number'||!catOf(r))return;
       if(is>=0&&r[is]!=null&&String(r[is]).trim()!==STORE){other++;return}
       allRows++;
+      if(irc>=0&&r[irc]!=null&&String(r[irc]).trim()!==''){const sv2=String(r[isr]).trim();const kk=d+'|rcpt|'+sv2;let st=rcp.get(kk);if(!st){st=new Set();rcp.set(kk,st)}st.add(String(r[irc]).trim())}
       {const sv=String(r[isr]==null?'':r[isr]).trim().toLowerCase(), tv=String(r[itb]==null?'':r[itb]).trim().toLowerCase();
         if(!VALIDCAT.has(String(catOf(r)).trim().toUpperCase())||!DIMOK.source.includes(sv)||!DIMOK.typebrand.includes(tv)){badRows++;return}}
       const k=d+'|'+catOf(r);m.set(k,(m.get(k)||0)+r[ia]);n++;
@@ -289,6 +291,8 @@ function parseSheet(f,sh,sn){
     if(!n) throw new Error(other?'file ini bukan untuk toko '+STORE:'tidak ada baris penjualan yang terbaca');
     if(allRows&&badRows/allRows>0.01) throw new Error('DITOLAK: '+nf.format(badRows)+' dari '+nf.format(allRows)+' baris ('+dec(badRows/allRows*100,1)+'%) tidak sesuai template (Category, Source Type Name, atau Master Type Brand tidak dikenal). Perbaiki file lalu unggah ulang');
     if(badRows) badRowsNote(src,badRows,allRows);
+    rcp.forEach((st,k)=>dmap.set(k,st.size));
+    if(irc<0) BADNOTE.push(src+': tanpa kolom Receipt No, jumlah invoice per source type (WhatsApp) tetap diisi manual');
     return {kind:'detail',name:src,n,items:[...items].map(([k,e])=>{const a=JSON.parse(k);return {store_code:STORE,sale_date:a[0],category:a[1],master_brand:a[2],item_no:a[3],item_name:e.nm,qty:Math.round(e.q*100)/100,sales:Math.round(e.s),lines:e.n,source:src}}),cube:[...cube].map(([k,e])=>{const a=JSON.parse(k);return {store_code:STORE,sale_date:a[0],category:a[1],sub_category:a[2],func:a[3],sub_func:a[4],master_brand:a[5],brand:a[6],source_type:a[7],master_type_brand:a[8],sales:Math.round(e.s),sales_incl:Math.round(e.i),qty:Math.round(e.q*100)/100,lines:e.n,source:src}}),dims:[...dmap].map(([k,v])=>{const p=k.split('|');return {store_code:STORE,sale_date:p[0],dim:p[1],dim_value:p[2],sales:Math.round(v),source:src}}),brands:[...bm].map(([k,v])=>{const p=k.split('|');return {store_code:STORE,sale_date:p[0],category:p[1],master_brand:p[2],sales:Math.round(v.s),qty:Math.round(v.q*100)/100,source:src}}),rows:[...m].map(([k,v])=>{const p=k.split('|');return {store_code:STORE,sale_date:p[0],category:p[1],sales:Math.round(v),source:src}})};
   }
   const yr=(sn.match(/20\d\d/)||[String(new Date().getFullYear())])[0];
@@ -383,7 +387,7 @@ const TPL={nav:'Compare FFC NAV',detail:'Sales Detail',budget:'Budget Bulanan',p
 function tplSheets(kind,y,m){
   const mm=pad2(m), dim=new Date(y,m,0).getDate(), days=[...Array(dim)].map((_,i)=>y+'-'+mm+'-'+pad2(i+1));
   if(kind==='nav') return {name:'Compare FFC NAV',rows:[['Date','Store No (NAV)','Sales Exclude Tax (NAV)','Total Transaction (NAV)','Sales Exclude Tax (FFC)','Total Transaction (FFC)','Total Counter In','Total Counter Out'],...days.map(d=>[d,STORE,null,null,null,null,null,null])]};
-  if(kind==='detail') return {name:'Sales Detail',rows:[['Receipt Date','Store No','Category','Sub Category','Function','Sub Function','Master Brand','Brand','Item No','Item Name','Source Type Name','Master Type Brand','Quantity','Amount Include Sales','Amount Exclude Sales']]};
+  if(kind==='detail') return {name:'Sales Detail',rows:[['Receipt Date','Store No','Category','Sub Category','Function','Sub Function','Master Brand','Brand','Item No','Item Name','Source Type Name','Master Type Brand','Quantity','Amount Include Sales','Amount Exclude Sales','Receipt No']]};
   if(kind==='budget'){const cats=[...new Set(DATA.C.map(c=>c[1]))].sort();return {name:'Budget '+y,rows:[['Category','JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'],...(cats.length?cats:['KATEGORI 1']).map(c=>[c,...Array(12).fill(null)])]}}
   if(kind==='phasing') return {name:'Budget daily '+MON[m-1]+' '+y,rows:[[MON[m-1].toUpperCase()],['CATEGORY','Tanggal',...days.map((_,i)=>i+1)],['','cont %',...days.map(()=>null)]]};
   const R=[['LY','PERSENTASE','TANGGAL','TRAFFIC',null,null,null,null,'MTD',null,null,'INVOICE',null,null,null,null,'EFFECTIVE TRAFFIC',null,null,null,null,'BASKET SIZE',null,null,null,null,'MITRA10 PROTEKSI'],[],[]];
@@ -823,6 +827,8 @@ function buildCl(){
   const pdd=clVal('clPdd'), ot=clVal('clOt'), ds=[clVal('clD0'),clVal('clD1'),clVal('clD2'),clVal('clD3')];
   const dsp=x=>x==null||!ot?'-':pc2(x/ot);
   const late=clVal('clLate');
+  const wiR=DIMD.filter(z=>z.d===d&&z.dim==='rcpt'), wiA=wiR.length?sum(wiR.filter(z=>z.v==='WhatsApp').map(z=>z.s)):null;
+  {const lb=$('clWi').closest('label'); if(lb) lb.hidden=wiA!=null}
   const kb=KB.get(d)||{}, lc=ly?ly.cin:0, lt=ly?ly.tr:0, mtt=clVal('clTt'), mit=clVal('clIt'), tt=mtt!=null?mtt:kb.tr, it=mit!=null?mit:kb.iv, bt=clVal('clBt')!=null?clVal('clBt'):kb.bs, pqt=kb.pq;
   const eT=(mtt!=null||mit!=null)?(tt&&it!=null?it/tt:null):(kb.ef!=null?kb.ef:(tt&&it!=null?it/tt:null));
   const L=[
@@ -839,7 +845,7 @@ function buildCl(){
     'NEMS','New Member T/A : '+v(waVal('waMt'))+' / '+v(waVal('waMa')),
     'Sales Member : '+v(sm),'Sales Member Contr : '+(sm==null?'-':cont(sm)),'',
     'Sales PB','Actual ( Contribusi) : '+en(pb)+' ( '+cont(pb)+' )','',
-    'Sales WhatsApp','Actual ( Contribusi) : '+en(wa)+' / '+cont(wa),'Total Invoice : '+v(clVal('clWi')),'',
+    'Sales WhatsApp','Actual ( Contribusi) : '+en(wa)+' / '+cont(wa),'Total Invoice : '+v(wiA!=null?wiA:clVal('clWi')),'',
     'Sales Project','Actual ( Contribusi) : '+en(pj)+' ( '+cont(pj)+' )','',
     'Report DSL','','PDD : '+v(pdd),'OT : '+v(ot)+' ( '+(pdd&&ot!=null?Math.round(ot/pdd*100)+'%':'-')+' )',
     'KETERANGAN LATE : '+(late?'\n'+late:''),'',
