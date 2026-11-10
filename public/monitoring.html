@@ -333,7 +333,6 @@ table.rgt .rneg{color:#c0392b;font-weight:700}table.rgt td.tot .rneg{color:#ff9b
         <div class="ckfoot"><button type="button" class="btn primary sm" id="ckAll">Unduh semua template (1 file)</button><span class="hint2">Klik baris untuk melihat tanggal yang kurang.</span></div>
       </div>
     </div>
-    <label class="part" id="partWrap" hidden><input type="checkbox" id="partChk"> <span id="partLbl"></span></label>
     <div class="up" id="upbox" hidden>
       <button type="button" class="btn primary" id="upBtn">Unggah database</button>
       <button type="button" class="chip" id="bkBtn" title="Unduh salinan seluruh data monitoring sebagai satu file JSON">Ekspor cadangan</button>
@@ -428,9 +427,9 @@ table.rgt .rneg{color:#c0392b;font-weight:700}table.rgt td.tot .rneg{color:#ff9b
 
   <section class="card">
     <h2>Rekap harian</h2>
-    <p class="hint">Gabungan laporan NAV dan FFC. Selisih bukan nol berarti kedua sistem belum sama.</p>
+    <p class="hint">Traffic, invoice, dan basket size per hari. Invoice dari kolom NAV, sales dari Sales Detail.</p>
     <div class="tbl"><table>
-      <thead><tr><th>Tanggal</th><th class="r">Traffic masuk</th><th class="r">Traffic keluar</th><th class="r">Invoice</th><th class="r">Efektivitas traffic</th><th class="r">Basket size</th><th class="r">Sales NAV</th><th class="r">Sales FFC</th><th>Status</th></tr></thead>
+      <thead><tr><th>Tanggal</th><th class="r">Traffic masuk</th><th class="r">Traffic keluar</th><th class="r">Invoice</th><th class="r">Efektivitas traffic</th><th class="r">Basket size</th></tr></thead>
       <tbody id="rows"></tbody>
       <tfoot id="foot"></tfoot>
     </table></div>
