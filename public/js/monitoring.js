@@ -1142,7 +1142,7 @@ $('logout').addEventListener('click',signOut);$('boot-out').addEventListener('cl
     const {data:roleRow,error}=await SB.from('user_roles').select('role').eq('user_id',session.user.id).maybeSingle();
     if(error||!roleRow){bootMsg('Akun Anda belum punya peran. Hubungi admin.',true);return}
     canWrite=roleRow.role==='admin'||roleRow.role==='editor';
-    ME=session.user.email||'';$('who-name').textContent=ME;$('who-role').textContent=roleRow.role;
+    ME=session.user.email||'';$('who-name').textContent=ME;$('who-role').textContent=roleRow.role;if(!window.__DEMO&&window.startPresence)startPresence(SB,ME,roleRow.role,'Monitoring');
     $('upbox').hidden=!canWrite;
     if(window.__DEMO){$('lnk-sp').hidden=true;$('logout').hidden=true;$('who-role').textContent='pratinjau';$('uphint').textContent='Pratinjau: unggahan tersimpan di browser ini saja.'}
     await loadData();pollLock();
