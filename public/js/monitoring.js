@@ -1038,7 +1038,7 @@ async function renderWa(){
           if(i>=0&&Array.isArray(doc.people)){const RS=['S10005-0000000706','S10005-0000000517','S10005-0000000704'];const c=doc.people.filter(e=>!RS.includes(e.id)&&/^[SPM](?:[\/.].*)?$/.test(String((e.c||[])[i]||''))).length;if(c>0){x.all_salper=c;x.src='jadwal'}}}catch(e2){}
         if(WAD===d)WSP=x}}catch(e){}}
     if(SB){try{const {data}=await SB.from('store_report_manual').select('*').eq('store_code',STORE).eq('report_date',d).maybeSingle();
-      if(WAD===d&&data){WAK.forEach(([id,c])=>{$(id).value=data[c]==null?'':data[c]});const ex=data.extra||{};CLK.forEach(id=>{$(id).value=ex[id]==null?'':ex[id]})}}catch(e){}}
+      if(WAD===d&&data){WAK.forEach(([id,c])=>{$(id).value=data[c]==null?'':data[c]});const ex=data.extra||{};CLK.forEach(id=>{$(id).value=ex[id]==null?'':ex[id]});['clTt','clIt','clBt'].forEach(id=>{$(id).value=''})}}catch(e){}}
   }
   if(WSP){$('rgSa').value=WSP.all_salper;$('rgS2').value=WSP.salper_gt2;$('rgSa').disabled=$('rgS2').disabled=true;$('rgSa').title=$('rgS2').title=(WSP.src==='jadwal'?'All salper: salesperson terjadwal masuk (jadwal project salesperson). >2 kategori: dari penjualan harian':'Otomatis dari data penjualan salesperson harian')}else{$('rgSa').title=$('rgS2').title='Belum ada data salesperson tanggal ini, isi manual'}
   {const k=KB.get(d)||{},ph=(id,x)=>{$(id).placeholder=x!=null?'budget '+en(x):''};ph('waQt',k.pq);ph('clTt',k.tr);ph('clIt',k.iv);ph('clBt',k.bs)}
