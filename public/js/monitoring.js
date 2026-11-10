@@ -1095,7 +1095,7 @@ async function fetchAll(table,cols,order){
   return out;
 }
 
-/* Pengecekan otomatis: transaksi NAV vs FFC dan tanggal yang belum punya laporan detail. Sales memakai Sales Detail, bukan NAV */
+/* Pengecekan otomatis: tanggal yang belum punya laporan detail. Sales memakai Sales Detail; invoice/transaksi memakai kolom NAV saja (FFC diabaikan) */
 const QCTOL=1000;
 function qcIssues(){
   const out=[], D=DATA.D||[]; if(!D.length) return out;
@@ -1104,7 +1104,6 @@ function qcIssues(){
   const lab=d=>fd(d).replace(/ \d{4}$/,'');
   D.filter(r=>set.has(r.d)).sort((a,b)=>a.d<b.d?-1:1).forEach(r=>{
     if(!cs.has(r.d)) out.push(lab(r.d)+': laporan detail penjualan belum diunggah (sales memakai detail)');
-    if(r.ffct&&r.tr&&r.tr!==r.ffct) out.push(lab(r.d)+': transaksi NAV '+nf.format(r.tr)+' berbeda dari FFC '+nf.format(r.ffct));
   });
   return out;
 }
