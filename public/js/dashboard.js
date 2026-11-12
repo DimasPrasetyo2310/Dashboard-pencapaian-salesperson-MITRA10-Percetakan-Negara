@@ -1009,11 +1009,20 @@ rebuild(true);
 // ---- Supabase: login, peran, dan data bersama ----
 const CFG = window.APP_CONFIG || {};
 const SB = (window.supabase && CFG.SUPABASE_URL && CFG.SUPABASE_PUBLISHABLE_KEY && !/YOUR-/.test(CFG.SUPABASE_URL)) ? window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_PUBLISHABLE_KEY) : null;
+const TIM = new URLSearchParams(location.search).get('t');  // link tim sales: hanya baca, tanpa login
+if(TIM) document.body.classList.add('tim');
 const bootEl=$('boot'), appEl=$('app');
 const bootMsg=(t,showOut)=>{ $('boot-msg').textContent=t; $('boot-out').hidden=!showOut; bootEl.hidden=false; appEl.hidden=true; $('psdock').hidden=true; };
 const toLogin=()=>{ try{sessionStorage.setItem('mitra10_next','dashboard.html')}catch(e){} location.replace('login.html?next=dashboard.html'); };
 async function loadAll(){
   if(!SB) return;
+  if(TIM){
+    const { data, error } = await SB.rpc('tim_view_data',{p_token:TIM});
+    if(error){ if(!dbReady) bootMsg('Data tidak bisa dibaca: '+error.message,false); return; }
+    if(!data){ bootMsg('Link tidak valid atau sudah dinonaktifkan. Minta link terbaru ke admin.',false); return; }
+    const o={}; (data.days||[]).forEach(r=>{ if(r.doc) o[r.sale_date]=r.doc; });
+    dbOverlay=o; dbSchedDoc=data.sched||null; dbReady=true; rebuild(false); return;
+  }
   const [d,s]=await Promise.all([
     SB.from('dashboard_days').select('sale_date,doc').eq('store_code',D.code).order('sale_date'),
     SB.from('dashboard_schedule').select('doc').eq('store_code',D.code).maybeSingle()
@@ -1028,6 +1037,13 @@ const ROLE_LABEL={admin:'Admin',editor:'Editor',viewer:'Viewer'};
 async function boot(){
   rebuild(true);
   if(!SB){ bootMsg('Konfigurasi belum lengkap. Isi SUPABASE_URL dan SUPABASE_PUBLISHABLE_KEY di config.js.',false); return; }
+  if(TIM){
+    canWrite=false; await loadAll();
+    if(dbReady){ bootEl.hidden=true; appEl.hidden=false; $('psdock').hidden=false; applyWrite(); }
+    const refreshT=()=>{ if(!busy && !document.hidden) loadAll(); };
+    setInterval(refreshT,45000); document.addEventListener('visibilitychange',refreshT); addEventListener('focus',refreshT);
+    return;
+  }
   const { data:{ session } } = await SB.auth.getSession();
   if(!session){ toLogin(); return; }
   SB.auth.onAuthStateChange(ev=>{ if(ev==='SIGNED_OUT') toLogin(); });

@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="id">
 <head>
+<meta name="robots" content="noindex,nofollow">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pencapaian Salesperson</title>
@@ -236,6 +237,8 @@ table.mt .ok{color:var(--good);font-weight:600}
 .pop-body{overflow:auto;padding:4px 22px 16px;min-height:120px}
 .pop-body table.pt{min-width:640px}
 @media (max-width:640px){.pop-hd,.pinfo{padding-left:14px;padding-right:14px}.pop-body{padding:4px 14px 14px}}
+/* Link tim sales (?t=...): hanya tabel detail, hanya baca */
+body.tim header .who,body.tim #databar,body.tim .kpis,body.tim .grid2,body.tim #low-card{display:none!important}
 </style>
 </head>
 <body>
@@ -339,7 +342,7 @@ table.mt .ok{color:var(--good);font-weight:600}
     </div>
   </section>
 
-  <section class="card">
+  <section class="card" id="detail-card">
     <div class="hd">
       <div><h2>Detail per salesperson</h2><p class="hint" id="tbl-hint"></p></div>
       <div class="ctl" style="align-items:flex-end;gap:12px">
