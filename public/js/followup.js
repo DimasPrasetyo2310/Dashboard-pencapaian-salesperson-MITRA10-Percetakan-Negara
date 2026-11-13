@@ -36,15 +36,15 @@ let CUR=null;
 
 function showMsg(text,kind){const m=$('msg');m.hidden=!text;m.className='msg '+(kind||'info');m.textContent=text||'';if(text&&kind==='ok')setTimeout(()=>{if(m.textContent===text)m.hidden=true},5000)}
 function dlgMsg(id,text,kind){const m=$(id);m.hidden=!text;m.className='msg '+(kind||'info');m.textContent=text||''}
-const errText=e=>(e&&(e.message||e.error_description))||String(e);
+const errText=e=>{if(!e)return 'tidak diketahui';if(typeof e==='string')return e;const m=e.message||e.error_description||e.details||e.hint;if(m)return m;if(e.code||e.status)return 'kode '+(e.code||e.status);try{return JSON.stringify(e)}catch(x){return 'tidak diketahui'}};
 
 /* ---------- Data ---------- */
 async function fetchAll(table,cols,order,onProg){
-  const {count,error:ce}=await SB.from(table).select('*',{count:'exact',head:true});
-  if(ce)throw ce;
+  const retry=async f=>{let last;for(let t=0;t<3;t++){try{return await f()}catch(e){last=e;await new Promise(r=>setTimeout(r,800*(t+1)))}}throw last};
+  const count=await retry(async()=>{const {count,error}=await SB.from(table).select('id',{count:'exact',head:true});if(error)throw new Error('gagal menghitung data ('+errText(error)+')');return count});
   const n=Math.ceil((count||0)/1000)+1,parts=new Array(n);let done=0;
-  const job=async i=>{let q=SB.from(table).select(cols);if(order)q=q.order(order,{ascending:true});
-    const {data,error}=await q.range(i*1000,i*1000+999);if(error)throw error;parts[i]=data;done++;if(onProg)onProg(done,n)};
+  const job=i=>retry(async()=>{let q=SB.from(table).select(cols);if(order)q=q.order(order,{ascending:true});
+    const {data,error}=await q.range(i*1000,i*1000+999);if(error)throw new Error(errText(error));parts[i]=data;done++;if(onProg)onProg(done,n)});
   for(let i=0;i<n;i+=6)await Promise.all(Array.from({length:Math.min(6,n-i)},(_,k)=>job(i+k)));
   const out=[],seen=new Set();parts.forEach(p=>(p||[]).forEach(r=>{const k=r.id||r.name;if(!seen.has(k)){seen.add(k);out.push(r)}}));
   return out;
@@ -342,9 +342,10 @@ $('file').addEventListener('change',async e=>{
       if(error){IMPORTING=false;await loadData();render();throw new Error(error.message+` (${nf.format(i)} customer pertama sudah tersimpan; impor ulang file yang sama untuk melanjutkan, yang sudah ada otomatis dilewati)`)}
     }
     IMPORTING=false;
-    await loadData();render();
     const noSales=out.filter(r=>!r.salesperson).length;
-    showMsg(`${nf.format(out.length)} customer diimpor dari ${f.name}.${dup?' '+dup+' dilewati karena sudah ada.':''}${noSales?' '+noSales+' tanpa salesperson (hanya terlihat admin/editor).':''}`,'ok');
+    const okMsg=`${nf.format(out.length)} customer diimpor dari ${f.name}.${dup?' '+nf.format(dup)+' dilewati karena sudah ada.':''}${noSales?' '+noSales+' tanpa salesperson (hanya terlihat admin/editor).':''}`;
+    try{await loadData();render();showMsg(okMsg,'ok')}
+    catch(e2){showMsg(okMsg+' Daftar belum termuat ulang ('+errText(e2)+'). Muat ulang halaman (F5).','info')}
   }catch(err){showMsg('Gagal mengimpor: '+errText(err),'err')}
 });
 $('btn-tpl').addEventListener('click',()=>{
