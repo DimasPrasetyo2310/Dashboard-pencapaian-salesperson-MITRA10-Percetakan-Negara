@@ -1,5 +1,12 @@
 # Dashboard Pencapaian Salesperson (MITRA10 Percetakan Negara)
 
+## Alamat situs (GitHub Pages)
+
+- Beranda: https://dimasprasetyo2310.github.io/pcn/
+- Dashboard Salesperson: https://dimasprasetyo2310.github.io/pcn/dashboard.html
+- Setiap push ke `main` diterbitkan otomatis oleh `.github/workflows/pages.yml`.
+- Link tim sales (hanya baca, tanpa login): `dashboard.html?t=TOKEN`. Token dikelola di tabel `share_links` (lihat `supabase/tim_share_link.sql`); token tidak disimpan di repo.
+
 Situs statis dengan login Supabase. Tidak perlu npm install atau bundler.
 
 ```
