@@ -1,6 +1,6 @@
 name: Deploy ke GitHub Pages
 
-# Khusus Dashboard Salesperson: halaman Monitoring tidak ikut diterbitkan di sini.
+# Menerbitkan seluruh folder public (Dashboard Salesperson dan Monitoring).
 # Hanya berjalan jika repo PUBLIK (paket gratis GitHub Pages mensyaratkannya).
 # Aktifkan sekali: Settings > Pages > Build and deployment > Source = "GitHub Actions".
 on:
@@ -27,20 +27,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
-      - name: Siapkan situs khusus Dashboard Salesperson (tanpa halaman Monitoring)
-        run: |
-          mkdir _site && cp -r public/. _site/
-          rm -f _site/monitoring.html _site/js/monitoring.js
-          python3 - <<'PY'
-          import re
-          p='_site/index.html'; h=open(p).read()
-          h2=re.sub(r'\s*<a class="item" href="monitoring.html">.*?</a>','',h,flags=re.S)
-          assert h2!=h, 'menu Monitoring tidak ditemukan'
-          open(p,'w').write(h2)
-          PY
-          sed -i 's/Pilih dashboard/Dashboard Salesperson/' _site/index.html
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: _site
+          path: public
       - id: deployment
         uses: actions/deploy-pages@v4
