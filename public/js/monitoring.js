@@ -563,11 +563,21 @@ async function runShot(btn,el,width,name,prep){
 $('tgShot').addEventListener('click',()=>runShot($('tgShot'),$('tgCard'),1900,'target-vs-actual-'+new Date().toISOString().slice(0,10)+'.png'));
 
 /* Popup rincian master brand per kategori */
-async function loadBrands(){
-  if(BRD) return BRD;
-  const r=await fetchAll('store_day_brand','sale_date,category,master_brand,sales',['sale_date','category','master_brand']);
-  BRD=r.map(x=>({d:x.sale_date,c:x.category,b:x.master_brand,s:+x.sales}));
-  return BRD;
+/* Hanya mengambil satu kategori dan rentang tanggal yang dipilih (+ tahun lalu), bukan seluruh tabel; hasil disimpan sementara */
+const BRC=new Map();
+async function loadBrands(cat,dates){
+  const all=[...dates,...dates.map(lyDate)].sort(), lo=all[0], hi=all[all.length-1], key=cat+'|'+lo+'|'+hi;
+  if(BRC.has(key)) return BRC.get(key);
+  const p=(async()=>{
+    const out=[];
+    for(let f=0;;f+=1000){
+      const {data,error}=await SB.from('store_day_brand').select('sale_date,category,master_brand,sales').eq('store_code',STORE).eq('category',cat).gte('sale_date',lo).lte('sale_date',hi).range(f,f+999);
+      if(error) throw error; out.push(...data); if(data.length<1000) break;
+    }
+    return out.map(x=>({d:x.sale_date,c:x.category,b:x.master_brand,s:+x.sales}));
+  })();
+  BRC.set(key,p); p.catch(()=>BRC.delete(key));
+  return p;
 }
 let brCat=null, BRCTX=null;
 async function openBrand(cat){
@@ -582,7 +592,7 @@ async function openBrand(cat){
   $('brKpi').innerHTML=t('Budget periode',b?fu(b):'–')+t('Actual',fu(a))+t('Achievement',pc==null?'–':`<span class="pill ${cl}">${dec(pc*100,1)}%</span>`)+t('Selisih vs budget',b?sel(a-b):'–')+t('Tahun lalu',l?fu(l):'–')+t('Growth vs tahun lalu',l?lyp(a,l):'–');
   body.innerHTML='<div class="empty">Memuat rincian master brand…</div>';
   let rows;
-  try{rows=await loadBrands()}catch(e){if(brCat===cat)body.innerHTML='<div class="empty">Gagal memuat data master brand.</div>';return}
+  try{rows=await loadBrands(cat,dates)}catch(e){if(brCat===cat)body.innerHTML='<div class="empty">Gagal memuat data master brand.</div>';return}
   if(brCat!==cat) return;
   BRCTX={cat,dates};
   const lyset=new Set(dates.map(lyDate)), cur={}, ly={};
@@ -1126,7 +1136,7 @@ async function loadData(){
   const DS=new Map();c.forEach(r=>DS.set(r.sale_date,(DS.get(r.sale_date)||0)+ +r.sales));
   const D=d.map(r=>({d:r.sale_date,sx:DS.has(r.sale_date)?DS.get(r.sale_date):+r.nav_sales,nav:DS.has(r.sale_date)?DS.get(r.sale_date):+r.nav_sales,navr:+r.nav_sales,tr:+r.nav_trx,ffc:+r.ffc_sales,ffct:+r.ffc_trx,cin:+r.counter_in,cout:+r.counter_out}));
   const yr=D.length?Math.max(...D.map(r=>+r.d.slice(0,4))):0;
-  LYD=new Map();LYC=new Map();PH=new Map();BM=new Map();BRD=null;
+  LYD=new Map();LYC=new Map();PH=new Map();BM=new Map();BRD=null;BRC.clear();
   D.filter(r=>+r.d.slice(0,4)<yr).forEach(r=>LYD.set(r.d,r));
   c.filter(r=>+r.sale_date.slice(0,4)<yr).forEach(r=>LYC.set(r.sale_date+'|'+r.category,(LYC.get(r.sale_date+'|'+r.category)||0)+ +r.sales));
   b.forEach(r=>BM.set(r.year+'|'+r.month+'|'+r.category,+r.budget));
