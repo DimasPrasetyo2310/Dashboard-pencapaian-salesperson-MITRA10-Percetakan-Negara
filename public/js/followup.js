@@ -41,13 +41,21 @@ const errText=e=>{if(!e)return 'tidak diketahui';if(typeof e==='string')return e
 /* ---------- Data ---------- */
 async function fetchAll(table,cols,order,onProg){
   const retry=async f=>{let last;for(let t=0;t<3;t++){try{return await f()}catch(e){last=e;await new Promise(r=>setTimeout(r,800*(t+1)))}}throw last};
-  const count=await retry(async()=>{const {count,error}=await SB.from(table).select('id',{count:'exact',head:true});if(error)throw new Error('gagal menghitung data ('+errText(error)+')');return count});
-  const n=Math.ceil((count||0)/1000)+1,parts=new Array(n);let done=0;
-  const job=i=>retry(async()=>{let q=SB.from(table).select(cols);if(order)q=q.order(order,{ascending:true});
-    const {data,error}=await q.range(i*1000,i*1000+999);if(error)throw new Error(errText(error));parts[i]=data;done++;if(onProg)onProg(done,n)});
-  for(let i=0;i<n;i+=6)await Promise.all(Array.from({length:Math.min(6,n-i)},(_,k)=>job(i+k)));
-  const out=[],seen=new Set();parts.forEach(p=>(p||[]).forEach(r=>{const k=r.id||r.name;if(!seen.has(k)){seen.add(k);out.push(r)}}));
-  return out;
+  if(table!=='fu_customers'){
+    return retry(async()=>{let q=SB.from(table).select(cols);if(order)q=q.order(order,{ascending:true});const {data,error}=await q.limit(5000);if(error)throw new Error(errText(error));return data});
+  }
+  // Ambil per rentang id (memakai indeks, tanpa OFFSET) supaya cepat walau datanya puluhan ribu.
+  const edge=async asc=>retry(async()=>{const {data,error}=await SB.from(table).select('id').order('id',{ascending:asc}).limit(1);if(error)throw new Error('gagal membaca data ('+errText(error)+')');return data[0]?data[0].id:null});
+  const lo=await edge(true);if(lo==null)return [];
+  const hi=await edge(false);
+  const STEP=2000,starts=[];for(let x=lo;x<=hi;x+=STEP)starts.push(x);
+  const parts=new Array(starts.length);let done=0;
+  const job=i=>retry(async()=>{const a=starts[i];const out=[];let from=a;
+    for(;;){const {data,error}=await SB.from(table).select(cols).gte('id',from).lt('id',a+STEP).order('id',{ascending:true}).limit(1000);
+      if(error)throw new Error(errText(error));out.push(...data);if(data.length<1000)break;from=data[data.length-1].id+1}
+    parts[i]=out;done++;if(onProg)onProg(done,starts.length)});
+  for(let i=0;i<starts.length;i+=4)await Promise.all(Array.from({length:Math.min(4,starts.length-i)},(_,k)=>job(i+k)));
+  return parts.flat();
 }
 async function loadData(){
   const [c,s]=await Promise.all([
