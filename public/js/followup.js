@@ -20,6 +20,8 @@ const waNum=hp=>{let d=digits(hp);if(!d)return '';if(d.startsWith('0'))d='62'+d.
 const normHp=hp=>{const w=waNum(hp);return w.length>=8?w:''};
 const parseRp=v=>{if(typeof v==='number')return v;const d=String(v==null?'':v).replace(/[^\d,.-]/g,'').replace(/[.,](?=\d{3}(\D|$))/g,'').replace(',','.');const n=parseFloat(d);return isFinite(n)?n:0};
 
+// Selama pemeliharaan hanya admin yang bisa masuk. Ubah ke false bila sudah siap dipakai seluruh tim.
+const MAINTENANCE=true;
 const SALES_DOMAIN='@sales.mitra10pcn.id';
 const isSalesEmail=e=>(e||'').toLowerCase().endsWith(SALES_DOMAIN);
 function idToEmail(v){v=(v||'').trim();if(!v||v.includes('@'))return v.toLowerCase();let m=v.toUpperCase().replace(/\s+/g,'');
@@ -528,7 +530,9 @@ function liveChange(p){
     const {data:roleRow}=await SB.from('user_roles').select('role').eq('user_id',session.user.id).maybeSingle();
     ROLE=roleRow?roleRow.role:'';
     MANAGER=ROLE==='admin'||ROLE==='editor';ADMIN=ROLE==='admin';
+    if(MAINTENANCE&&!ADMIN){$('boot').querySelector('h1').textContent='Sedang dilakukan pemeliharaan berkala';bootMsg('Halaman Follow Up Customer sedang disiapkan dan untuk sementara hanya dapat dibuka oleh admin. Silakan kembali lagi nanti.',true);return}
     await Promise.all([loadData(),loadTemplates()]);
+    if(MAINTENANCE)showMsg('Mode pemeliharaan aktif: hanya admin yang dapat membuka halaman ini.','info');
     if(!MANAGER&&!MYSALES.length){bootMsg('Akun '+ME+' belum dihubungkan ke nama salesperson. Minta admin menghubungkannya di menu Akun Salesperson.',true);return}
     $('who-name').textContent=isSalesEmail(ME)?(MYSALES[0]||'')+' · '+emailToId(ME):ME;$('who-role').textContent=MANAGER?ROLE:'sales';
     $('btn-import').hidden=!MANAGER;$('btn-tpl').hidden=!MANAGER;$('btn-acct').hidden=!ADMIN;
