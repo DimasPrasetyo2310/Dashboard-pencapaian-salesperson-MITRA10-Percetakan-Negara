@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="only light">
+<title>Follow Up Customer</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&family=Schibsted+Grotesk:wght@600;700&display=swap">
+<style>
+/* Papan follow up customer: banner navy + pita kuning (sama dengan dashboard lain), kartu ringkasan, daftar customer, panel catat follow up. */
+:root{
+  --bg:#ffffff; --tint:#f4f6fa; --frame:#aab5c7; --surface:#ffffff; --ink:#0e1a2b; --ink2:#4a576b; --ink3:#66728a; --line:#d3dae6; --grid:#e3e8f0;
+  --navy:#0f2547; --navy2:#1b3a6b; --amber:#f5a800; --amber-ink:#2a1d00;
+  --accent:#2563c9; --accent-soft:#e8effc; --accent-ink:#1b3a6b;
+  --good:#0e6b49; --good-bg:#e4f5ec; --warn:#8a5a00; --warn-bg:#fff2cf; --crit:#b4271c; --crit-bg:#fdeae8;
+  --shadow:0 1px 2px rgba(15,37,71,.06),0 10px 28px -14px rgba(15,37,71,.18);
+  --f-body:'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-display:'Schibsted Grotesk','Public Sans',system-ui,sans-serif;
+  color-scheme:only light;
+}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45;
+  padding-block:24px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.num{font-variant-numeric:tabular-nums}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance}
+.banner{position:relative;display:flex;flex-wrap:wrap;gap:14px 28px;align-items:flex-end;justify-content:space-between;padding:26px 28px 34px;border-radius:18px;overflow:hidden;color:#fff;
+  background:radial-gradient(900px 260px at 92% -40%,rgba(80,130,220,.55),transparent 70%),linear-gradient(135deg,var(--navy) 0%,var(--navy2) 100%)}
+.banner::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:32px 32px;-webkit-mask-image:linear-gradient(100deg,transparent 30%,#000);mask-image:linear-gradient(100deg,transparent 30%,#000);pointer-events:none}
+.banner::after{content:"";position:absolute;left:0;right:0;bottom:0;height:8px;background:repeating-linear-gradient(135deg,var(--amber) 0 12px,var(--navy) 12px 24px)}
+.banner>*{position:relative;z-index:1}
+.eyebrow{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#a9b9d3;font-weight:600}
+.banner h1{font-size:32px;line-height:1.12;letter-spacing:-.01em;font-weight:700;margin-top:4px}
+.sub{color:#c7d4ea;margin:6px 0 0}
+.who{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;font-size:13px;color:#c7d4ea}
+.who a{color:#fff}
+.rolechip{display:inline-block;padding:1px 9px;border-radius:999px;background:var(--amber);color:var(--amber-ink);font-weight:600;font-size:11.5px;margin-left:6px}
+.card{background:var(--surface);border:1.5px solid var(--frame);border-radius:14px;padding:18px;min-width:0;box-shadow:var(--shadow)}
+.card h2{font-size:16px;font-weight:700}
+.hint{font-size:12.5px;color:var(--ink3);margin:2px 0 14px}
+.btn{font:inherit;border:1px solid var(--line);border-radius:8px;padding:8px 14px;cursor:pointer;background:var(--surface);color:var(--ink2)}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--navy);border-color:var(--navy);color:#fff;font-weight:600}
+.btn.primary:hover{filter:brightness(1.15)}
+.btn.danger{color:var(--crit);border-color:#f0c3be}
+.btn.sm{padding:4px 11px;font-size:12px}
+.btn:disabled{opacity:.55;cursor:default}
+.banner .btn{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.28);color:#fff}
+input:focus-visible,button:focus-visible,a:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.banner a:focus-visible,.banner button:focus-visible{outline-color:#fff}
+.msg{font-size:13px;padding:9px 14px;border-radius:10px}
+.msg.ok{background:var(--good-bg);color:var(--good)}.msg.err{background:var(--crit-bg);color:var(--crit)}.msg.info{background:var(--accent-soft);color:var(--accent-ink)}
+
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}
+.kpi{background:var(--surface);border:1.5px solid var(--frame);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:2px;min-width:0;box-shadow:var(--shadow);text-align:left;font:inherit;color:inherit;cursor:pointer}
+.kpi:hover{border-color:var(--accent)}
+.kpi .l{font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink3);font-weight:600}
+.kpi .v{font-family:var(--f-display);font-variant-numeric:tabular-nums;font-size:29px;font-weight:700;letter-spacing:-.02em;line-height:1.15;overflow-wrap:anywhere}
+.kpi .s{font-size:12.5px;color:var(--ink2)}
+.kpi.hero{background:linear-gradient(145deg,var(--navy),var(--navy2));border-color:transparent;color:#fff}
+.kpi.hero .l,.kpi.hero .s{color:#c7d4ea}
+.kpi.alert{border-color:#e9a29a;background:var(--crit-bg)}
+.kpi.alert .v{color:var(--crit)}
+
+/* Kontrol */
+.controls{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:flex-end;justify-content:space-between}
+.filters{display:flex;flex-wrap:wrap;gap:10px 12px;align-items:flex-end;min-width:0}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label,.flabel{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink3);font-weight:500}
+input[type=text],input[type=search],input[type=date],input[type=number],input[type=email],input[type=password],input[type=tel],select,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--frame);border-radius:8px;padding:7px 10px;min-width:0;width:100%}
+textarea{resize:vertical;min-height:70px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:inherit;font-size:13px;border:1px solid var(--frame);background:var(--tint);color:var(--ink2);border-radius:99px;padding:6px 13px;cursor:pointer}
+.chip:hover{border-color:var(--accent)}
+.chip[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff;font-weight:600}
+.chip .n{opacity:.7;margin-left:4px;font-variant-numeric:tabular-nums}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+
+/* Tabel */
+.tbl{overflow-x:auto;border:1px solid var(--frame);border-radius:10px}
+table{width:100%;border-collapse:collapse;min-width:860px}
+th{font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:#fff;background:var(--navy);font-weight:700;text-align:left;padding:12px 10px;border-bottom:3px solid var(--amber);white-space:nowrap}
+th.r,td.r{text-align:right}
+th button{all:unset;cursor:pointer}
+td{padding:10px;border-bottom:1px solid var(--grid);vertical-align:middle}
+tbody tr{cursor:pointer}
+tbody tr:hover td{background:var(--accent-soft)}
+tbody tr.late td:first-child{box-shadow:inset 4px 0 0 var(--crit)}
+tbody tr.today td:first-child{box-shadow:inset 4px 0 0 var(--amber)}
+tfoot td{font-weight:700;border-top:2px solid var(--frame);border-bottom:0;background:var(--tint)}
+.cname b{display:block}
+.cname small{color:var(--ink3)}
+.wa{display:inline-flex;align-items:center;gap:5px;color:#0b7a43;text-decoration:none;font-weight:600;white-space:nowrap}
+.wa:hover{text-decoration:underline}
+.st{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.st-Baru{background:#e8effc;color:#1b3a6b}
+.st-Dihubungi{background:#efe9fb;color:#4b2a8f}
+.st-Penawaran{background:var(--warn-bg);color:var(--warn)}
+.st-Deal{background:var(--good-bg);color:var(--good)}
+.st-Batal{background:#eceef2;color:#5a6476}
+.due{white-space:nowrap}
+.due.late{color:var(--crit);font-weight:600}
+.due.today{color:var(--warn);font-weight:600}
+.muted{color:var(--ink3)}
+.empty{padding:28px;text-align:center;color:var(--ink3)}
+.pager{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;font-size:13px;color:var(--ink2)}
+
+/* Rekap */
+.bar{height:8px;border-radius:99px;background:var(--grid);overflow:hidden;min-width:80px}
+.bar i{display:block;height:100%;background:var(--accent)}
+
+/* Dialog */
+dialog{border:0;border-radius:16px;padding:0;width:min(760px,calc(100vw - 24px));max-height:calc(100vh - 32px);box-shadow:0 24px 60px -18px rgba(10,20,50,.5);color:var(--ink)}
+dialog::backdrop{background:rgba(15,37,71,.45)}
+.dlg-h{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:18px 20px 14px;border-bottom:1px solid var(--line);background:var(--tint);position:sticky;top:0;z-index:2}
+.dlg-h h3{font-size:19px}
+.dlg-b{padding:16px 20px 20px;display:flex;flex-direction:column;gap:16px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.span2{grid-column:span 2}
+.box{border:1px solid var(--line);border-radius:12px;padding:14px}
+.box h4{margin:0 0 10px;font-family:var(--f-display);font-size:14.5px}
+.logs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.logs li{border-left:3px solid var(--accent);padding:2px 0 2px 12px}
+.logs .meta{font-size:12px;color:var(--ink3)}
+.logs p{margin:3px 0 0;white-space:pre-wrap}
+.row-end{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;align-items:center}
+.gate{min-height:60vh;display:grid;place-items:center}
+.gate-card{background:var(--surface);border:1.5px solid var(--frame);border-radius:14px;padding:28px 32px;max-width:420px;display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow)}
+.gate-card h1{font-size:22px}
+.gate-card .sub{color:var(--ink2)}
+.acct td input{min-width:180px}
+@media (max-width:980px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi.hero{grid-column:span 2}}
+@media (max-width:600px){
+  .main-tbl{border:0;overflow:visible}
+  .main-tbl table,.main-tbl tbody{display:block;width:100%;min-width:0}
+  .main-tbl thead{display:none}
+  .main-tbl tbody{display:flex;flex-direction:column;gap:10px}
+  .main-tbl tbody tr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px 12px;border:1.5px solid var(--frame);border-radius:12px;padding:12px 12px 12px 14px;background:var(--surface)}
+  .main-tbl tbody tr.late{border-left:5px solid var(--crit)}
+  .main-tbl tbody tr.today{border-left:5px solid var(--amber)}
+  .main-tbl tbody tr td{padding:0;border:0;box-shadow:none!important;text-align:left;background:none!important}
+  .main-tbl tbody td.cname{grid-column:1/-1}
+  .main-tbl .due,.main-tbl .wa{white-space:normal;overflow-wrap:anywhere}
+  .main-tbl tbody td[data-l]::before{content:attr(data-l);display:block;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink3);font-weight:600}
+  .main-tbl tbody td.empty{grid-column:1/-1;padding:18px}
+  .main-tbl tfoot{display:block}.main-tbl tfoot tr{display:flex;justify-content:space-between}.main-tbl tfoot td{background:none;border:0}
+}
+@media (max-width:600px){.banner{padding:20px 18px 28px}.banner h1{font-size:25px}.grid2,.grid3{grid-template-columns:minmax(0,1fr)}.span2{grid-column:auto}.kpi .v{font-size:24px}}
+</style>
+</head>
+<body>
+
+<div class="gate" id="boot">
+  <div class="gate-card">
+    <h1>Follow Up Customer</h1>
+    <p class="sub" id="boot-msg" role="status">Memeriksa akun…</p>
+    <div><button type="button" class="btn sm" id="boot-out" hidden>Keluar</button></div>
+  </div>
+</div>
+
+<div class="wrap" id="app" hidden>
+  <header class="banner">
+    <div>
+      <div class="eyebrow">MITRA10 Percetakan Negara · 10005</div>
+      <h1>Follow Up Customer</h1>
+      <p class="sub" id="scope"></p>
+    </div>
+    <div class="who">
+      <a href="index.html">Beranda</a>
+      <span><b id="who-name"></b><span id="who-role" class="rolechip"></span></span>
+      <button type="button" class="btn sm" id="logout">Keluar</button>
+    </div>
+  </header>
+
+  <div id="msg" class="msg" role="status" hidden></div>
+
+  <section class="kpis" id="kpis" aria-label="Ringkasan"></section>
+
+  <section class="card">
+    <div class="controls">
+      <div class="filters">
+        <div class="field" style="min-width:220px"><label for="q">Cari</label><input type="search" id="q" placeholder="Nama, no. HP, atau catatan"></div>
+        <div class="field" id="f-sales-wrap"><label for="f-sales">Salesperson</label><select id="f-sales"><option value="">Semua</option></select></div>
+        <div class="field"><label for="f-due">Jadwal</label>
+          <select id="f-due"><option value="">Semua</option><option value="late">Terlambat</option><option value="today">Hari ini</option><option value="due">Hari ini + terlambat</option><option value="week">7 hari ke depan</option><option value="none">Belum dijadwalkan</option></select></div>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn primary" id="btn-add">+ Customer</button>
+        <button type="button" class="btn" id="btn-import" hidden>Impor Excel</button>
+        <button type="button" class="btn" id="btn-tpl" hidden>Template</button>
+        <button type="button" class="btn" id="btn-export">Unduh Excel</button>
+        <button type="button" class="btn" id="btn-acct" hidden>Akun Salesperson</button>
+        <input type="file" id="file" accept=".xlsx,.xls,.csv" hidden>
+      </div>
+    </div>
+    <div class="chips" id="chips" role="group" aria-label="Filter status" style="margin:14px 0"></div>
+    <div class="tbl main-tbl">
+      <table>
+        <thead><tr>
+          <th><button data-sort="nama">Customer</button></th>
+          <th>No. HP</th>
+          <th><button data-sort="salesperson">Salesperson</button></th>
+          <th><button data-sort="status">Status</button></th>
+          <th><button data-sort="next_date">Follow up berikutnya</button></th>
+          <th class="r"><button data-sort="potensi">Potensi</button></th>
+          <th><button data-sort="last_contact">Terakhir dihubungi</button></th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+        <tfoot id="foot"></tfoot>
+      </table>
+    </div>
+    <div class="pager" id="pager"></div>
+  </section>
+
+  <section class="card" id="recap-card" hidden>
+    <h2>Rekap per salesperson</h2>
+    <p class="hint">Jumlah customer per status, nilai potensi yang masih berjalan, dan rasio deal (deal dibagi customer yang sudah selesai: deal + batal).</p>
+    <div class="tbl"><table>
+      <thead><tr><th>Salesperson</th><th class="r">Customer</th><th class="r">Baru</th><th class="r">Dihubungi</th><th class="r">Penawaran</th><th class="r">Deal</th><th class="r">Batal</th><th class="r">Terlambat</th><th class="r">Potensi berjalan</th><th class="r">Nilai deal</th><th>Rasio deal</th></tr></thead>
+      <tbody id="recap"></tbody>
+    </table></div>
+  </section>
+</div>
+
+<!-- Detail / catat follow up -->
+<dialog id="dlg" aria-labelledby="dlg-title">
+  <form method="dialog" id="cust-form" novalidate>
+    <div class="dlg-h">
+      <div><h3 id="dlg-title">Customer</h3><div class="muted" id="dlg-sub"></div></div>
+      <button type="button" class="btn sm" data-close>Tutup</button>
+    </div>
+    <div class="dlg-b">
+      <div id="dlg-msg" class="msg" hidden></div>
+
+      <div class="box" id="log-box">
+        <h4>Catat follow up</h4>
+        <div class="grid3">
+          <div class="field"><label for="l-cara">Cara</label><select id="l-cara"><option>WhatsApp</option><option>Telepon</option><option>Kunjungan</option><option>Datang ke toko</option><option>Lainnya</option></select></div>
+          <div class="field"><label for="l-status">Status sekarang</label><select id="l-status"></select></div>
+          <div class="field"><label for="l-next">Follow up berikutnya</label><input type="date" id="l-next"></div>
+          <div class="field span2" style="grid-column:1/-1"><label for="l-note">Hasil / catatan</label><textarea id="l-note" placeholder="Mis. sudah kirim penawaran cat 20 pail, minta dihubungi lagi Senin"></textarea></div>
+        </div>
+        <div class="row-end" style="margin-top:10px">
+          <span class="muted" style="font-size:12px">Cepat: </span>
+          <button type="button" class="btn sm" data-plus="1">+1 hari</button>
+          <button type="button" class="btn sm" data-plus="3">+3 hari</button>
+          <button type="button" class="btn sm" data-plus="7">+1 minggu</button>
+          <button type="button" class="btn primary" id="l-save">Simpan follow up</button>
+        </div>
+      </div>
+
+      <div class="box">
+        <h4>Data customer</h4>
+        <div class="grid2">
+          <div class="field"><label for="c-nama">Nama customer *</label><input type="text" id="c-nama" required></div>
+          <div class="field"><label for="c-hp">No. HP / WhatsApp</label><input type="tel" id="c-hp" placeholder="08xxxxxxxxxx"></div>
+          <div class="field"><label for="c-sales">Salesperson *</label><input type="text" id="c-sales" list="sales-list" required><datalist id="sales-list"></datalist></div>
+          <div class="field"><label for="c-potensi">Nilai potensi (Rp)</label><input type="text" id="c-potensi" inputmode="numeric" placeholder="0"></div>
+          <div class="field"><label for="c-status">Status</label><select id="c-status"></select></div>
+          <div class="field"><label for="c-next">Follow up berikutnya</label><input type="date" id="c-next"></div>
+          <div class="field" style="grid-column:1/-1"><label for="c-catatan">Kebutuhan / keterangan</label><textarea id="c-catatan" placeholder="Mis. renovasi kamar mandi, butuh keramik + sanitary"></textarea></div>
+        </div>
+        <div class="row-end" style="margin-top:10px">
+          <button type="button" class="btn danger" id="c-del" hidden>Hapus customer</button>
+          <button type="button" class="btn primary" id="c-save">Simpan data customer</button>
+        </div>
+      </div>
+
+      <div class="box" id="hist-box">
+        <h4>Riwayat follow up</h4>
+        <ul class="logs" id="logs"></ul>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<!-- Akun salesperson -->
+<dialog id="dlg-acct" aria-labelledby="acct-title">
+  <div class="dlg-h">
+    <div><h3 id="acct-title">Akun Salesperson</h3><div class="muted">Hubungkan nama salesperson dengan email login. Sales hanya melihat customer dengan nama miliknya.</div></div>
+    <button type="button" class="btn sm" data-close>Tutup</button>
+  </div>
+  <div class="dlg-b">
+    <div id="acct-msg" class="msg" hidden></div>
+    <p class="muted" style="margin:0">Isi password hanya bila ingin membuat akun baru atau mengganti password (minimal 6 karakter). Akun admin dan editor tetap melihat semua customer.</p>
+    <div class="tbl"><table class="acct" style="min-width:640px">
+      <thead><tr><th>Nama salesperson</th><th>Email login</th><th>Password</th><th></th></tr></thead>
+      <tbody id="acct-rows"></tbody>
+    </table></div>
+    <div class="grid3" style="align-items:end">
+      <div class="field"><label for="a-name">Nama baru</label><input type="text" id="a-name" list="sales-list"></div>
+      <div class="field"><label for="a-email">Email</label><input type="email" id="a-email"></div>
+      <div class="field"><label for="a-pass">Password</label><input type="text" id="a-pass" autocomplete="new-password"></div>
+    </div>
+    <div class="row-end"><button type="button" class="btn primary" id="a-add">Tambah / simpan</button></div>
+  </div>
+</dialog>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="js/presence.js"></script>
+<script src="js/followup.js"></script>
+</body>
+</html>

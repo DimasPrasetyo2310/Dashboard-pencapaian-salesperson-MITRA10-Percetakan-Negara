@@ -4,6 +4,7 @@
 
 - Beranda: https://dimasprasetyo2310.github.io/pcn/
 - Dashboard Salesperson: https://dimasprasetyo2310.github.io/pcn/dashboard.html
+- Follow Up Customer: https://dimasprasetyo2310.github.io/pcn/followup.html
 - Setiap push ke `main` diterbitkan otomatis oleh `.github/workflows/pages.yml`.
 - Link tim sales (hanya baca, tanpa login): `dashboard.html?t=TOKEN`. Token dikelola di tabel `share_links` (lihat `supabase/tim_share_link.sql`); token tidak disimpan di repo.
 
@@ -47,3 +48,10 @@ Mencoba di komputer sendiri: isi `public/config.js`, lalu `npx serve public` dan
 ## Monitoring sales bulanan (level toko)
 Halaman `monitoring.html` memakai login dan peran yang sama. Datanya dari tabel `store_daily` dan `store_day_category` (lihat `supabase/monitoring_store.sql`).
 Admin dan editor mengunggah dua file: Report Compare FFC and Nav (traffic, invoice, sales NAV dan FFC) dan Sales Detail Report (sales per kategori). Data pada tanggal yang sama diganti.
+
+## Follow up customer
+Halaman `followup.html` (`js/followup.js`) memakai login yang sama. Tabel: `fu_customers`, `fu_logs`, `fu_salespeople` (lihat `supabase/followup_customer.sql`).
+- Admin dan editor melihat semua customer, mengimpor Excel, dan menghapus customer.
+- Akun sales (peran viewer) hanya melihat customer dengan nama salesperson yang dipetakan ke email login-nya.
+- Admin memetakan nama salesperson ke email, dan bisa langsung membuat akun atau mengganti password, lewat tombol "Akun Salesperson".
+- Data customer (no. HP) hanya ada di Supabase, tidak disimpan di repo.

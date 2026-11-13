@@ -1,7 +1,7 @@
 const CFG = window.APP_CONFIG || {};
 const SUPABASE_URL = CFG.SUPABASE_URL;
 const SUPABASE_KEY = CFG.SUPABASE_PUBLISHABLE_KEY;
-const NEXT_ALLOWED = ['dashboard.html', 'monitoring.html'];
+const NEXT_ALLOWED = ['dashboard.html', 'monitoring.html', 'followup.html'];
 let nextParam = new URLSearchParams(window.location.search).get('next');
 try { if (!nextParam) nextParam = sessionStorage.getItem('mitra10_next'); } catch (e) {}
 const DASHBOARD_URL = NEXT_ALLOWED.indexOf(nextParam) >= 0 ? nextParam : 'dashboard.html';
