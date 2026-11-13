@@ -55,5 +55,7 @@ Halaman `followup.html` (`js/followup.js`) memakai login yang sama. Tabel: `fu_c
 - Akun sales (peran viewer) hanya melihat customer dengan nama salesperson yang dipetakan ke email login-nya.
 - Sales masuk dengan ID Salesperson (atau angkanya saja) + PIN 6 angka; akunnya berupa email buatan `<id>@sales.mitra10pcn.id`. Sales bisa mengganti PIN sendiri (tombol "Ganti PIN").
 - Admin memetakan nama salesperson ke ID/email, membuat akun, atau mereset PIN lewat tombol "Akun Salesperson".
+- Tampilan utama: ringkasan per salesperson (ID, nama, total database, progres). Klik nama untuk popup daftar customer dengan tombol "Kirim WA" (membuka wa.me berisi pesan dari template, lalu dicatat ke fu_logs).
+- Template pesan WhatsApp disimpan di tabel `fu_templates` (lihat `supabase/followup_templates.sql`); mendukung kode {salam} {nama} {sales} {member} {toko} dan variasi kata {a|b|c}.
 - Kolom `member_no` (No Member) dipakai untuk mencegah data dobel saat impor.
 - Data customer (no. HP) hanya ada di Supabase, tidak disimpan di repo.

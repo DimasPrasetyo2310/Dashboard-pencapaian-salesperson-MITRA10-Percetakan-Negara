@@ -133,6 +133,23 @@ dialog::backdrop{background:rgba(15,37,71,.45)}
 .gate-card .sub{color:var(--ink2)}
 .acct td input{min-width:180px}
 @media (max-width:980px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi.hero{grid-column:span 2}}
+.sendbar{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.sendbar b{font-family:var(--f-display);font-size:24px}
+.sendbar.warn b{color:var(--crit)}
+.btn.wa{background:#0b7a43;border-color:#0b7a43;color:#fff;font-weight:600}
+.btn.wa:hover{filter:brightness(1.1)}
+.btn.wa.sent{background:var(--good-bg);color:var(--good);border-color:#b7e1c9}
+.spname{all:unset;cursor:pointer;font-weight:700;color:var(--accent-ink)}
+.spname:hover{text-decoration:underline}
+.tpl-wrap{display:grid;grid-template-columns:220px minmax(0,1fr);gap:16px}
+.tpl-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.tpl-list button{all:unset;display:block;width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--line);border-radius:9px;cursor:pointer;font-size:13.5px}
+.tpl-list button[aria-current="true"]{border-color:var(--navy);background:var(--accent-soft);font-weight:600}
+.tpl-list .off{color:var(--ink3);font-weight:400}
+.tpl-help{font-size:12.5px;color:var(--ink2);background:var(--tint);border-radius:9px;padding:10px 12px;margin-top:10px;line-height:1.6}
+.tpl-help code{background:#fff;border:1px solid var(--line);border-radius:5px;padding:0 4px;font-size:12px}
+.tpl-preview{white-space:pre-wrap;background:#e7f7ec;border-radius:10px;padding:12px 14px;margin-top:6px;font-size:13.5px;min-height:60px}
+@media (max-width:700px){.tpl-wrap{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:600px){
   .main-tbl{border:0;overflow:visible}
   .main-tbl table,.main-tbl tbody{display:block;width:100%;min-width:0}
@@ -183,48 +200,95 @@ dialog::backdrop{background:rgba(15,37,71,.45)}
   <section class="card">
     <div class="controls">
       <div class="filters">
-        <div class="field" style="min-width:220px"><label for="q">Cari</label><input type="search" id="q" placeholder="Nama, no. HP, atau catatan"></div>
-        <div class="field" id="f-sales-wrap"><label for="f-sales">Salesperson</label><select id="f-sales"><option value="">Semua</option></select></div>
-        <div class="field"><label for="f-due">Jadwal</label>
-          <select id="f-due"><option value="">Semua</option><option value="late">Terlambat</option><option value="today">Hari ini</option><option value="due">Hari ini + terlambat</option><option value="week">7 hari ke depan</option><option value="none">Belum dijadwalkan</option></select></div>
+        <div class="field" style="min-width:260px"><label for="q">Cari</label><input type="search" id="q" placeholder="Nama / ID salesperson, atau nama / no. HP customer"></div>
       </div>
       <div class="actions">
-        <button type="button" class="btn primary" id="btn-add">+ Customer</button>
+        <button type="button" class="btn primary" id="btn-msgtpl">Template Pesan</button>
         <button type="button" class="btn" id="btn-import" hidden>Impor Excel</button>
-        <button type="button" class="btn" id="btn-tpl" hidden>Template</button>
+        <button type="button" class="btn" id="btn-tpl" hidden>Template Excel</button>
         <button type="button" class="btn" id="btn-export">Unduh Excel</button>
         <button type="button" class="btn" id="btn-acct" hidden>Akun Salesperson</button>
         <input type="file" id="file" accept=".xlsx,.xls,.csv" hidden>
       </div>
     </div>
-    <div class="chips" id="chips" role="group" aria-label="Filter status" style="margin:14px 0"></div>
+    <p class="hint" style="margin:12px 0 10px">Klik nama salesperson untuk membuka daftar customer dan mengirim pesan WhatsApp.</p>
     <div class="tbl main-tbl">
       <table>
         <thead><tr>
-          <th><button data-sort="nama">Customer</button></th>
-          <th>No. HP</th>
-          <th><button data-sort="salesperson">Salesperson</button></th>
-          <th><button data-sort="status">Status</button></th>
-          <th><button data-sort="next_date">Follow up berikutnya</button></th>
-          <th class="r"><button data-sort="potensi">Potensi</button></th>
-          <th><button data-sort="last_contact">Terakhir dihubungi</button></th>
+          <th><button data-sort="sid">Salesperson ID</button></th>
+          <th><button data-sort="name">Salesperson</button></th>
+          <th class="r"><button data-sort="total">Total database</button></th>
+          <th class="r"><button data-sort="done">Sudah dihubungi</button></th>
+          <th class="r"><button data-sort="todo">Belum dihubungi</button></th>
+          <th class="r"><button data-sort="today">Hari ini</button></th>
+          <th class="r"><button data-sort="deal">Deal</button></th>
+          <th>Progres</th>
         </tr></thead>
         <tbody id="rows"></tbody>
         <tfoot id="foot"></tfoot>
       </table>
     </div>
-    <div class="pager" id="pager"></div>
-  </section>
-
-  <section class="card" id="recap-card" hidden>
-    <h2>Rekap per salesperson</h2>
-    <p class="hint">Jumlah customer per status, nilai potensi yang masih berjalan, dan rasio deal (deal dibagi customer yang sudah selesai: deal + batal).</p>
-    <div class="tbl"><table>
-      <thead><tr><th>Salesperson</th><th class="r">Customer</th><th class="r">Baru</th><th class="r">Dihubungi</th><th class="r">Penawaran</th><th class="r">Deal</th><th class="r">Batal</th><th class="r">Terlambat</th><th class="r">Potensi berjalan</th><th class="r">Nilai deal</th><th>Rasio deal</th></tr></thead>
-      <tbody id="recap"></tbody>
-    </table></div>
+    <div id="cust-hits" hidden style="margin-top:16px"></div>
   </section>
 </div>
+
+<!-- Popup salesperson: daftar customer + kirim WA -->
+<dialog id="dlg-sp" aria-labelledby="sp-title" style="width:min(1040px,calc(100vw - 24px))">
+  <div class="dlg-h">
+    <div><h3 id="sp-title">Salesperson</h3><div class="muted" id="sp-sub"></div></div>
+    <button type="button" class="btn sm" data-close>Tutup</button>
+  </div>
+  <div class="dlg-b">
+    <div id="sp-msg" class="msg" hidden></div>
+    <div class="box" style="display:flex;flex-wrap:wrap;gap:12px 16px;align-items:flex-end;justify-content:space-between">
+      <div class="field" style="min-width:240px;flex:1"><label for="sp-tpl">Template pesan</label><select id="sp-tpl"></select></div>
+      <div class="sendbar"><span class="flabel">Terkirim hari ini</span><b class="num" id="sp-today">0</b><span class="muted" id="sp-limit"></span></div>
+    </div>
+    <div class="controls">
+      <div class="chips" id="sp-chips" role="group" aria-label="Filter status"></div>
+      <div class="filters">
+        <div class="field" style="min-width:220px"><label for="sp-q">Cari customer</label><input type="search" id="sp-q" placeholder="Nama, no. HP, no. member"></div>
+        <button type="button" class="btn" id="btn-add">+ Customer</button>
+      </div>
+    </div>
+    <div class="tbl main-tbl sp-tbl"><table style="min-width:760px">
+      <thead><tr><th>Customer</th><th>No. HP</th><th>Status</th><th>Terakhir dihubungi</th><th class="r">Aksi</th></tr></thead>
+      <tbody id="sp-rows"></tbody>
+    </table></div>
+    <div class="pager" id="sp-pager"></div>
+  </div>
+</dialog>
+
+<!-- Template pesan -->
+<dialog id="dlg-tpl" aria-labelledby="tpl-title" style="width:min(900px,calc(100vw - 24px))">
+  <div class="dlg-h">
+    <div><h3 id="tpl-title">Template Pesan WhatsApp</h3><div class="muted">Teks standar untuk blasting. Hanya admin/editor yang bisa mengubah.</div></div>
+    <button type="button" class="btn sm" data-close>Tutup</button>
+  </div>
+  <div class="dlg-b">
+    <div id="tpl-msg" class="msg" hidden></div>
+    <div class="tpl-wrap">
+      <div><div class="flabel" style="margin-bottom:6px">Daftar template</div><ul class="tpl-list" id="tpl-list"></ul>
+        <button type="button" class="btn sm" id="tpl-new" style="margin-top:8px">+ Template baru</button></div>
+      <div class="box" id="tpl-form">
+        <div class="field"><label for="tpl-judul">Judul</label><input type="text" id="tpl-judul" placeholder="Mis. Promo akhir bulan"></div>
+        <div class="field" style="margin-top:10px"><label for="tpl-isi">Isi pesan</label><textarea id="tpl-isi" style="min-height:190px"></textarea></div>
+        <label style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13px"><input type="checkbox" id="tpl-aktif" checked> Aktif (ikut dipakai saat pilihan "Acak bergilir")</label>
+        <div class="tpl-help">
+          <b>Kode otomatis:</b> <code>{salam}</code> Selamat pagi/siang/sore/malam · <code>{nama}</code> nama customer · <code>{sales}</code> nama salesperson · <code>{member}</code> no. member · <code>{toko}</code> MITRA10 Percetakan Negara<br>
+          <b>Variasi kata:</b> tulis <code>{Halo|Hai|Selamat datang}</code>, satu kata akan dipilih acak di setiap pesan, jadi pesan yang terkirim tidak identik.
+        </div>
+        <div class="flabel" style="margin-top:12px">Contoh hasil</div>
+        <div class="tpl-preview" id="tpl-preview"></div>
+        <div class="row-end" style="margin-top:10px">
+          <button type="button" class="btn danger" id="tpl-del" hidden>Hapus</button>
+          <button type="button" class="btn" id="tpl-reroll">Contoh lain</button>
+          <button type="button" class="btn primary" id="tpl-save">Simpan template</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</dialog>
 
 <!-- Detail / catat follow up -->
 <dialog id="dlg" aria-labelledby="dlg-title">
@@ -312,8 +376,8 @@ dialog::backdrop{background:rgba(15,37,71,.45)}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<script src="config.js?v=202611131905"></script>
-<script src="js/presence.js?v=202611131905"></script>
-<script src="js/followup.js?v=202611131905"></script>
+<script src="config.js?v=202611132024"></script>
+<script src="js/presence.js?v=202611132024"></script>
+<script src="js/followup.js?v=202611132024"></script>
 </body>
 </html>
