@@ -171,6 +171,7 @@ dialog::backdrop{background:rgba(15,37,71,.45)}
     <div class="who">
       <a href="index.html">Beranda</a>
       <span><b id="who-name"></b><span id="who-role" class="rolechip"></span></span>
+      <button type="button" class="btn sm" id="btn-pin">Ganti PIN</button>
       <button type="button" class="btn sm" id="logout">Keluar</button>
     </div>
   </header>
@@ -285,17 +286,27 @@ dialog::backdrop{background:rgba(15,37,71,.45)}
   </div>
   <div class="dlg-b">
     <div id="acct-msg" class="msg" hidden></div>
-    <p class="muted" style="margin:0">Isi password hanya bila ingin membuat akun baru atau mengganti password (minimal 6 karakter). Akun admin dan editor tetap melihat semua customer.</p>
+    <p class="muted" style="margin:0">Sales masuk dengan ID Salesperson + PIN. Isi PIN hanya bila ingin membuat akun baru atau mereset PIN (minimal 6 angka). Kolom ID juga bisa diisi email untuk akun berbasis email. Akun admin dan editor tetap melihat semua customer.</p>
     <div class="tbl"><table class="acct" style="min-width:640px">
-      <thead><tr><th>Nama salesperson</th><th>Email login</th><th>Password</th><th></th></tr></thead>
+      <thead><tr><th>Nama salesperson</th><th>ID / email login</th><th>PIN baru</th><th></th></tr></thead>
       <tbody id="acct-rows"></tbody>
     </table></div>
     <div class="grid3" style="align-items:end">
       <div class="field"><label for="a-name">Nama baru</label><input type="text" id="a-name" list="sales-list"></div>
-      <div class="field"><label for="a-email">Email</label><input type="email" id="a-email"></div>
-      <div class="field"><label for="a-pass">Password</label><input type="text" id="a-pass" autocomplete="new-password"></div>
+      <div class="field"><label for="a-email">ID Salesperson / email</label><input type="text" id="a-email" placeholder="S10005-0000000xxx"></div>
+      <div class="field"><label for="a-pass">PIN</label><input type="text" id="a-pass" autocomplete="new-password"></div>
     </div>
     <div class="row-end"><button type="button" class="btn primary" id="a-add">Tambah / simpan</button></div>
+  </div>
+</dialog>
+
+<dialog id="dlg-pin" aria-labelledby="pin-title" style="width:min(420px,calc(100vw - 24px))">
+  <div class="dlg-h"><h3 id="pin-title">Ganti PIN / password</h3><button type="button" class="btn sm" data-close>Tutup</button></div>
+  <div class="dlg-b">
+    <div id="pin-msg" class="msg" hidden></div>
+    <div class="field"><label for="pin-1">PIN baru (minimal 6 angka)</label><input type="password" id="pin-1" inputmode="numeric" autocomplete="new-password"></div>
+    <div class="field"><label for="pin-2">Ulangi PIN baru</label><input type="password" id="pin-2" inputmode="numeric" autocomplete="new-password"></div>
+    <div class="row-end"><button type="button" class="btn primary" id="pin-save">Simpan PIN</button></div>
   </div>
 </dialog>
 

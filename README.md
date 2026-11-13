@@ -53,6 +53,7 @@ Admin dan editor mengunggah dua file: Report Compare FFC and Nav (traffic, invoi
 Halaman `followup.html` (`js/followup.js`) memakai login yang sama. Tabel: `fu_customers`, `fu_logs`, `fu_salespeople` (lihat `supabase/followup_customer.sql`).
 - Admin dan editor melihat semua customer, mengimpor Excel, dan menghapus customer.
 - Akun sales (peran viewer) hanya melihat customer dengan nama salesperson yang dipetakan ke email login-nya.
-- Admin memetakan nama salesperson ke email, dan bisa langsung membuat akun atau mengganti password, lewat tombol "Akun Salesperson".
+- Sales masuk dengan ID Salesperson (atau angkanya saja) + PIN 6 angka; akunnya berupa email buatan `<id>@sales.mitra10pcn.id`. Sales bisa mengganti PIN sendiri (tombol "Ganti PIN").
+- Admin memetakan nama salesperson ke ID/email, membuat akun, atau mereset PIN lewat tombol "Akun Salesperson".
 - Kolom `member_no` (No Member) dipakai untuk mencegah data dobel saat impor.
 - Data customer (no. HP) hanya ada di Supabase, tidak disimpan di repo.

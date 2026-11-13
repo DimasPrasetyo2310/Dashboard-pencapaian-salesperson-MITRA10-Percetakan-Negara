@@ -165,3 +165,12 @@ create unique index if not exists fu_customers_member_uq on public.fu_customers 
 insert into public.fu_salespeople(name)
 select distinct name from public.sales_person_day where role = 'Sales' and name is not null
 on conflict (name) do nothing;
+
+-- Login sales dengan ID Salesperson + PIN
+-- Akun sales memakai email buatan: <id huruf kecil>@sales.mitra10pcn.id (mis. s10005-0000000699@sales.mitra10pcn.id).
+-- Halaman login mengubah ID (atau angkanya saja, mis. 699) menjadi email tersebut.
+alter table public.fu_salespeople add column if not exists sales_id text;
+create unique index if not exists fu_salespeople_sid_uq on public.fu_salespeople (sales_id) where sales_id is not null;
+create or replace function public.fu_sales_email(p_id text) returns text language sql immutable as $$
+  select lower(trim(p_id)) || '@sales.mitra10pcn.id'
+$$;

@@ -20,6 +20,11 @@ const waNum=hp=>{let d=digits(hp);if(!d)return '';if(d.startsWith('0'))d='62'+d.
 const normHp=hp=>{const w=waNum(hp);return w.length>=8?w:''};
 const parseRp=v=>{if(typeof v==='number')return v;const d=String(v==null?'':v).replace(/[^\d,.-]/g,'').replace(/[.,](?=\d{3}(\D|$))/g,'').replace(',','.');const n=parseFloat(d);return isFinite(n)?n:0};
 
+const SALES_DOMAIN='@sales.mitra10pcn.id';
+const isSalesEmail=e=>(e||'').toLowerCase().endsWith(SALES_DOMAIN);
+function idToEmail(v){v=(v||'').trim();if(!v||v.includes('@'))return v.toLowerCase();let m=v.toUpperCase().replace(/\s+/g,'');
+  if(/^\d{1,10}$/.test(m))m='S10005-'+m.padStart(10,'0');else if(/^S\d+$/.test(m))m=m.slice(0,6)+'-'+m.slice(6);return m.toLowerCase()+SALES_DOMAIN}
+const emailToId=e=>isSalesEmail(e)?e.slice(0,-SALES_DOMAIN.length).toUpperCase():'';
 const CFG=window.APP_CONFIG||{};
 const SB=(window.supabase&&CFG.SUPABASE_URL&&CFG.SUPABASE_PUBLISHABLE_KEY&&!/YOUR-/.test(CFG.SUPABASE_URL))?window.supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_PUBLISHABLE_KEY):null;
 
@@ -47,7 +52,7 @@ async function fetchAll(table,cols,order,onProg){
 async function loadData(){
   const [c,s]=await Promise.all([
     fetchAll('fu_customers','id,member_no,nama,hp,salesperson,status,next_date,potensi,catatan,sumber,last_contact,created_at,updated_at','id',(d,n)=>{if(!$('boot').hidden&&n>3)$('boot-msg').textContent='Memuat data customer… '+Math.round(d/n*100)+'%'}),
-    fetchAll('fu_salespeople','name,email','name')
+    fetchAll('fu_salespeople','name,email,sales_id','name')
   ]);
   CUST=c.map(r=>({...r,potensi:+r.potensi||0}));SALES=s;
   MYSALES=SALES.filter(x=>x.email&&x.email.toLowerCase()===ME.toLowerCase()).map(x=>x.name);
@@ -369,19 +374,20 @@ const dA=$('dlg-acct');
 function renderAcct(){
   const em=new Map(SALES.map(s=>[s.name,s.email||'']));
   const names=salesNames(),cnt=n=>CUST.filter(c=>c.salesperson===n).length;
-  $('acct-rows').innerHTML=names.length?names.map((n,i)=>`<tr><td><b>${esc(n)}</b><div class="muted" style="font-size:12px">${cnt(n)} customer</div></td><td><input type="email" id="ae-${i}" value="${esc(em.get(n)||'')}" list="user-list" placeholder="email login"></td><td><input type="text" id="ap-${i}" autocomplete="new-password" placeholder="${em.get(n)?'(tidak diubah)':'buat akun'}"></td><td><button type="button" class="btn sm" data-i="${i}">Simpan</button></td></tr>`).join(''):'<tr><td colspan="4" class="empty">Belum ada nama salesperson. Impor data customer dulu atau tambah di bawah.</td></tr>';
+  const shown=e=>isSalesEmail(e)?emailToId(e):e;
+  $('acct-rows').innerHTML=names.length?names.map((n,i)=>`<tr><td><b>${esc(n)}</b><div class="muted" style="font-size:12px">${cnt(n)} customer</div></td><td><input type="text" id="ae-${i}" value="${esc(shown(em.get(n)||''))}" list="user-list" placeholder="ID Salesperson atau email"></td><td><input type="text" id="ap-${i}" inputmode="numeric" autocomplete="new-password" placeholder="${em.get(n)?'(tidak diubah)':'buat akun'}"></td><td><button type="button" class="btn sm" data-i="${i}">Simpan</button></td></tr>`).join(''):'<tr><td colspan="4" class="empty">Belum ada nama salesperson. Impor data customer dulu atau tambah di bawah.</td></tr>';
   if(!$('user-list')){const dl=document.createElement('datalist');dl.id='user-list';document.body.appendChild(dl)}
   $('user-list').innerHTML=USERS.map(u=>`<option value="${esc(u)}">`).join('');
   $('acct-rows').querySelectorAll('[data-i]').forEach(b=>b.addEventListener('click',()=>{const i=+b.dataset.i;saveAcct(names[i],$('ae-'+i).value,$('ap-'+i).value,b)}));
 }
 async function saveAcct(name,email,pass,btn){
-  name=(name||'').trim();email=(email||'').trim();
+  name=(name||'').trim();email=idToEmail(email);
   if(!name||!email){dlgMsg('acct-msg','Nama dan email wajib diisi.','err');return}
   if(btn)btn.disabled=true;
   const {data,error}=await SB.rpc('fu_upsert_sales_account',{p_name:name,p_email:email,p_password:pass||null});
   if(btn)btn.disabled=false;
   if(error){dlgMsg('acct-msg','Gagal: '+error.message,'err');return}
-  dlgMsg('acct-msg',name+': '+data+(pass?'. Password: '+pass:''),'ok');
+  dlgMsg('acct-msg',name+': '+data.replace(email,isSalesEmail(email)?emailToId(email):email)+(pass?'. PIN/password: '+pass:''),'ok');
   await loadData();renderAcct();render();
 }
 $('btn-acct').addEventListener('click',async()=>{
@@ -401,6 +407,15 @@ document.querySelectorAll('th [data-sort]').forEach(b=>b.addEventListener('click
 const bootMsg=(t,out)=>{$('boot-msg').textContent=t;$('boot-out').hidden=!out;$('boot').hidden=false;$('app').hidden=true};
 const toLogin=()=>{try{sessionStorage.setItem('mitra10_next','followup.html')}catch(e){}location.replace('login.html?next=followup.html')};
 const signOut=async()=>{try{if(SB)await SB.auth.signOut()}catch(e){}location.replace('index.html')};
+$('btn-pin').addEventListener('click',()=>{dlgMsg('pin-msg','');$('pin-1').value='';$('pin-2').value='';$('dlg-pin').showModal();$('pin-1').focus()});
+$('pin-save').addEventListener('click',async()=>{
+  const a=$('pin-1').value,b=$('pin-2').value;
+  if(a.length<6){dlgMsg('pin-msg','PIN/password minimal 6 karakter.','err');return}
+  if(a!==b){dlgMsg('pin-msg','Kedua isian tidak sama.','err');return}
+  $('pin-save').disabled=true;const {error}=await SB.auth.updateUser({password:a});$('pin-save').disabled=false;
+  if(error){dlgMsg('pin-msg','Gagal: '+(/same/i.test(error.message)?'PIN baru sama dengan PIN lama.':error.message),'err');return}
+  dlgMsg('pin-msg','Berhasil diganti. Pakai PIN baru saat masuk berikutnya.','ok');
+});
 $('logout').addEventListener('click',signOut);$('boot-out').addEventListener('click',signOut);
 let IMPORTING=false,rt;
 function liveChange(p){
@@ -423,7 +438,7 @@ function liveChange(p){
     MANAGER=ROLE==='admin'||ROLE==='editor';ADMIN=ROLE==='admin';
     await loadData();
     if(!MANAGER&&!MYSALES.length){bootMsg('Akun '+ME+' belum dihubungkan ke nama salesperson. Minta admin menghubungkannya di menu Akun Salesperson.',true);return}
-    $('who-name').textContent=ME;$('who-role').textContent=MANAGER?ROLE:'sales';
+    $('who-name').textContent=isSalesEmail(ME)?(MYSALES[0]||'')+' · '+emailToId(ME):ME;$('who-role').textContent=MANAGER?ROLE:'sales';
     $('btn-import').hidden=!MANAGER;$('btn-tpl').hidden=!MANAGER;$('btn-acct').hidden=!ADMIN;
     if(window.startPresence)startPresence(SB,ME,ROLE||'sales','Follow Up');
     $('boot').hidden=true;$('app').hidden=false;

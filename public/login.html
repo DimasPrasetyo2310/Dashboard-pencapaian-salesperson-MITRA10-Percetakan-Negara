@@ -24,14 +24,14 @@
 <body>
   <main class="card">
     <h1>Masuk Dashboard</h1>
-    <p class="sub">MITRA10 Percetakan Negara. Masuk dengan email dan password akun tim Anda.</p>
+    <p class="sub">MITRA10 Percetakan Negara. Tim: masuk dengan email dan password. Sales: masuk dengan ID Salesperson dan PIN.</p>
 
     <form id="login-form" novalidate>
-      <label for="email">Email</label>
-      <input id="email" name="email" type="email" autocomplete="email" required>
+      <label for="email">Email atau ID Salesperson</label>
+      <input id="email" name="email" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="nama@mitra10.com atau S10005-0000000699" required>
       <p class="field-error" id="email-error"></p>
 
-      <label for="password">Password</label>
+      <label for="password">Password / PIN</label>
       <input id="password" name="password" type="password" autocomplete="current-password" required minlength="6">
       <p class="field-error" id="password-error"></p>
 
