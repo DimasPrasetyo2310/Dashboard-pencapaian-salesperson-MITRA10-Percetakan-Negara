@@ -10,7 +10,7 @@ const nf=new Intl.NumberFormat('id-ID');
 const dec=(n,d)=>n.toFixed(d).replace('.',',');
 const rp=n=>{n=+n||0;if(n>=1e9)return 'Rp '+dec(n/1e9,2)+' M';if(n>=1e6)return 'Rp '+dec(n/1e6,1)+' jt';return 'Rp '+nf.format(Math.round(n))};
 const rpFull=n=>'Rp '+nf.format(Math.round(+n||0));
-const today=()=>new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Jakarta'});
+let _td='',_tt=0;const today=()=>{const n=Date.now();if(n-_tt>60000){_td=new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Jakarta'});_tt=n}return _td};
 const addDays=(iso,n)=>new Date(Date.parse(iso+'T00:00:00Z')+n*864e5).toISOString().slice(0,10);
 const fd=iso=>{if(!iso)return '';const p=iso.slice(0,10).split('-');return (+p[2])+' '+MON[+p[1]-1]+' '+p[0]};
 const fdt=ts=>{if(!ts)return '';const d=new Date(ts);return d.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric',timeZone:'Asia/Jakarta'})+' '+d.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Jakarta'})};
@@ -34,20 +34,19 @@ function dlgMsg(id,text,kind){const m=$(id);m.hidden=!text;m.className='msg '+(k
 const errText=e=>(e&&(e.message||e.error_description))||String(e);
 
 /* ---------- Data ---------- */
-async function fetchAll(table,cols,order){
-  const out=[];
-  for(let f=0;;f+=1000){
-    let q=SB.from(table).select(cols);
-    if(order)q=q.order(order,{ascending:true});
-    const {data,error}=await q.range(f,f+999);
-    if(error)throw error;
-    out.push(...data);if(data.length<1000)break;
-  }
+async function fetchAll(table,cols,order,onProg){
+  const {count,error:ce}=await SB.from(table).select('*',{count:'exact',head:true});
+  if(ce)throw ce;
+  const n=Math.ceil((count||0)/1000)+1,parts=new Array(n);let done=0;
+  const job=async i=>{let q=SB.from(table).select(cols);if(order)q=q.order(order,{ascending:true});
+    const {data,error}=await q.range(i*1000,i*1000+999);if(error)throw error;parts[i]=data;done++;if(onProg)onProg(done,n)};
+  for(let i=0;i<n;i+=6)await Promise.all(Array.from({length:Math.min(6,n-i)},(_,k)=>job(i+k)));
+  const out=[],seen=new Set();parts.forEach(p=>(p||[]).forEach(r=>{const k=r.id||r.name;if(!seen.has(k)){seen.add(k);out.push(r)}}));
   return out;
 }
 async function loadData(){
   const [c,s]=await Promise.all([
-    fetchAll('fu_customers','id,nama,hp,salesperson,status,next_date,potensi,catatan,sumber,last_contact,created_at,updated_at','id'),
+    fetchAll('fu_customers','id,member_no,nama,hp,salesperson,status,next_date,potensi,catatan,sumber,last_contact,created_at,updated_at','id',(d,n)=>{if(!$('boot').hidden&&n>3)$('boot-msg').textContent='Memuat data customer… '+Math.round(d/n*100)+'%'}),
     fetchAll('fu_salespeople','name,email','name')
   ]);
   CUST=c.map(r=>({...r,potensi:+r.potensi||0}));SALES=s;
@@ -86,7 +85,7 @@ function filtered(){
       if(F.due==='due'&&s!=='late'&&s!=='today')return false;
       if(F.due==='week'&&!(OPEN.has(c.status)&&c.next_date&&c.next_date>=t&&c.next_date<=w))return false;
       if(F.due==='none'&&s!=='none')return false;}
-    if(q){const hay=(c.nama+' '+(c.catatan||'')+' '+(c.salesperson||'')).toLowerCase();
+    if(q){const hay=(c.nama+' '+(c.catatan||'')+' '+(c.salesperson||'')+' '+(c.member_no||'')).toLowerCase();
       if(!hay.includes(q)&&!(qd.length>=3&&digits(c.hp).includes(qd)))return false}
     return true;
   });
@@ -134,7 +133,7 @@ function renderTable(){
   $('rows').innerHTML=part.length?part.map(c=>{
     const s=dueState(c),wa=waNum(c.hp);
     return `<tr data-id="${c.id}" class="${s==='late'?'late':s==='today'?'today':''}" tabindex="0">
-      <td class="cname"><b>${esc(c.nama)}</b>${c.catatan?`<small>${esc(c.catatan.length>70?c.catatan.slice(0,70)+'…':c.catatan)}</small>`:''}</td>
+      <td class="cname"><b>${esc(c.nama)}</b>${c.member_no?`<small>No. member ${esc(c.member_no)}</small>`:''}${c.catatan?`<small>${esc(c.catatan.length>70?c.catatan.slice(0,70)+'…':c.catatan)}</small>`:''}</td>
       <td data-l="No. HP">${wa?`<a class="wa" href="https://wa.me/${wa}" target="_blank" rel="noopener" data-stop>${waIcon()}${esc(c.hp)}</a>`:'<span class="muted">–</span>'}</td>
       <td data-l="Sales">${esc(c.salesperson||'–')}</td>
       <td data-l="Status"><span class="st st-${esc(c.status)}">${esc(c.status)}</span></td>
@@ -195,7 +194,7 @@ async function openCust(id){
   dlgMsg('dlg-msg','');fillForm(CUR);
   const isNew=!CUR;
   $('dlg-title').textContent=isNew?'Customer baru':CUR.nama;
-  $('dlg-sub').innerHTML=isNew?'Isi data customer lalu simpan.':`${esc(CUR.salesperson||'')}${CUR.hp?' · '+esc(CUR.hp):''} · <span class="st st-${esc(CUR.status)}">${esc(CUR.status)}</span>`;
+  $('dlg-sub').innerHTML=isNew?'Isi data customer lalu simpan.':`${CUR.member_no?'No. member '+esc(CUR.member_no)+' · ':''}${esc(CUR.salesperson||'')}${CUR.hp?' · '+esc(CUR.hp):''} · <span class="st st-${esc(CUR.status)}">${esc(CUR.status)}</span>`;
   $('log-box').hidden=isNew;$('hist-box').hidden=isNew;$('c-del').hidden=isNew||!MANAGER;
   delArm=false;$('c-del').textContent='Hapus customer';
   $('c-save').textContent=isNew?'Simpan customer':'Simpan data customer';
@@ -267,9 +266,10 @@ $('c-del').addEventListener('click',async()=>{
 
 /* ---------- Impor / template / unduh ---------- */
 const FIELDS=[
+  ['member_no',/^(no|nomor|id|kode|kartu)?member(no|id|number|card)?$/],
   ['salesperson',/^(nama)?(sales|salesperson|spg|pic|marketing)/],
   ['hp',/(hp|telp|telepon|phone|whatsapp|^wa|nowa|handphone|kontak|nomor)/],
-  ['nama',/(nama|customer|pelanggan|konsumen|client|toko)/],
+  ['nama',/(nama|name|customer|pelanggan|konsumen|client|toko)/],
   ['status',/status/],
   ['next_date',/(followup|jadwal|next|tanggal|tgl|date)/],
   ['potensi',/(potensi|nilai|nominal|estimasi|omzet|value|budget|rp)/],
@@ -313,7 +313,7 @@ $('file').addEventListener('change',async e=>{
       if(rows)break;
     }
     if(!rows){showMsg('Kolom nama customer tidak ditemukan. Pakai tombol "Template" untuk contoh format.','err');return}
-    const seen=new Set(CUST.map(c=>normHp(c.hp)).filter(Boolean)),seenN=new Set(CUST.map(c=>(c.nama+'|'+(c.salesperson||'')).toLowerCase()));
+    const seenM=new Set(CUST.map(c=>c.member_no).filter(Boolean)),seen=new Set(CUST.map(c=>normHp(c.hp)).filter(Boolean)),seenN=new Set(CUST.map(c=>(c.nama+'|'+(c.salesperson||'')).toLowerCase()));
     const out=[];let dup=0,empty=0;
     const g=(r,k)=>k in map?r[map[k]]:null;
     for(const r of rows.slice(hi+1)){
@@ -321,18 +321,22 @@ $('file').addEventListener('change',async e=>{
       const nama=String(g(r,'nama')??'').trim();if(!nama){empty++;continue}
       const hpRaw=g(r,'hp');const hp=hpRaw==null?null:String(hpRaw).trim()||null;
       const sp=String(g(r,'salesperson')??'').trim()||null;
+      const mRaw=g(r,'member_no'),mno=mRaw==null||String(mRaw).trim()===''?null:String(mRaw).trim();
       const k=normHp(hp),kn=(nama+'|'+(sp||'')).toLowerCase();
-      if((k&&seen.has(k))||seenN.has(kn)){dup++;continue}
-      if(k)seen.add(k);seenN.add(kn);
+      if(mno){if(seenM.has(mno)){dup++;continue}seenM.add(mno)}
+      else{if((k&&seen.has(k))||seenN.has(kn)){dup++;continue}if(k)seen.add(k);seenN.add(kn)}
       const status=normStatus(g(r,'status'));
-      out.push({nama,hp,salesperson:sp,status,next_date:OPEN.has(status)?toIso(g(r,'next_date')):null,potensi:parseRp(g(r,'potensi')),
+      out.push({member_no:mno,nama,hp,salesperson:sp,status,next_date:OPEN.has(status)?toIso(g(r,'next_date')):null,potensi:parseRp(g(r,'potensi')),
         catatan:(g(r,'catatan')==null?null:String(g(r,'catatan')).trim()||null),sumber:(g(r,'sumber')==null?f.name:String(g(r,'sumber')).trim())});
     }
     if(!out.length){showMsg(`Tidak ada customer baru di file ini (${dup} sudah ada${empty?', '+empty+' baris tanpa nama':''}).`,'info');return}
-    for(let i=0;i<out.length;i+=500){
-      showMsg(`Menyimpan ${Math.min(i+500,out.length)} dari ${out.length} customer…`,'info');
-      const {error}=await SB.from('fu_customers').insert(out.slice(i,i+500));if(error)throw error;
+    IMPORTING=true;
+    for(let i=0;i<out.length;i+=1000){
+      showMsg(`Menyimpan ${nf.format(Math.min(i+1000,out.length))} dari ${nf.format(out.length)} customer… jangan tutup halaman ini.`,'info');
+      const {error}=await SB.from('fu_customers').insert(out.slice(i,i+1000));
+      if(error){IMPORTING=false;await loadData();render();throw new Error(error.message+` (${nf.format(i)} customer pertama sudah tersimpan; impor ulang file yang sama untuk melanjutkan, yang sudah ada otomatis dilewati)`)}
     }
+    IMPORTING=false;
     await loadData();render();
     const noSales=out.filter(r=>!r.salesperson).length;
     showMsg(`${nf.format(out.length)} customer diimpor dari ${f.name}.${dup?' '+dup+' dilewati karena sudah ada.':''}${noSales?' '+noSales+' tanpa salesperson (hanya terlihat admin/editor).':''}`,'ok');
@@ -342,20 +346,20 @@ $('btn-tpl').addEventListener('click',()=>{
   if(!window.XLSX)return;
   const wb=XLSX.utils.book_new();
   const ws=XLSX.utils.aoa_to_sheet([
-    ['Nama Customer','No HP','Salesperson','Status','Follow Up Berikutnya','Nilai Potensi','Keterangan','Sumber'],
-    ['Bapak Contoh','081234567890',salesNames()[0]||'NAMA SALES','Baru',today(),15000000,'Renovasi dapur, butuh keramik dan kitchen set','Walk in'],
+    ['No Member','Nama Customer','No HP','Salesperson','Status','Follow Up Berikutnya','Nilai Potensi','Keterangan','Sumber'],
+    ['2010000000000','Bapak Contoh','081234567890',salesNames()[0]||'NAMA SALES','Baru',today(),15000000,'Renovasi dapur, butuh keramik dan kitchen set','Walk in'],
   ]);
-  ws['!cols']=[{wch:24},{wch:16},{wch:22},{wch:12},{wch:20},{wch:14},{wch:40},{wch:14}];
+  ws['!cols']=[{wch:16},{wch:24},{wch:16},{wch:22},{wch:12},{wch:20},{wch:14},{wch:40},{wch:14}];
   XLSX.utils.book_append_sheet(wb,ws,'Customer');
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Petunjuk'],['Status: Baru, Dihubungi, Penawaran, Deal, Batal (kosong = Baru)'],['Tanggal: format tanggal Excel atau dd/mm/yyyy'],['Nama salesperson harus sama dengan yang dipetakan di "Akun Salesperson"'],['Customer dengan No HP yang sudah ada dilewati saat impor']]),'Petunjuk');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Petunjuk'],['Status: Baru, Dihubungi, Penawaran, Deal, Batal (kosong = Baru)'],['Tanggal: format tanggal Excel atau dd/mm/yyyy'],['Nama salesperson harus sama dengan yang dipetakan di "Akun Salesperson"'],['Customer dengan No Member (atau No HP bila tanpa No Member) yang sudah ada dilewati saat impor']]),'Petunjuk');
   XLSX.writeFile(wb,'template-follow-up-customer.xlsx');
 });
 $('btn-export').addEventListener('click',()=>{
   if(!window.XLSX)return;
   const L=sorted(filtered());
-  const ws=XLSX.utils.aoa_to_sheet([['Nama Customer','No HP','Salesperson','Status','Follow Up Berikutnya','Nilai Potensi','Keterangan','Terakhir Dihubungi'],
-    ...L.map(c=>[c.nama,c.hp||'',c.salesperson||'',c.status,c.next_date||'',c.potensi||0,c.catatan||'',c.last_contact?fdt(c.last_contact):''])]);
-  ws['!cols']=[{wch:24},{wch:16},{wch:22},{wch:12},{wch:18},{wch:14},{wch:40},{wch:20}];
+  const ws=XLSX.utils.aoa_to_sheet([['No Member','Nama Customer','No HP','Salesperson','Status','Follow Up Berikutnya','Nilai Potensi','Keterangan','Terakhir Dihubungi'],
+    ...L.map(c=>[c.member_no||'',c.nama,c.hp||'',c.salesperson||'',c.status,c.next_date||'',c.potensi||0,c.catatan||'',c.last_contact?fdt(c.last_contact):''])]);
+  ws['!cols']=[{wch:16},{wch:24},{wch:16},{wch:22},{wch:12},{wch:18},{wch:14},{wch:40},{wch:20}];
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Follow Up');
   XLSX.writeFile(wb,'follow-up-customer-'+today()+'.xlsx');
 });
@@ -398,7 +402,16 @@ const bootMsg=(t,out)=>{$('boot-msg').textContent=t;$('boot-out').hidden=!out;$(
 const toLogin=()=>{try{sessionStorage.setItem('mitra10_next','followup.html')}catch(e){}location.replace('login.html?next=followup.html')};
 const signOut=async()=>{try{if(SB)await SB.auth.signOut()}catch(e){}location.replace('index.html')};
 $('logout').addEventListener('click',signOut);$('boot-out').addEventListener('click',signOut);
-let rt;function liveReload(){clearTimeout(rt);rt=setTimeout(async()=>{try{await loadData();render();if(dlg.open&&CUR){const c=CUST.find(x=>x.id===CUR.id);if(c)CUR=c}}catch(e){}},800)}
+let IMPORTING=false,rt;
+function liveChange(p){
+  if(IMPORTING)return;
+  const n=p.new,o=p.old;
+  if(p.eventType==='DELETE'){CUST=CUST.filter(c=>c.id!==(o&&o.id))}
+  else if(n&&n.id){const i=CUST.findIndex(c=>c.id===n.id),row={...n,potensi:+n.potensi||0};
+    if(i>=0)CUST[i]=Object.assign(CUST[i],row);else CUST.push(row);
+    if(CUR&&CUR.id===n.id)CUR=CUST.find(c=>c.id===n.id)}
+  clearTimeout(rt);rt=setTimeout(render,600);
+}
 (async function boot(){
   if(!SB){bootMsg('Konfigurasi belum lengkap: isi SUPABASE_URL dan SUPABASE_PUBLISHABLE_KEY di public/config.js.',false);return}
   try{
@@ -417,7 +430,7 @@ let rt;function liveReload(){clearTimeout(rt);rt=setTimeout(async()=>{try{await 
     render();
     const t=scoped().filter(c=>['late','today'].includes(dueState(c))).length;
     if(t)showMsg(`Ada ${t} customer yang perlu di-follow up hari ini atau sudah terlambat. Klik kartu "Perlu follow up" untuk melihatnya.`,'info');
-    SB.channel('fu-live').on('postgres_changes',{event:'*',schema:'public',table:'fu_customers'},liveReload).subscribe();
+    SB.channel('fu-live').on('postgres_changes',{event:'*',schema:'public',table:'fu_customers'},liveChange).subscribe();
   }catch(err){bootMsg('Gagal memuat data: '+errText(err),true)}
 })();
 })();

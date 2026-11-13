@@ -54,4 +54,5 @@ Halaman `followup.html` (`js/followup.js`) memakai login yang sama. Tabel: `fu_c
 - Admin dan editor melihat semua customer, mengimpor Excel, dan menghapus customer.
 - Akun sales (peran viewer) hanya melihat customer dengan nama salesperson yang dipetakan ke email login-nya.
 - Admin memetakan nama salesperson ke email, dan bisa langsung membuat akun atau mengganti password, lewat tombol "Akun Salesperson".
+- Kolom `member_no` (No Member) dipakai untuk mencegah data dobel saat impor.
 - Data customer (no. HP) hanya ada di Supabase, tidak disimpan di repo.

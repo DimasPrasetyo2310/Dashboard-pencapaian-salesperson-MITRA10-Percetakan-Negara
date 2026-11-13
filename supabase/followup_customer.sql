@@ -158,3 +158,10 @@ grant execute on function public.fu_upsert_sales_account(text,text,text) to auth
 --      insert into public.fu_salespeople(name,email) values ('NAMA SALES','email@contoh.com')
 --      on conflict (name) do update set email = excluded.email;
 -- =====================================================================
+
+-- Tambahan: nomor member (kunci anti-dobel saat impor) dan daftar nama sales awal
+alter table public.fu_customers add column if not exists member_no text;
+create unique index if not exists fu_customers_member_uq on public.fu_customers (member_no) where member_no is not null;
+insert into public.fu_salespeople(name)
+select distinct name from public.sales_person_day where role = 'Sales' and name is not null
+on conflict (name) do nothing;
