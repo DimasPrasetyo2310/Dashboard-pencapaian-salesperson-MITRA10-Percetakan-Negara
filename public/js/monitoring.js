@@ -978,7 +978,8 @@ function kcRender(){
   const S=(a,f)=>sum(a.map(f)), sx=S(ds,d=>DM.get(d).sx), tr=S(ds,d=>DM.get(d).tr), lsx=S(ds,d=>LYD.get(lyDate(d)).sx), ltr=S(ds,d=>LYD.get(lyDate(d)).tr);
   const bk=tr?sx/tr:null, bkL=ltr?lsx/ltr:null, g=(a,l)=>l?a/l-1:null;
   const pj=d=>sum(DIMD.filter(z=>z.d===d&&z.dim==='source'&&z.v==='Sales Project').map(z=>z.s));
-  const pa=S(dl,pj), pbud=S(dl,d=>(KB.get(d)||{}).pj||0), aP=pbud?pa/pbud:null;
+  const mEnd=dl.length?dl[dl.length-1]:W.s, mDays=[...Array(+mEnd.slice(8))].map((_,i)=>mEnd.slice(0,8)+pad(i+1));
+  const pa=S(mDays,pj), tMtd=S(mDays,d=>budgetDay(d)), aMtd=S(mDays.filter(d=>DM.has(d)),d=>DM.get(d).sx), aP=tMtd?pa/tMtd:null;
   const gS=g(sx,lsx), gI=g(tr,ltr), gB=g(bk,bkL);
   const pc=x=>x==null||!isFinite(x)?'–':dec(x*100,1).replace(/^(-?)/,'$1')+'%', gp=x=>x==null||!isFinite(x)?'–':(x>=0?'+':'−')+dec(Math.abs(x)*100,1)+'%';
   const cls=x=>x==null?'':x<0?' kc-neg':' kc-pos';
@@ -989,11 +990,11 @@ function kcRender(){
     {i:'sales',l:'Growth Sales',v:gp(gS),c:cls(gS),s:'Rp '+nf.format(Math.round(sx))+' · LY Rp '+nf.format(Math.round(lsx)),sp:ds.map(d=>DM.get(d).sx),ly:ld(sx,lsx,'sales exclude tax'),pk:pk(ds,d=>DM.get(d).sx,x=>rp(x))},
     {i:'invoice',l:'Growth Invoice',v:gp(gI),c:cls(gI),s:nf.format(tr)+' invoice · LY '+nf.format(ltr),sp:ds.map(d=>DM.get(d).tr),ly:ld(tr,ltr,'invoice NAV'),pk:pk(ds,d=>DM.get(d).tr,nf.format)},
     {i:'basket',l:'Growth Basket Size',v:gp(gB),c:cls(gB),s:(bk?rp(bk):'–')+' · LY '+(bkL?rp(bkL):'–'),sp:ds.map(d=>{const r=DM.get(d);return r.tr?r.sx/r.tr:0}),ly:bk&&bkL?ld(bk,bkL,'sales ÷ invoice'):'',pk:pk(ds,d=>{const r=DM.get(d);return r.tr?r.sx/r.tr:0},x=>rp(x))},
-    {i:'target',l:'Cont Sales Project',v:pc(aP),extra:aP!=null?ring(aP):'',s:'Actual Rp '+nf.format(Math.round(pa))+' · Budget '+(pbud?'Rp '+nf.format(Math.round(pbud)):'–'),sp:dl.map(pj),ly:pbud?'<div class="ly"><b class="'+(pa>=pbud?'up':'dn')+'">'+(pa>=pbud?'▲ Lebih ':'▼ Kurang ')+'Rp '+nf.format(Math.round(Math.abs(pa-pbud)))+'</b> <span>dari budget</span></div>':'',pk:pk(dl,pj,x=>rp(x))}
+    {i:'target',l:'Cont Sales Project',v:pc(aP),extra:aP!=null?ring(aP):'',s:'Actual project MTD Rp '+nf.format(Math.round(pa))+' ÷ Target sales MTD '+(tMtd?'Rp '+nf.format(Math.round(tMtd)):'–'),sp:mDays.filter(d=>DM.has(d)).map(pj),ly:aMtd?'<div class="ly"><b>'+dec(pa/aMtd*100,1)+'%</b> <span>dari actual sales MTD (Rp '+nf.format(Math.round(aMtd))+')</span></div>':'',pk:pk(mDays.filter(d=>DM.has(d)),pj,x=>rp(x))}
   ];
   box.innerHTML='<div class="kpis kc">'+tiles.map(t=>tile(t)).join('')
     +tile({i:'traffic',l:'Acv Sales Person 100%',v:'<span id="kcSpC">…</span>',s:'<span id="kcSpA">menghitung…</span>',pk:'Salesperson dengan penjualan ≥ target jadwal kerja'},1)+'</div>'
-    +'<p class="hint" style="margin-top:10px">'+W.label.split(' · ')[0]+' · Tgl '+pad(+W.s.slice(8))+' sd '+pad(+W.e.slice(8))+' '+MON[+W.s.slice(5,7)-1]+' · Minggu sampai Sabtu. Growth dibandingkan tanggal yang sama tahun lalu ('+ds.length+' dari '+dl.length+' hari punya pembanding). Cont Sales Project = actual dibanding budget project.</p>';
+    +'<p class="hint" style="margin-top:10px">'+W.label.split(' · ')[0]+' · Tgl '+pad(+W.s.slice(8))+' sd '+pad(+W.e.slice(8))+' '+MON[+W.s.slice(5,7)-1]+' · Minggu sampai Sabtu. Growth dibandingkan tanggal yang sama tahun lalu ('+ds.length+' dari '+dl.length+' hari punya pembanding). Cont Sales Project = actual Sales Project MTD ÷ target sales MTD (tanggal 1 sampai akhir minggu).</p>';
   const key=KCW;
   kcSalper(dl).then(r=>{if(KCW!==key||!$('kcSpA'))return;$('kcSpA').textContent=r?r.hi+' dari '+r.n+' salesperson mencapai target':'Belum ada data salesperson';$('kcSpC').textContent=r?dec(r.pc*100,1)+'%':'–'}).catch(()=>{if($('kcSpA')){$('kcSpA').textContent='Gagal memuat data salesperson';$('kcSpC').textContent='–'}});
 }
