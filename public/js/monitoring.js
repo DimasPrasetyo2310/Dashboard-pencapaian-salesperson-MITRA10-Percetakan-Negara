@@ -282,7 +282,9 @@ function parseSheet(f,sh,sn){
       allRows++;
       if(irc>=0&&r[irc]!=null&&String(r[irc]).trim()!==''){const sv2=String(r[isr]).trim();const kk=d+'|rcpt|'+sv2;let st=rcp.get(kk);if(!st){st=new Set();rcp.set(kk,st)}st.add(String(r[irc]).trim())}
       {const sv=String(r[isr]==null?'':r[isr]).trim().toLowerCase(), tv=String(r[itb]==null?'':r[itb]).trim().toLowerCase();
-        if(!VALIDCAT.has(String(catOf(r)).trim().toUpperCase())||!DIMOK.source.includes(sv)||!DIMOK.typebrand.includes(tv)){badRows++;return}}
+        const mb=tx(r,ib).toUpperCase(), nm=x=>{const v=tx(r,x).toUpperCase();return v&&v!=='-'?v:null};
+        /* Master Brand harus nama merek: bukan angka, dan bukan isi kolom Sub Category/Function/Sub Function (tanda kolom bergeser) */
+        if(!VALIDCAT.has(String(catOf(r)).trim().toUpperCase())||!DIMOK.source.includes(sv)||!DIMOK.typebrand.includes(tv)||numLike(mb)||(mb&&(mb===nm(iSub)||mb===nm(iFn)||mb===nm(iSf)))){badRows++;return}}
       const k=d+'|'+catOf(r);m.set(k,(m.get(k)||0)+r[ia]);n++;
       if(iNo>=0&&tx(r,iNo)){const ik=JSON.stringify([d,catOf(r),(tx(r,ib).toUpperCase()||'LAINNYA'),tx(r,iNo).replace(/^0+(?=\d)/,'')]);let e=items.get(ik);if(!e){e={nm:tx(r,iNm),s:0,q:0,n:0};items.set(ik,e)}e.s+=r[ia];e.q+=(iQty>=0&&typeof r[iQty]==='number')?r[iQty]:0;e.n++}
       {const ck=JSON.stringify([d,catOf(r),tx(r,iSub),tx(r,iFn),tx(r,iSf),tx(r,ib),tx(r,iBr),tx(r,isr),tx(r,itb)]);let e=cube.get(ck);if(!e){e={s:0,i:0,q:0,n:0};cube.set(ck,e)}e.s+=r[ia];e.i+=(iInc>=0&&typeof r[iInc]==='number')?r[iInc]:0;e.q+=(iQty>=0&&typeof r[iQty]==='number')?r[iQty]:0;e.n++}
