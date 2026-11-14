@@ -285,6 +285,9 @@ table.kct td.kn{background:#fff;text-align:right}
 table.kct td.ka{background:#cdb4f2;font-weight:700}
 table.kct td.kneg{color:#c0392b}
 table.kct td.kpos{color:#1b7a3d}
+.kpis.kc{grid-template-columns:repeat(5,minmax(0,1fr))}.kpi .v.kc-neg{color:var(--crit)}.kpi .v.kc-pos{color:var(--good)}
+@media (max-width:1000px){.kpis.kc{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:860px){.kpis.kc{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){table.kct{font-size:12px}table.kct th,table.kct td{padding:6px}}
 table.rgt{width:100%;min-width:0;border-collapse:collapse;font-size:12.5px;margin:0}
 table.rgt th,table.rgt td{border:1px solid #fff;padding:4px 6px;text-align:center;white-space:nowrap;border-radius:0}

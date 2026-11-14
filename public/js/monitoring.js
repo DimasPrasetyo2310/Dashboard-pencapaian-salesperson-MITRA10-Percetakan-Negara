@@ -977,22 +977,25 @@ function kcRender(){
   const DM=new Map(DATA.D.map(r=>[r.d,r])), dl=W.days, ds=dl.filter(d=>LYD.has(lyDate(d)));
   const S=(a,f)=>sum(a.map(f)), sx=S(ds,d=>DM.get(d).sx), tr=S(ds,d=>DM.get(d).tr), lsx=S(ds,d=>LYD.get(lyDate(d)).sx), ltr=S(ds,d=>LYD.get(lyDate(d)).tr);
   const bk=tr?sx/tr:null, bkL=ltr?lsx/ltr:null, g=(a,l)=>l?a/l-1:null;
-  const pa=S(dl,d=>sum(DIMD.filter(z=>z.d===d&&z.dim==='source'&&z.v==='Sales Project').map(z=>z.s))), pbud=S(dl,d=>(KB.get(d)||{}).pj||0);
-  const nf2=x=>x==null||isNaN(x)?'-':Math.round(x).toLocaleString('id-ID'), pc=x=>x==null||!isFinite(x)?'-':(x*100).toFixed(2).replace('.',',')+'%';
-  const gc=x=>x==null?'':x<0?' kneg':' kpos';
-  const row=(nm,a,b,v,cls,id)=>'<tr><td class="kp">'+nm+'</td><td class="kn">'+a+'</td><td class="kn">'+b+'</td><td class="kn ka'+(cls||'')+'"'+(id?' id="'+id+'"':'')+'>'+v+'</td></tr>';
-  const rng=pad(+W.s.slice(8))+' sd '+pad(+W.e.slice(8)), wn='W'+W.n;
-  const gS=g(sx,lsx), gI=g(tr,ltr), gB=g(bk,bkL), aP=pbud?pa/pbud:null;
-  box.innerHTML='<table class="kct"><tbody><tr><th class="kh">Store</th><td class="kv" colspan="3">Percetakan Negara-PCN</td></tr><tr><th class="kh">Periode</th><td class="kv" colspan="3">'+wn+' (Tgl : '+rng+' '+MON[+W.s.slice(5,7)-1]+')</td></tr>'
-   +'<tr class="kg"><th>Parameter</th><th>Actual</th><th>Pembanding</th><th>Acv / Cont</th></tr>'
-   +row('Growth Sales',nf2(sx),nf2(lsx)+' <small>(LY)</small>',pc(gS),gc(gS))
-   +row('Growth Invoice',nf2(tr),nf2(ltr)+' <small>(LY)</small>',pc(gI),gc(gI))
-   +row('Basket Size',nf2(bk),nf2(bkL)+' <small>(LY)</small>',pc(gB),gc(gB))
-   +row('Cont Sales Project',nf2(pa),pbud?nf2(pbud)+' <small>(Budget)</small>':'-',pc(aP),'')
-   +row('Acv Sales Person 100%','<span id="kcSpA">…</span>','<span id="kcSpB"></span>','<span id="kcSpC">…</span>','')
-   +'</tbody></table><p class="hint" style="margin-top:8px">Minggu dari hari Minggu sampai Sabtu (Sabtu cut off), W1 mulai tanggal 1. Growth dibandingkan tanggal yang sama tahun lalu ('+ds.length+' dari '+dl.length+' hari punya pembanding). Cont Sales Project = actual dibanding budget project. Acv Sales Person 100% = porsi salesperson yang penjualannya mencapai target 100% atau lebih (target sesuai jadwal kerja).</p>';
+  const pj=d=>sum(DIMD.filter(z=>z.d===d&&z.dim==='source'&&z.v==='Sales Project').map(z=>z.s));
+  const pa=S(dl,pj), pbud=S(dl,d=>(KB.get(d)||{}).pj||0), aP=pbud?pa/pbud:null;
+  const gS=g(sx,lsx), gI=g(tr,ltr), gB=g(bk,bkL);
+  const pc=x=>x==null||!isFinite(x)?'–':dec(x*100,1).replace(/^(-?)/,'$1')+'%', gp=x=>x==null||!isFinite(x)?'–':(x>=0?'+':'−')+dec(Math.abs(x)*100,1)+'%';
+  const cls=x=>x==null?'':x<0?' kc-neg':' kc-pos';
+  const pk=(arr,f,fmt)=>{if(!arr.length)return '–';const b=arr.reduce((m,d)=>f(d)>f(m)?d:m,arr[0]);return 'Tertinggi '+fd(b)+' · '+fmt(f(b))};
+  const ld=(a,l,txt)=>l?'<div class="ly"><b class="'+(a>=l?'up':'dn')+'">'+(a>=l?'▲':'▼')+' '+dec(Math.abs(a/l-1)*100,1)+'%</b> <span>vs '+lyYear(W.s)+' · '+txt+'</span></div>':'';
+  const tile=(k,hero)=>'<div class="kpi'+(hero?' hero':'')+'"><div class="kh">'+ic(k.i)+'<span class="l">'+k.l+'</span></div><div class="vrow"><span class="v'+(k.c||'')+'">'+k.v+'</span>'+(k.extra||'')+'</div><span class="s">'+k.s+'</span>'+(k.sp?spark(k.sp):'')+(k.ly||'')+'<div class="pk">'+k.pk+'</div></div>';
+  const tiles=[
+    {i:'sales',l:'Growth Sales',v:gp(gS),c:cls(gS),s:'Rp '+nf.format(Math.round(sx))+' · LY Rp '+nf.format(Math.round(lsx)),sp:ds.map(d=>DM.get(d).sx),ly:ld(sx,lsx,'sales exclude tax'),pk:pk(ds,d=>DM.get(d).sx,x=>rp(x))},
+    {i:'invoice',l:'Growth Invoice',v:gp(gI),c:cls(gI),s:nf.format(tr)+' invoice · LY '+nf.format(ltr),sp:ds.map(d=>DM.get(d).tr),ly:ld(tr,ltr,'invoice NAV'),pk:pk(ds,d=>DM.get(d).tr,nf.format)},
+    {i:'basket',l:'Growth Basket Size',v:gp(gB),c:cls(gB),s:(bk?rp(bk):'–')+' · LY '+(bkL?rp(bkL):'–'),sp:ds.map(d=>{const r=DM.get(d);return r.tr?r.sx/r.tr:0}),ly:bk&&bkL?ld(bk,bkL,'sales ÷ invoice'):'',pk:pk(ds,d=>{const r=DM.get(d);return r.tr?r.sx/r.tr:0},x=>rp(x))},
+    {i:'target',l:'Cont Sales Project',v:pc(aP),extra:aP!=null?ring(aP):'',s:'Actual Rp '+nf.format(Math.round(pa))+' · Budget '+(pbud?'Rp '+nf.format(Math.round(pbud)):'–'),sp:dl.map(pj),ly:pbud?'<div class="ly"><b class="'+(pa>=pbud?'up':'dn')+'">'+(pa>=pbud?'▲ Lebih ':'▼ Kurang ')+'Rp '+nf.format(Math.round(Math.abs(pa-pbud)))+'</b> <span>dari budget</span></div>':'',pk:pk(dl,pj,x=>rp(x))}
+  ];
+  box.innerHTML='<div class="kpis kc">'+tiles.map(t=>tile(t)).join('')
+    +tile({i:'traffic',l:'Acv Sales Person 100%',v:'<span id="kcSpC">…</span>',s:'<span id="kcSpA">menghitung…</span>',pk:'Salesperson dengan penjualan ≥ target jadwal kerja'},1)+'</div>'
+    +'<p class="hint" style="margin-top:10px">'+W.label.split(' · ')[0]+' · Tgl '+pad(+W.s.slice(8))+' sd '+pad(+W.e.slice(8))+' '+MON[+W.s.slice(5,7)-1]+' · Minggu sampai Sabtu. Growth dibandingkan tanggal yang sama tahun lalu ('+ds.length+' dari '+dl.length+' hari punya pembanding). Cont Sales Project = actual dibanding budget project.</p>';
   const key=KCW;
-  kcSalper(dl).then(r=>{if(KCW!==key||!$('kcSpA'))return;$('kcSpA').textContent=r?r.hi+' dari '+r.n+' salper':'-';$('kcSpB').textContent=r?'target 100%':'';$('kcSpC').textContent=r?pc(r.pc):'-'}).catch(()=>{if($('kcSpA')){$('kcSpA').textContent='-';$('kcSpC').textContent='-'}});
+  kcSalper(dl).then(r=>{if(KCW!==key||!$('kcSpA'))return;$('kcSpA').textContent=r?r.hi+' dari '+r.n+' salesperson mencapai target':'Belum ada data salesperson';$('kcSpC').textContent=r?dec(r.pc*100,1)+'%':'–'}).catch(()=>{if($('kcSpA')){$('kcSpA').textContent='Gagal memuat data salesperson';$('kcSpC').textContent='–'}});
 }
 if($('kcWeek')) $('kcWeek').addEventListener('change',e=>{KCW=e.target.value;kcRender()});
 if($('kcShot')) $('kcShot').addEventListener('click',()=>runShot($('kcShot'),$('kcCard'),700,'kpi-commercial-'+(KCW||'')+'.png'));
