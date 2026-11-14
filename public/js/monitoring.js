@@ -611,7 +611,7 @@ async function runShot(btn,el,width,name,prep){
   try{ btn.textContent=await deliverImage(shotImage(el,width,name,prep),name) }catch(err){ btn.textContent='Gagal membuat gambar' }
   setTimeout(()=>{btn.textContent=old;btn.disabled=false},2800);
 }
-$('tgShot').addEventListener('click',()=>runShot($('tgShot'),$('tgCard'),2300,'target-vs-actual-'+new Date().toISOString().slice(0,10)+'.png',c=>c.classList.add('tgbig')));
+$('tgShot').addEventListener('click',()=>runShot($('tgShot'),$('tgCard'),3400,'target-vs-actual-'+new Date().toISOString().slice(0,10)+'.png',c=>c.classList.add('tgbig')));
 
 /* Popup rincian master brand per kategori */
 /* Hanya mengambil satu kategori dan rentang tanggal yang dipilih (+ tahun lalu), bukan seluruh tabel; hasil disimpan sementara */
