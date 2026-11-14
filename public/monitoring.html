@@ -275,6 +275,17 @@ tr[data-cat]:focus-visible{outline:2px solid var(--accent,#1f5fbf);outline-offse
 .rgtitle{text-align:center;font-weight:700;font-size:15px;margin-bottom:2px}.rgdate{font-size:13px;margin:0 0 6px 8%}
 .rgtag{white-space:nowrap;display:inline-block;background:#fff200;font-weight:700;font-size:11.5px;padding:2px 14px 2px 6px;margin:12px 0 0;min-width:300px}
 .rgsp{height:10px}
+table.kct{width:100%;max-width:560px;border-collapse:collapse;font-size:13px;margin:6px 0 0}
+table.kct th,table.kct td{border:1px solid #9aa7c7;padding:7px 10px;text-align:center;white-space:nowrap;border-radius:0}
+table.kct th.kh{background:#1f5bd8;color:#fff;text-align:left;width:120px}
+table.kct td.kv{background:#fff;color:#111;font-weight:600;text-align:left}
+table.kct tr.kg th{background:#f5b301;color:#111;font-weight:700;text-transform:none;letter-spacing:0;font-size:13px}
+table.kct td.kp{background:#fff;text-align:left;font-weight:500}
+table.kct td.kn{background:#fff;text-align:right}
+table.kct td.ka{background:#cdb4f2;font-weight:700}
+table.kct td.kneg{color:#c0392b}
+table.kct td.kpos{color:#1b7a3d}
+@media(max-width:600px){table.kct{font-size:12px}table.kct th,table.kct td{padding:6px}}
 table.rgt{width:100%;min-width:0;border-collapse:collapse;font-size:12.5px;margin:0}
 table.rgt th,table.rgt td{border:1px solid #fff;padding:4px 6px;text-align:center;white-space:nowrap;border-radius:0}
 table.rgt th{background:#1f5bd8;color:#fff;font-size:12px;letter-spacing:0;text-transform:none;font-weight:600;border-bottom:1px solid #fff}
@@ -424,6 +435,17 @@ table.rgt .rneg{color:#c0392b;font-weight:700}table.rgt td.tot .rneg{color:#ff9b
       <p class="hint">Member registrasi serta Two days PD/OT (Sameday + Next day + 2 Days) otomatis dari kartu Report Closing dan WhatsApp. Target dan aktual Protection dari budget dan penjualan BCA.</p>
     </details>
     <div class="rgview" id="rgView"></div>
+  </section>
+
+  <section class="card" id="kcCard">
+    <div class="tg-head">
+      <div><h2>KPI Commercial</h2><p class="tg-period" id="kcSub">Pilih minggu (Senin sampai Sabtu). Pembanding growth adalah tanggal yang sama tahun lalu.</p></div>
+      <div class="tg-tools no-shot">
+        <div class="field"><label for="kcWeek">Minggu</label><select id="kcWeek"></select></div>
+        <button type="button" class="btn primary" id="kcShot">Salin gambar</button>
+      </div>
+    </div>
+    <div id="kcView"></div>
   </section>
 
   <section class="card">

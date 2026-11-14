@@ -924,6 +924,74 @@ function buildCl(){
   buildRg(r,d,act,ly);
 }
 
+
+/* ---------- KPI Commercial per minggu (Senin sampai Sabtu) ---------- */
+let KCW=null, KCDOCS=new Map(), KCSCH=null, KCSP=new Map();
+const KCRS=['S10005-0000000706','S10005-0000000517','S10005-0000000704'], kcWork=c=>/^[SPM](?:[\/.].*)?$/.test(String(c||''));
+const kcMon=iso=>addDays(iso,-((new Date(iso+'T00:00:00Z').getUTCDay()+6)%7));
+function kcWeeks(){
+  const m=new Map();
+  DATA.D.map(r=>r.d).sort().forEach(d=>{if(new Date(d+'T00:00:00Z').getUTCDay()===0)return; const k=kcMon(d); if(!m.has(k))m.set(k,[]); m.get(k).push(d)});
+  return [...m].map(([k,days])=>({m:k,days,label:'W'+(Math.floor((+k.slice(8)-1)/7)+1)+' · '+fd(k)+' sd '+fd(addDays(k,5))+' '+k.slice(0,4)})).sort((a,b)=>a.m<b.m?-1:1);
+}
+function kcInit(){
+  KCDOCS=new Map();KCSCH=null;KCSP=new Map();
+  const sel=$('kcWeek'); if(!sel) return;
+  const ws=kcWeeks(); if(!ws.length){sel.innerHTML='';$('kcView').innerHTML='<div class="empty">Belum ada data penjualan.</div>';return}
+  if(!KCW||!ws.some(w=>w.m===KCW)){const ref=$('waDate')&&$('waDate').value?kcMon($('waDate').value):null;KCW=ws.some(w=>w.m===ref)?ref:ws[ws.length-1].m}
+  sel.innerHTML=ws.slice().reverse().map(w=>'<option value="'+w.m+'"'+(w.m===KCW?' selected':'')+'>'+w.label+'</option>').join('');
+  kcRender();
+}
+async function kcSalper(days){
+  const key=days.join(',');
+  if(KCSP.has(key)) return KCSP.get(key);
+  const p=(async()=>{
+    if(!SB) return null;
+    if(!KCSCH){const {data}=await SB.from('dashboard_schedule').select('doc').eq('store_code',STORE).maybeSingle();KCSCH=data&&data.doc||{}}
+    const need=days.filter(d=>!KCDOCS.has(d));
+    if(need.length){const {data}=await SB.from('dashboard_days').select('sale_date,doc').eq('store_code',STORE).in('sale_date',need);(data||[]).forEach(r=>KCDOCS.set(r.sale_date,r.doc))}
+    const sch=KCSCH; if(!sch||!Array.isArray(sch.people)||!Array.isArray(sch.dates)) return null;
+    let n=0,hi=0;
+    sch.people.forEach(e=>{
+      if(KCRS.includes(e.id)) return;
+      const tpe=e.tpd>0?e.tpd:(e.tpm>0?e.tpm/30:0); if(!(tpe>0)) return;
+      let t=0,cov=0,sl=0;
+      days.forEach(d=>{const i=sch.dates.indexOf(d);if(i<0)return;cov++;if(kcWork((e.c||[])[i]))t+=tpe});
+      if(!cov||!(t>0)) return;
+      days.forEach(d=>{const doc=KCDOCS.get(d),pp=doc&&Array.isArray(doc.people)?doc.people.find(x=>x.id===e.id):null;if(pp)sl+=+pp.sales||0});
+      n++; if(sl>=t) hi++;
+    });
+    return n?{n,hi,pc:hi/n}:null;
+  })();
+  KCSP.set(key,p); p.catch(()=>KCSP.delete(key)); return p;
+}
+function kcRender(){
+  const box=$('kcView'); if(!box||!KCW) return;
+  const W=kcWeeks().find(w=>w.m===KCW); if(!W){box.innerHTML='';return}
+  const DM=new Map(DATA.D.map(r=>[r.d,r])), dl=W.days, ds=dl.filter(d=>LYD.has(lyDate(d)));
+  const S=(a,f)=>sum(a.map(f)), sx=S(ds,d=>DM.get(d).sx), tr=S(ds,d=>DM.get(d).tr), lsx=S(ds,d=>LYD.get(lyDate(d)).sx), ltr=S(ds,d=>LYD.get(lyDate(d)).tr);
+  const bk=tr?sx/tr:null, bkL=ltr?lsx/ltr:null, g=(a,l)=>l?a/l-1:null;
+  const pa=S(dl,d=>sum(DIMD.filter(z=>z.d===d&&z.dim==='source'&&z.v==='Sales Project').map(z=>z.s))), pbud=S(dl,d=>(KB.get(d)||{}).pj||0);
+  const nf2=x=>x==null||isNaN(x)?'-':Math.round(x).toLocaleString('id-ID'), pc=x=>x==null||!isFinite(x)?'-':(x*100).toFixed(2).replace('.',',')+'%';
+  const gc=x=>x==null?'':x<0?' kneg':' kpos';
+  const row=(nm,a,b,v,cls,id)=>'<tr><td class="kp">'+nm+'</td><td class="kn">'+a+'</td><td class="kn">'+b+'</td><td class="kn ka'+(cls||'')+'"'+(id?' id="'+id+'"':'')+'>'+v+'</td></tr>';
+  const rng=dl.length?String(+dl[0].slice(8)).padStart(2,'0')+' sd '+String(+dl[dl.length-1].slice(8)).padStart(2,'0'):'-';
+  const wn=W.label.split(' ')[0];
+  const gS=g(sx,lsx), gI=g(tr,ltr), gB=g(bk,bkL), aP=pbud?pa/pbud:null;
+  box.innerHTML='<table class="kct"><tbody><tr><th class="kh">Store</th><td class="kv" colspan="3">Percetakan Negara-PCN</td></tr><tr><th class="kh">Periode</th><td class="kv" colspan="3">'+wn+' (Tgl : '+rng+' '+MON[+W.m.slice(5,7)-1]+')</td></tr>'
+   +'<tr class="kg"><th>Parameter</th><th>Actual</th><th>Pembanding</th><th>Acv / Cont</th></tr>'
+   +row('Growth Sales',nf2(sx),nf2(lsx)+' <small>(LY)</small>',pc(gS),gc(gS))
+   +row('Growth Invoice',nf2(tr),nf2(ltr)+' <small>(LY)</small>',pc(gI),gc(gI))
+   +row('Basket Size',nf2(bk),nf2(bkL)+' <small>(LY)</small>',pc(gB),gc(gB))
+   +row('Cont Sales Project',nf2(pa),pbud?nf2(pbud)+' <small>(Budget)</small>':'-',pc(aP),'')
+   +row('Acv Sales Person 100%','<span id="kcSpA">…</span>','<span id="kcSpB"></span>','<span id="kcSpC">…</span>','')
+   +'</tbody></table><p class="hint" style="margin-top:8px">Minggu Senin sampai Sabtu (Minggu tidak dihitung). Growth dibandingkan tanggal yang sama tahun lalu ('+ds.length+' dari '+dl.length+' hari punya pembanding). Cont Sales Project = actual dibanding budget project. Acv Sales Person 100% = porsi salesperson yang penjualannya mencapai target 100% atau lebih (target sesuai jadwal kerja).</p>';
+  const key=KCW;
+  kcSalper(dl).then(r=>{if(KCW!==key||!$('kcSpA'))return;$('kcSpA').textContent=r?r.hi+' dari '+r.n+' salper':'-';$('kcSpB').textContent=r?'target 100%':'';$('kcSpC').textContent=r?pc(r.pc):'-'}).catch(()=>{if($('kcSpA')){$('kcSpA').textContent='-';$('kcSpC').textContent='-'}});
+}
+if($('kcWeek')) $('kcWeek').addEventListener('change',e=>{KCW=e.target.value;kcRender()});
+if($('kcShot')) $('kcShot').addEventListener('click',()=>runShot($('kcShot'),$('kcCard'),700,'kpi-commercial-'+(KCW||'')+'.png'));
+
 /* Daily Report Closing Region 1 (tabel, bisa disalin sebagai gambar) */
 function buildRg(r,d,act,ly){
   const y=+d.slice(0,4), m=+d.slice(5,7), day=+d.slice(8), bud=budgetDay(d), kb=KB.get(d)||{};
@@ -1198,6 +1266,7 @@ async function loadData(){
     B:b
   };
   try{renderQc()}catch(e2){}
+  try{kcInit()}catch(e3){}
 }
 const signOut=async()=>{try{if(SB)await SB.auth.signOut()}catch(e){}location.replace('index.html')};
 $('logout').addEventListener('click',signOut);$('boot-out').addEventListener('click',signOut);
