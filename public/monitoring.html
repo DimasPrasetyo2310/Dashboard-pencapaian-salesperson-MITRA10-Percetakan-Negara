@@ -292,6 +292,11 @@ tr[data-cat]:focus-visible{outline:2px solid var(--accent,#1f5fbf);outline-offse
 .rgtitle{text-align:center;font-weight:700;font-size:15px;margin-bottom:2px}.rgdate{font-size:13px;margin:0 0 6px 8%}
 .rgtag{white-space:nowrap;display:inline-block;background:#fff200;font-weight:700;font-size:11.5px;padding:2px 14px 2px 6px;margin:12px 0 0;min-width:300px}
 .rgsp{height:10px}
+#tgCard.tgfull{position:fixed;inset:0;z-index:200;margin:0;border-radius:0;overflow:auto;background:var(--surface,#fff);padding:14px 16px;max-width:none}
+#tgCard.tgfull .tbl{max-height:none;overflow:visible}
+#tgCard.tgfull table.tgt{min-width:1500px}
+#tgCard.tgfull .tg-head{position:sticky;left:0}
+body.tgfull-on{overflow:hidden}
 table.kct{width:100%;max-width:560px;border-collapse:collapse;font-size:13px;margin:6px 0 0}
 table.kct th,table.kct td{border:1px solid #9aa7c7;padding:7px 10px;text-align:center;white-space:nowrap;border-radius:0}
 table.kct th.kh{background:#1f5bd8;color:#fff;text-align:left;width:120px}
@@ -397,7 +402,7 @@ table.rgt .rneg{color:#c0392b;font-weight:700}table.rgt td.tot .rneg{color:#ff9b
         <div class="field"><label for="tgFrom">Dari</label><input type="date" id="tgFrom"></div>
         <div class="field"><label for="tgTo">Sampai</label><input type="date" id="tgTo"></div>
         <button type="button" class="chip" id="tgSync" hidden>Ikuti filter atas</button>
-        <button type="button" class="btn primary" id="tgShot">Salin gambar</button>
+        <button type="button" class="btn" id="tgFull">Layar penuh</button> <button type="button" class="btn primary" id="tgShot">Salin gambar</button>
       </div>
     </div>
     <p class="hint no-shot">Budget harian mengikuti persentase kontribusi harian dari file Budget. Actual per kategori dari laporan detail penjualan (exclude tax), sehingga totalnya bisa sedikit berbeda dari sales NAV. Klik baris kategori untuk melihat rincian master brand.</p>
