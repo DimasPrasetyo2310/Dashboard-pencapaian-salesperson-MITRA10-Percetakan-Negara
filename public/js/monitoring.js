@@ -928,17 +928,23 @@ function buildCl(){
 /* ---------- KPI Commercial per minggu (Senin sampai Sabtu) ---------- */
 let KCW=null, KCDOCS=new Map(), KCSCH=null, KCSP=new Map();
 const KCRS=['S10005-0000000706','S10005-0000000517','S10005-0000000704'], kcWork=c=>/^[SPM](?:[\/.].*)?$/.test(String(c||''));
-const kcMon=iso=>addDays(iso,-((new Date(iso+'T00:00:00Z').getUTCDay()+6)%7));
+const kcDow=iso=>new Date(iso+'T00:00:00Z').getUTCDay();
+/* Minggu: Minggu sampai Sabtu (Sabtu = cut off), dipotong di batas bulan. W1 = tanggal 1 sampai Sabtu pertama, W2 berikutnya, dst */
+const kcKey=d=>{const m=d.slice(0,7),f=kcDow(m+'-01');return m+'|'+(Math.floor((+d.slice(8)-1+f)/7)+1)};
 function kcWeeks(){
   const m=new Map();
-  DATA.D.map(r=>r.d).sort().forEach(d=>{if(new Date(d+'T00:00:00Z').getUTCDay()===0)return; const k=kcMon(d); if(!m.has(k))m.set(k,[]); m.get(k).push(d)});
-  return [...m].map(([k,days])=>({m:k,days,label:'W'+(Math.floor((+k.slice(8)-1)/7)+1)+' · '+fd(k)+' sd '+fd(addDays(k,5))+' '+k.slice(0,4)})).sort((a,b)=>a.m<b.m?-1:1);
+  DATA.D.map(r=>r.d).sort().forEach(d=>{const k=kcKey(d);if(!m.has(k))m.set(k,[]);m.get(k).push(d)});
+  return [...m].map(([k,days])=>{
+    const mo=k.slice(0,7), n=+k.split('|')[1], f=kcDow(mo+'-01'), dim=new Date(+mo.slice(0,4),+mo.slice(5),0).getDate();
+    const s=n===1?1:(n-1)*7-f+1, e=Math.min(dim,n*7-f);
+    return {m:k,days,s:mo+'-'+pad(s),e:mo+'-'+pad(e),n,label:'W'+n+' · '+s+' sd '+e+' '+MON[+mo.slice(5)-1]+' '+mo.slice(0,4)};
+  }).sort((a,b)=>a.m<b.m?-1:1);
 }
 function kcInit(){
   KCDOCS=new Map();KCSCH=null;KCSP=new Map();
   const sel=$('kcWeek'); if(!sel) return;
   const ws=kcWeeks(); if(!ws.length){sel.innerHTML='';$('kcView').innerHTML='<div class="empty">Belum ada data penjualan.</div>';return}
-  if(!KCW||!ws.some(w=>w.m===KCW)){const ref=$('waDate')&&$('waDate').value?kcMon($('waDate').value):null;KCW=ws.some(w=>w.m===ref)?ref:ws[ws.length-1].m}
+  if(!KCW||!ws.some(w=>w.m===KCW)){const ref=$('waDate')&&$('waDate').value?kcKey($('waDate').value):null;KCW=ws.some(w=>w.m===ref)?ref:ws[ws.length-1].m}
   sel.innerHTML=ws.slice().reverse().map(w=>'<option value="'+w.m+'"'+(w.m===KCW?' selected':'')+'>'+w.label+'</option>').join('');
   kcRender();
 }
@@ -975,17 +981,16 @@ function kcRender(){
   const nf2=x=>x==null||isNaN(x)?'-':Math.round(x).toLocaleString('id-ID'), pc=x=>x==null||!isFinite(x)?'-':(x*100).toFixed(2).replace('.',',')+'%';
   const gc=x=>x==null?'':x<0?' kneg':' kpos';
   const row=(nm,a,b,v,cls,id)=>'<tr><td class="kp">'+nm+'</td><td class="kn">'+a+'</td><td class="kn">'+b+'</td><td class="kn ka'+(cls||'')+'"'+(id?' id="'+id+'"':'')+'>'+v+'</td></tr>';
-  const rng=dl.length?String(+dl[0].slice(8)).padStart(2,'0')+' sd '+String(+dl[dl.length-1].slice(8)).padStart(2,'0'):'-';
-  const wn=W.label.split(' ')[0];
+  const rng=pad(+W.s.slice(8))+' sd '+pad(+W.e.slice(8)), wn='W'+W.n;
   const gS=g(sx,lsx), gI=g(tr,ltr), gB=g(bk,bkL), aP=pbud?pa/pbud:null;
-  box.innerHTML='<table class="kct"><tbody><tr><th class="kh">Store</th><td class="kv" colspan="3">Percetakan Negara-PCN</td></tr><tr><th class="kh">Periode</th><td class="kv" colspan="3">'+wn+' (Tgl : '+rng+' '+MON[+W.m.slice(5,7)-1]+')</td></tr>'
+  box.innerHTML='<table class="kct"><tbody><tr><th class="kh">Store</th><td class="kv" colspan="3">Percetakan Negara-PCN</td></tr><tr><th class="kh">Periode</th><td class="kv" colspan="3">'+wn+' (Tgl : '+rng+' '+MON[+W.s.slice(5,7)-1]+')</td></tr>'
    +'<tr class="kg"><th>Parameter</th><th>Actual</th><th>Pembanding</th><th>Acv / Cont</th></tr>'
    +row('Growth Sales',nf2(sx),nf2(lsx)+' <small>(LY)</small>',pc(gS),gc(gS))
    +row('Growth Invoice',nf2(tr),nf2(ltr)+' <small>(LY)</small>',pc(gI),gc(gI))
    +row('Basket Size',nf2(bk),nf2(bkL)+' <small>(LY)</small>',pc(gB),gc(gB))
    +row('Cont Sales Project',nf2(pa),pbud?nf2(pbud)+' <small>(Budget)</small>':'-',pc(aP),'')
    +row('Acv Sales Person 100%','<span id="kcSpA">…</span>','<span id="kcSpB"></span>','<span id="kcSpC">…</span>','')
-   +'</tbody></table><p class="hint" style="margin-top:8px">Minggu Senin sampai Sabtu (Minggu tidak dihitung). Growth dibandingkan tanggal yang sama tahun lalu ('+ds.length+' dari '+dl.length+' hari punya pembanding). Cont Sales Project = actual dibanding budget project. Acv Sales Person 100% = porsi salesperson yang penjualannya mencapai target 100% atau lebih (target sesuai jadwal kerja).</p>';
+   +'</tbody></table><p class="hint" style="margin-top:8px">Minggu dari hari Minggu sampai Sabtu (Sabtu cut off), W1 mulai tanggal 1. Growth dibandingkan tanggal yang sama tahun lalu ('+ds.length+' dari '+dl.length+' hari punya pembanding). Cont Sales Project = actual dibanding budget project. Acv Sales Person 100% = porsi salesperson yang penjualannya mencapai target 100% atau lebih (target sesuai jadwal kerja).</p>';
   const key=KCW;
   kcSalper(dl).then(r=>{if(KCW!==key||!$('kcSpA'))return;$('kcSpA').textContent=r?r.hi+' dari '+r.n+' salper':'-';$('kcSpB').textContent=r?'target 100%':'';$('kcSpC').textContent=r?pc(r.pc):'-'}).catch(()=>{if($('kcSpA')){$('kcSpA').textContent='-';$('kcSpC').textContent='-'}});
 }
