@@ -538,7 +538,12 @@ async function doUpload(files){
         if(r.items&&r.items.length){await upsertChunks('store_day_item',r.items,'store_code,sale_date,category,master_brand,item_no');parts.push('Detail item: '+nf.format(r.items.length)+' data')}
         if(r.cube&&r.cube.length){await upsertChunks('store_day_detail',r.cube,'store_code,sale_date,category,sub_category,func,sub_func,master_brand,brand,source_type,master_type_brand');parts.push('Arsip detail lengkap: '+nf.format(r.cube.length)+' data')}
         if(r.dims&&r.dims.length){await upsertChunks('store_day_dim',r.dims,'store_code,sale_date,dim,dim_value');parts.push('Source type dan master type brand: '+nf.format(r.dims.length)+' data')}
-        if(r.brands&&r.brands.length){await upsertChunks('store_day_brand',r.brands,'store_code,sale_date,category,master_brand');parts.push('Master brand: '+nf.format(r.brands.length)+' data')}}
+        if(r.brands&&r.brands.length){await upsertChunks('store_day_brand',r.brands,'store_code,sale_date,category,master_brand');parts.push('Master brand: '+nf.format(r.brands.length)+' data')}
+        /* Ganti total: sisa data lama pada tanggal yang sama (dari file/unggahan sebelumnya) dihapus agar database tidak menumpuk */
+        try{const ds=[...new Set(r.rows.map(x=>x.sale_date))];let gone=0;
+          for(const t of ['store_day_category','store_day_brand','store_day_item','store_day_detail','store_day_dim']){
+            const {data}=await SB.from(t).delete().eq('store_code',STORE).in('sale_date',ds).neq('source',r.name).select('sale_date');gone+=(data||[]).length}
+          if(gone) parts.push('Data lama yang digantikan dibersihkan: '+nf.format(gone)+' baris')}catch(e){}}
     }catch(err){bad.push(r.name+': '+explain(err))}
   }
   if(parts.length){await loadData();const r=presetRange('all');setRange(r[0],r[1])}
