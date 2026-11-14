@@ -926,26 +926,17 @@ function buildCl(){
 
 
 /* ---------- KPI Commercial per minggu (Senin sampai Sabtu) ---------- */
-let KCW=null, KCDOCS=new Map(), KCSCH=null, KCSP=new Map();
+let KCR={from:null,to:null}, KCDOCS=new Map(), KCSCH=null, KCSP=new Map();
 const KCRS=['S10005-0000000706','S10005-0000000517','S10005-0000000704'], kcWork=c=>/^[SPM](?:[\/.].*)?$/.test(String(c||''));
-const kcDow=iso=>new Date(iso+'T00:00:00Z').getUTCDay();
-/* Minggu: Minggu sampai Sabtu (Sabtu = cut off), dipotong di batas bulan. W1 = tanggal 1 sampai Sabtu pertama, W2 berikutnya, dst */
-const kcKey=d=>{const m=d.slice(0,7),f=kcDow(m+'-01');return m+'|'+(Math.floor((+d.slice(8)-1+f)/7)+1)};
-function kcWeeks(){
-  const m=new Map();
-  DATA.D.map(r=>r.d).sort().forEach(d=>{const k=kcKey(d);if(!m.has(k))m.set(k,[]);m.get(k).push(d)});
-  return [...m].map(([k,days])=>{
-    const mo=k.slice(0,7), n=+k.split('|')[1], f=kcDow(mo+'-01'), dim=new Date(+mo.slice(0,4),+mo.slice(5),0).getDate();
-    const s=n===1?1:(n-1)*7-f+1, e=Math.min(dim,n*7-f);
-    return {m:k,days,s:mo+'-'+pad(s),e:mo+'-'+pad(e),n,label:'W'+n+' · '+s+' sd '+e+' '+MON[+mo.slice(5)-1]+' '+mo.slice(0,4)};
-  }).sort((a,b)=>a.m<b.m?-1:1);
-}
 function kcInit(){
   KCDOCS=new Map();KCSCH=null;KCSP=new Map();
-  const sel=$('kcWeek'); if(!sel) return;
-  const ws=kcWeeks(); if(!ws.length){sel.innerHTML='';$('kcView').innerHTML='<div class="empty">Belum ada data penjualan.</div>';return}
-  if(!KCW||!ws.some(w=>w.m===KCW)){const ref=$('waDate')&&$('waDate').value?kcKey($('waDate').value):null;KCW=ws.some(w=>w.m===ref)?ref:ws[ws.length-1].m}
-  sel.innerHTML=ws.slice().reverse().map(w=>'<option value="'+w.m+'"'+(w.m===KCW?' selected':'')+'>'+w.label+'</option>').join('');
+  const f=$('kcFrom'),t=$('kcTo'); if(!f) return;
+  const ds=DATA.D.map(r=>r.d).sort();
+  if(!ds.length){$('kcView').innerHTML='<div class="empty">Belum ada data penjualan.</div>';return}
+  const mn=ds[0], mx=ds[ds.length-1];
+  f.min=t.min=mn; f.max=t.max=mx;
+  if(!KCR.from||!KCR.to||KCR.to>mx||KCR.from<mn){KCR={from:(mx.slice(0,7)+'-01')<mn?mn:mx.slice(0,7)+'-01',to:mx}}
+  f.value=KCR.from; t.value=KCR.to;
   kcRender();
 }
 async function kcSalper(days){
@@ -972,14 +963,15 @@ async function kcSalper(days){
   KCSP.set(key,p); p.catch(()=>KCSP.delete(key)); return p;
 }
 function kcRender(){
-  const box=$('kcView'); if(!box||!KCW) return;
-  const W=kcWeeks().find(w=>w.m===KCW); if(!W){box.innerHTML='';return}
-  const DM=new Map(DATA.D.map(r=>[r.d,r])), dl=W.days, ds=dl.filter(d=>LYD.has(lyDate(d)));
+  const box=$('kcView'); if(!box||!KCR.from) return;
+  const DM=new Map(DATA.D.map(r=>[r.d,r])), dl=DATA.D.map(r=>r.d).filter(d=>d>=KCR.from&&d<=KCR.to).sort();
+  if(!dl.length){box.innerHTML='<div class="empty">Tidak ada data pada rentang tanggal ini.</div>';return}
+  const ds=dl.filter(d=>LYD.has(lyDate(d))), W={s:KCR.from,e:KCR.to};
   const S=(a,f)=>sum(a.map(f)), sx=S(ds,d=>DM.get(d).sx), tr=S(ds,d=>DM.get(d).tr), lsx=S(ds,d=>LYD.get(lyDate(d)).sx), ltr=S(ds,d=>LYD.get(lyDate(d)).tr);
   const bk=tr?sx/tr:null, bkL=ltr?lsx/ltr:null, g=(a,l)=>l?a/l-1:null;
   const pj=d=>sum(DIMD.filter(z=>z.d===d&&z.dim==='source'&&z.v==='Sales Project').map(z=>z.s));
-  const mEnd=dl.length?dl[dl.length-1]:W.s, mDays=[...Array(+mEnd.slice(8))].map((_,i)=>mEnd.slice(0,8)+pad(i+1));
-  const pa=S(mDays,pj), tMtd=S(mDays,d=>budgetDay(d)), aMtd=S(mDays.filter(d=>DM.has(d)),d=>DM.get(d).sx), aP=tMtd?pa/tMtd:null;
+  const mDays=dl;
+  const pa=S(mDays,pj), tMtd=S(mDays,d=>budgetDay(d)), aMtd=S(mDays,d=>DM.get(d).sx), aP=tMtd?pa/tMtd:null;
   const gS=g(sx,lsx), gI=g(tr,ltr), gB=g(bk,bkL);
   const pc=x=>x==null||!isFinite(x)?'–':dec(x*100,1).replace(/^(-?)/,'$1')+'%', gp=x=>x==null||!isFinite(x)?'–':(x>=0?'+':'−')+dec(Math.abs(x)*100,1)+'%';
   const cls=x=>x==null?'':x<0?' kc-neg':' kc-pos';
@@ -990,16 +982,17 @@ function kcRender(){
     {i:'sales',l:'Growth Sales',v:gp(gS),c:cls(gS),s:'Rp '+nf.format(Math.round(sx))+' · LY Rp '+nf.format(Math.round(lsx)),sp:ds.map(d=>DM.get(d).sx),ly:ld(sx,lsx,'sales exclude tax'),pk:pk(ds,d=>DM.get(d).sx,x=>rp(x))},
     {i:'invoice',l:'Growth Invoice',v:gp(gI),c:cls(gI),s:nf.format(tr)+' invoice · LY '+nf.format(ltr),sp:ds.map(d=>DM.get(d).tr),ly:ld(tr,ltr,'invoice NAV'),pk:pk(ds,d=>DM.get(d).tr,nf.format)},
     {i:'basket',l:'Growth Basket Size',v:gp(gB),c:cls(gB),s:(bk?rp(bk):'–')+' · LY '+(bkL?rp(bkL):'–'),sp:ds.map(d=>{const r=DM.get(d);return r.tr?r.sx/r.tr:0}),ly:bk&&bkL?ld(bk,bkL,'sales ÷ invoice'):'',pk:pk(ds,d=>{const r=DM.get(d);return r.tr?r.sx/r.tr:0},x=>rp(x))},
-    {i:'target',l:'Cont Sales Project',v:pc(aP),extra:aP!=null?ring(aP):'',s:'Actual project MTD Rp '+nf.format(Math.round(pa))+' ÷ Target sales MTD '+(tMtd?'Rp '+nf.format(Math.round(tMtd)):'–'),sp:mDays.filter(d=>DM.has(d)).map(pj),ly:aMtd?'<div class="ly"><b>'+dec(pa/aMtd*100,1)+'%</b> <span>dari actual sales MTD (Rp '+nf.format(Math.round(aMtd))+')</span></div>':'',pk:pk(mDays.filter(d=>DM.has(d)),pj,x=>rp(x))}
+    {i:'target',l:'Cont Sales Project',v:pc(aP),extra:aP!=null?ring(aP):'',s:'Actual project Rp '+nf.format(Math.round(pa))+' ÷ Target sales '+(tMtd?'Rp '+nf.format(Math.round(tMtd)):'–'),sp:mDays.map(pj),ly:aMtd?'<div class="ly"><b>'+dec(pa/aMtd*100,1)+'%</b> <span>dari actual sales (Rp '+nf.format(Math.round(aMtd))+')</span></div>':'',pk:pk(mDays,pj,x=>rp(x))}
   ];
   box.innerHTML='<div class="kpis kc">'+tiles.map(t=>tile(t)).join('')
     +tile({i:'traffic',l:'Acv Sales Person 100%',v:'<span id="kcSpC">…</span>',s:'<span id="kcSpA">menghitung…</span>',pk:'Salesperson dengan penjualan ≥ target jadwal kerja'},1)+'</div>'
-    +'<p class="hint" style="margin-top:10px">'+W.label.split(' · ')[0]+' · Tgl '+pad(+W.s.slice(8))+' sd '+pad(+W.e.slice(8))+' '+MON[+W.s.slice(5,7)-1]+' · Minggu sampai Sabtu. Growth dibandingkan tanggal yang sama tahun lalu ('+ds.length+' dari '+dl.length+' hari punya pembanding). Cont Sales Project = actual Sales Project MTD ÷ target sales MTD (tanggal 1 sampai akhir minggu).</p>';
-  const key=KCW;
-  kcSalper(dl).then(r=>{if(KCW!==key||!$('kcSpA'))return;$('kcSpA').textContent=r?r.hi+' dari '+r.n+' salesperson mencapai target':'Belum ada data salesperson';$('kcSpC').textContent=r?dec(r.pc*100,1)+'%':'–'}).catch(()=>{if($('kcSpA')){$('kcSpA').textContent='Gagal memuat data salesperson';$('kcSpC').textContent='–'}});
+    +'<p class="hint" style="margin-top:10px">Periode '+fdy(KCR.from)+' sd '+fdy(KCR.to)+' ('+dl.length+' hari, default MTD). Growth dibandingkan tanggal yang sama tahun lalu ('+ds.length+' dari '+dl.length+' hari punya pembanding). Cont Sales Project = actual Sales Project ÷ target sales pada periode yang sama. Acv Sales Person 100% = porsi salesperson yang mencapai target jadwal kerja pada periode ini.</p>';
+  const key=KCR.from+KCR.to;
+  kcSalper(dl).then(r=>{if(KCR.from+KCR.to!==key||!$('kcSpA'))return;$('kcSpA').textContent=r?r.hi+' dari '+r.n+' salesperson mencapai target':'Belum ada data salesperson';$('kcSpC').textContent=r?dec(r.pc*100,1)+'%':'–'}).catch(()=>{if($('kcSpA')){$('kcSpA').textContent='Gagal memuat data salesperson';$('kcSpC').textContent='–'}});
 }
-if($('kcWeek')) $('kcWeek').addEventListener('change',e=>{KCW=e.target.value;kcRender()});
-if($('kcShot')) $('kcShot').addEventListener('click',()=>runShot($('kcShot'),$('kcCard'),700,'kpi-commercial-'+(KCW||'')+'.png'));
+if($('kcFrom')){$('kcFrom').addEventListener('change',e=>{if(!e.target.value)return;KCR.from=e.target.value;if(KCR.to<KCR.from){KCR.to=KCR.from;$('kcTo').value=KCR.to}kcRender()});
+  $('kcTo').addEventListener('change',e=>{if(!e.target.value)return;KCR.to=e.target.value;if(KCR.from>KCR.to){KCR.from=KCR.to;$('kcFrom').value=KCR.from}kcRender()})}
+if($('kcShot')) $('kcShot').addEventListener('click',()=>runShot($('kcShot'),$('kcCard'),1000,'kpi-commercial-'+(KCR.to||'')+'.png'))
 
 /* Daily Report Closing Region 1 (tabel, bisa disalin sebagai gambar) */
 function buildRg(r,d,act,ly){

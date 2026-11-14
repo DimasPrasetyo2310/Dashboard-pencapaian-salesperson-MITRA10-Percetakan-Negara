@@ -363,9 +363,10 @@ table.rgt .rneg{color:#c0392b;font-weight:700}table.rgt td.tot .rneg{color:#ff9b
 
   <section class="card" id="kcCard">
     <div class="tg-head">
-      <div><h2>KPI Commercial</h2><p class="tg-period" id="kcSub">Pilih minggu (Minggu sampai Sabtu, Sabtu cut off). Pembanding growth adalah tanggal yang sama tahun lalu.</p></div>
+      <div><h2>KPI Commercial</h2><p class="tg-period" id="kcSub">Dihitung MTD (tanggal 1 sampai data terakhir), rentang tanggal bisa diubah. Pembanding growth adalah tanggal yang sama tahun lalu.</p></div>
       <div class="tg-tools no-shot">
-        <div class="field"><label for="kcWeek">Minggu</label><select id="kcWeek"></select></div>
+        <div class="field"><label for="kcFrom">Dari</label><input type="date" id="kcFrom"></div>
+        <div class="field"><label for="kcTo">Sampai</label><input type="date" id="kcTo"></div>
         <button type="button" class="btn primary" id="kcShot">Salin gambar</button>
       </div>
     </div>
