@@ -278,6 +278,9 @@ function renderRank(){
 }
 
 const ZLAB={'1':'Flooring and wall','2':'Bathroom & Plumbing','3':'App, Kitchen & Houseware, Electrical','4':'Building, Doors, Hardware','5':'Paint & sundries, Tools'};
+let lstCtx=null;
+const lstBar=()=>'<div style="display:flex;gap:8px;flex-wrap:wrap;padding:0 0 12px"><button type="button" class="btn primary sm" data-lst="copy" title="Salin gambar daftar ini, lalu tempel di WhatsApp">Print Screen</button><button type="button" class="btn sm" data-lst="save" title="Simpan sebagai file PNG">Unduh PNG</button></div>';
+const lstRow=(p,i,lab,cls)=>[String(i+1),p.id,p.name,p.zona||'–',p.brand?title(p.brand):'–',fmtN.format(Math.round(p.target)),fmtN.format(Math.round(p.sales)),pct(p.sales/p.target),lab,cls];
 const MB=[
   {h:'>100%',t:'≥100%',f:a=>a>=1},
   {h:'95% sd 100%',t:'95% sd <100%',f:a=>a>=.95&&a<1},
@@ -311,9 +314,10 @@ function openMtd(set,bk,from){
   const cnt=mtdAgg(l).c, bi=(bk&&bk!=='all')?+bk.slice(1):-1, cl=['gd','gd','am','am','bd','bd'];
   const f=(bi>=0? l.filter(p=>mtdBand(p)===bi) : l).slice().sort((a,b)=>b.sales/b.target-a.sales/a.target);
   const rows=f.map((p,i)=>{ const b=mtdBand(p); return kRow(p,['<td class="num mut">'+(i+1)+'</td>','<td>'+esc(p.id)+'</td>','<td>'+esc(p.name)+'</td>','<td>'+esc(p.zona||'–')+'</td>','<td>'+esc(p.brand?title(p.brand):'–')+'</td>',kNum(rp(p.target)),kNum(rp(p.sales)),'<td class="num rt '+cl[b]+'">'+pct(p.sales/p.target)+'</td>','<td class="'+cl[b]+'">'+MB[b].t+'</td>']); });
-  kShow('Daftar salesperson · Summary MTD · '+(set==='pb'?'Private Brand':'Semua staff')+(bi>=0?' · '+MB[bi].t:''),
-    [['Total salper',String(l.length)]].concat(MB.map((b,i)=>[b.t,String(cnt[i])])),
-    rows.length? kTbl([['#'],['Sales ID'],['Salesperson'],['Zonasi'],['Master brand'],['Target',1],['Penjualan',1],['Achievement',1],['Kelompok']],rows)+'<p class="note" style="padding:8px 4px">Klik salah satu baris untuk melihat detail item. Urut dari capaian tertinggi.</p>' : '<p class="note" style="padding:14px 4px">Tidak ada salesperson pada kelompok ini.</p>',from);
+  const ttl='Daftar salesperson · Summary MTD · '+(set==='pb'?'Private Brand':'Semua staff')+(bi>=0?' · '+MB[bi].t:''), info=[['Total salper',String(l.length)]].concat(MB.map((b,i)=>[b.t,String(cnt[i])]));
+  lstCtx={title:ttl,info,rows:f.map((p,i)=>{ const b=mtdBand(p); return lstRow(p,i,MB[b].t,cl[b]); }),name:'daftar-mtd-'+(set==='pb'?'pb':'semua')+(bi>=0?'-b'+bi:''),from};
+  kShow(ttl,info,
+    rows.length? lstBar()+kTbl([['#'],['Sales ID'],['Salesperson'],['Zonasi'],['Master brand'],['Target',1],['Penjualan',1],['Achievement',1],['Kelompok']],rows)+'<p class="note" style="padding:8px 4px">Klik salah satu baris untuk melihat detail item. Urut dari capaian tertinggi.</p>' : '<p class="note" style="padding:14px 4px">Tidak ada salesperson pada kelompok ini.</p>',from);
 }
 $('mtd-body').addEventListener('click',e=>{ const c=e.target.closest('td.cl'); if(c) openMtd(c.dataset.s,c.dataset.b,c); });
 function mppSummary(list){
@@ -638,9 +642,10 @@ function openMpp(tr,bandKey){
   const lab={hi:'≥100%',mid:'75–99%',lo:'<75%'}, cls={hi:'gd',mid:'am',lo:'bd'}, bk=(bandKey&&bandKey!=='all')? bandKey : '';
   const f=(bk? l.filter(p=>bandOf(p)===bk) : l).slice().sort((a,b)=>b.sales/b.target-a.sales/a.target);
   const rows=f.map((p,i)=>{ const b=bandOf(p); return kRow(p,['<td class="num mut">'+(i+1)+'</td>','<td>'+esc(p.id)+'</td>','<td>'+esc(p.name)+'</td>','<td>'+esc(p.zona||'–')+'</td>','<td>'+esc(p.brand?title(p.brand):'–')+'</td>',kNum(rp(p.target)),kNum(rp(p.sales)),'<td class="num rt '+cls[b]+'">'+pct(p.sales/p.target)+'</td>','<td class="'+cls[b]+'">'+lab[b]+'</td>']); });
-  kShow('Daftar salesperson · '+tr.dataset.lbl+(set==='pb'?' · Private Brand':'')+(bk?' · '+lab[bk]:''),
-    [['Actual MPP',String(l.length)],['≥100%',String(cnt.hi)],['75–99%',String(cnt.mid)],['<75%',String(cnt.lo)]],
-    rows.length? kTbl([['#'],['Sales ID'],['Salesperson'],['Zonasi'],['Master brand'],['Target',1],['Penjualan',1],['Achievement',1],['Kelompok']],rows)+'<p class="note" style="padding:8px 4px">Klik salah satu baris untuk melihat detail item. Urut dari capaian tertinggi.</p>' : '<p class="note" style="padding:14px 4px">Tidak ada salesperson pada kelompok ini.</p>',tr);
+  const ttl='Daftar salesperson · '+tr.dataset.lbl+(set==='pb'?' · Private Brand':'')+(bk?' · '+lab[bk]:''), info=[['Actual MPP',String(l.length)],['≥100%',String(cnt.hi)],['75–99%',String(cnt.mid)],['<75%',String(cnt.lo)]];
+  lstCtx={title:ttl,info,rows:f.map((p,i)=>{ const b=bandOf(p); return lstRow(p,i,lab[b],cls[b]); }),name:'daftar-mpp-'+(set==='pb'?'pb':'semua')+(bk?'-'+bk:''),from:tr};
+  kShow(ttl,info,
+    rows.length? lstBar()+kTbl([['#'],['Sales ID'],['Salesperson'],['Zonasi'],['Master brand'],['Target',1],['Penjualan',1],['Achievement',1],['Kelompok']],rows)+'<p class="note" style="padding:8px 4px">Klik salah satu baris untuk melihat detail item. Urut dari capaian tertinggi.</p>' : '<p class="note" style="padding:14px 4px">Tidak ada salesperson pada kelompok ini.</p>',tr);
 }
 $('mpp-body').addEventListener('click',e=>{ const tr=e.target.closest('tr.mpp-r'); if(!tr) return; const c=e.target.closest('td[data-b]'); openMpp(tr,c?c.dataset.b:''); });
 $('mpp-body').addEventListener('keydown',e=>{ if(e.key!=='Enter') return; const tr=e.target.closest('tr.mpp-r'); if(tr) openMpp(tr,''); });
@@ -808,10 +813,10 @@ const shotPageBlobs=async()=>{ try{ await document.fonts.ready; }catch(e){} retu
 const shotBlob=async()=>(await shotPageBlobs())[0];
 const shotPgName=(nm,i,n)=>n>1? nm+'-hal'+(i+1) : nm;
 let shotURLs=[];
-function shotPreview(arr,nm){
+function shotPreview(arr,nm,meta){
   shotURLs.forEach(u=>URL.revokeObjectURL(u)); shotURLs=arr.map(b=>URL.createObjectURL(b));
   const html='<p class="note" style="margin:0 0 12px;font-size:14px">Klik <b>Salin halaman</b>, lalu tempel (Ctrl+V) di WhatsApp. Ulangi untuk halaman berikutnya. Tidak perlu mengunduh.</p>'+arr.map((b,i)=>'<figure style="margin:0 0 16px"><figcaption style="font-weight:700;margin:0 0 6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">Halaman '+(i+1)+' dari '+arr.length+'<button type="button" class="btn primary sm" data-shot="copy" data-i="'+i+'">Salin halaman '+(i+1)+'</button><button type="button" class="btn sm" data-shot="dl" data-i="'+i+'" title="Simpan sebagai file jika salin tidak berhasil">Simpan file</button></figcaption><img src="'+shotURLs[i]+'" alt="Print Screen halaman '+(i+1)+'" style="width:100%;border:1px solid var(--line);border-radius:8px;display:block"></figure>').join('')+'<p class="note" style="font-size:13px">Jika salin tidak berhasil di perangkat Anda: <button type="button" class="btn sm" data-shot="all">Simpan semua halaman sebagai file</button></p>';
-  kShow('Print Screen · '+arr.length+' halaman',[['Jumlah halaman',String(arr.length)],['Orang',String(lastL.length)],['Per halaman','30 orang']],html,$('ps'));
+  kShow('Print Screen · '+arr.length+' halaman',[['Jumlah halaman',String(arr.length)],[meta?meta.lbl:'Orang',String(meta?meta.n:lastL.length)],['Per halaman',meta?'30 baris':'30 orang']],html,(meta&&meta.from)||$('ps'));
   shotLast={arr,nm};
 }
 let shotLast=null;
@@ -888,6 +893,57 @@ const mtdName=()=>'summary-mtd-'+(M.from||'data')+(M.to&&M.to!==M.from?'_'+M.to:
 const bMtd=[$('mtd-copy'),$('mtd-dl')];
 $('mtd-copy').addEventListener('click',()=>shotAction(mtdBlob,mtdName(),'copy',bMtd));
 $('mtd-dl').addEventListener('click',()=>shotAction(mtdBlob,mtdName(),'save',bMtd));
+// ---- Print Screen untuk jendela daftar salesperson (30 baris per halaman, header sama di tiap halaman)
+function lstPages(ctx){
+  const FONT="'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif", DISP="'Schibsted Grotesk','Public Sans',system-ui,sans-serif";
+  const cols=[['#',54,'c'],['Sales ID',240,'l'],['Salesperson',262,'l'],['Zonasi',100,'l'],['Master brand',180,'l'],['Target (Rp)',140,'r'],['Penjualan (Rp)',150,'r'],['Achievement',136,'r'],['Kelompok',160,'l']];
+  const px=28, S2=2, PER=30, W=px*2+cols.reduce((a,k)=>a+k[1],0), pages=Math.max(1,Math.ceil(ctx.rows.length/PER));
+  const chipH=56, headY=96+chipH+14, th=46, rh=38, H=headY+th+rh*Math.min(PER,Math.max(ctx.rows.length,1))+54;
+  const per = M.days? (M.days===1? 'Daily · '+fd(M.from,{day:'numeric',month:'long',year:'numeric'}) : fd(M.from,{day:'numeric',month:'short'})+' sampai '+fd(M.to,{day:'numeric',month:'short',year:'numeric'})+' ('+M.days+' hari)') : '';
+  const out=[];
+  for(let pg=0;pg<pages;pg++){
+    const rows=ctx.rows.slice(pg*PER,pg*PER+PER), hh=headY+th+rh*rows.length+54;
+    const c=document.createElement('canvas'); c.width=W*S2; c.height=hh*S2; const g=c.getContext('2d'); g.scale(S2,S2);
+    g.fillStyle='#fff'; g.fillRect(0,0,W,hh); g.textBaseline='middle'; g.textAlign='left';
+    g.fillStyle='#0e1a2b'; g.font='700 25px '+DISP; g.fillText(ctx.title+(pages>1?'  ·  halaman '+(pg+1)+'/'+pages:''),px,32);
+    g.fillStyle='#4a576b'; g.font='400 15px '+FONT; g.fillText(per+' · sales exclude PPN',px,62);
+    const cw=Math.min(170,(W-px*2-(ctx.info.length-1)*10)/ctx.info.length); let cx=px;
+    ctx.info.forEach(([lb,v])=>{ g.fillStyle='#f1f3f8'; g.fillRect(cx,84,cw,chipH); g.fillStyle='#f0a500'; g.fillRect(cx,84,4,chipH);
+      g.fillStyle='#5b6678'; g.font='600 12px '+FONT; g.fillText(String(lb).toUpperCase(),cx+14,84+18); g.fillStyle='#0e1a2b'; g.font='700 22px '+FONT; g.fillText(String(v),cx+14,84+40); cx+=cw+10; });
+    g.fillStyle='#0f2547'; g.fillRect(px,headY,W-px*2,th);
+    let x=px; cols.forEach(k=>{ g.fillStyle='#fff'; g.font='700 14px '+FONT; g.textAlign=k[2]==='l'?'left':k[2]==='c'?'center':'right'; g.fillText(k[0].toUpperCase(),k[2]==='l'?x+10:k[2]==='c'?x+k[1]/2:x+k[1]-12,headY+th/2); x+=k[1]; });
+    const colr={gd:'#0e6b49',am:'#a86a00',bd:'#b4271c'};
+    rows.forEach((r,i)=>{ const y=headY+th+i*rh; if(i%2) { g.fillStyle='#f6f8fb'; g.fillRect(px,y,W-px*2,rh); } g.fillStyle='#e3e8f1'; g.fillRect(px,y+rh-1,W-px*2,1);
+      let x2=px; cols.forEach((k,j)=>{ g.font=(j===2?'600 ':'400 ')+'17px '+FONT; g.fillStyle=(j===7||j===8)?(colr[r[9]]||'#0e1a2b'):(j===0?'#7a8699':'#0e1a2b'); if(j===7) g.font='700 17px '+FONT;
+        g.textAlign=k[2]==='l'?'left':k[2]==='c'?'center':'right'; let t=String(r[j]); const mw=k[1]-22; while(t.length>3&&g.measureText(t).width>mw) t=t.slice(0,-2)+'…';
+        g.fillText(t,k[2]==='l'?x2+10:k[2]==='c'?x2+k[1]/2:x2+k[1]-12,y+rh/2); x2+=k[1]; }); });
+    g.fillStyle='#7a8699'; g.font='400 13px '+FONT; g.textAlign='left';
+    g.fillText('Dibuat '+new Date().toLocaleString('id-ID',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})+' · urut dari capaian tertinggi'+(pages>1?' · halaman '+(pg+1)+'/'+pages:''),px,headY+th+rh*rows.length+28);
+    out.push(c);
+  }
+  return out;
+}
+async function lstShot(mode){
+  const ctx=lstCtx; if(!ctx) return; const btns=[...document.querySelectorAll('#kpop-body [data-lst]')]; btns.forEach(b=>b.disabled=true); shotMsg('Membuat gambar…');
+  const pp=(async()=>{ try{ await document.fonts.ready; }catch(e){} return Promise.all(lstPages(ctx).map(toBlob)); })(), nm=ctx.name, meta={n:ctx.rows.length,lbl:'Salesperson',from:ctx.from};
+  try{
+    let copied=false;
+    if(mode==='copy'){ try{ if(navigator.clipboard&&window.ClipboardItem){ await navigator.clipboard.write([new ClipboardItem({'image/png':pp.then(a=>a[0])})]); copied=true; } }catch(e){ copied=false; } }
+    const arr=await pp, n=arr.length;
+    if(mode==='copy'&&copied){
+      if(n>1) shotPreview(arr,nm,meta);
+      shotMsg(n>1? 'Halaman 1 dari '+n+' sudah disalin. Tempel di WhatsApp, lalu salin halaman berikutnya dari jendela yang terbuka.' : 'Gambar disalin. Buka WhatsApp lalu tempel dengan Ctrl+V (di ponsel: tekan lama lalu Tempel).','ok');
+    } else {
+      try{ for(let i=0;i<n;i++) await saveBlob(arr[i],shotPgName(nm,i,n)+'.png');
+        shotMsg(mode==='copy'? 'Browser tidak mengizinkan menyalin, jadi '+(n>1?n+' halaman disimpan sebagai file':'gambar disimpan sebagai file')+'. Kirim file itu di WhatsApp.' : (n>1? n+' halaman disimpan.' : 'Gambar disimpan.'),'ok'); }
+      catch(e){ shotMsg(e&&e.code==='declined'?'Dibatalkan.':'Penyimpanan gambar tidak tersedia di sini.','warn'); }
+      if(n>1&&mode==='copy') shotPreview(arr,nm,meta);
+    }
+  }catch(e){ shotMsg('Gambar gagal dibuat.','warn'); }
+  btns.forEach(b=>b.disabled=false);
+}
+$('kpop-body').addEventListener('click',e=>{ const b=e.target.closest('[data-lst]'); if(b) lstShot(b.dataset.lst); });
+
 
 
 let canWrite=false;
