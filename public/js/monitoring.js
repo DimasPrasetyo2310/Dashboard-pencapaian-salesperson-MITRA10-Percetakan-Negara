@@ -954,7 +954,7 @@ function buildRg(r,d,act,ly){
   h+='<div class="rgsp"></div>'+T('w3',row(th('STORE',1,'st')+th('TOTAL',3)+th('TWO DAYS DELIVERY (0-2 Hari)',4)+th('Reason keterlambatan',5)+th('Total'))+row(th('')+['PD','OT','Service level','PD','OT','CONT','Service level','Internal','Req kons','Dc','Supp','Lain 2',''].map(x=>th(x)).join(''))
     +row(td('PCN','store')+dc(dslc))+row(td('TOTAL','tot')+dc(dslc).replace(/class="num/g,'class="tot num')));
   // 4 project / member / waiting
-  const pj=dm('source','Sales Project'), mr=waVal('waMa'), mn=clVal('clSm'), sm=clVal('clSm');
+  const pj=dm('source','Sales Project'), mr=waVal('waMa'), mn=v('rgMn'), sm=clVal('clSm');
   const mem=[n(pj),p2(act?pj/act:null),n(mr),n(mn),p0(mr&&mn!=null?mn/mr:null),n(sm),p2(act&&sm!=null?sm/act:null),v('rgWt')||'-',n(v('rgDr')),n(v('rgW10'))];
   const mc=c=>c.map((x,i)=>td(x,'num'+(i===1||i===4||i===6?' acv':''))).join('');
   h+=tag('SALES PROJECT, MEMBER, WATING TIME')+T('w4',row(th('Store Name',1,'st')+th('Sales project',2)+th('MEMBER',5)+th('Waiting time',3))+row(th('')+['Actual Project','Contribusi','Member registrasi','New member transaksi','NEMS','Sales new member','Cont sales new member','Rata rata waktu tunggu','Total DR','> 10 MENIT'].map(x=>th(x)).join(''))
@@ -1105,7 +1105,7 @@ async function renderWa(){
           if(i>=0&&Array.isArray(doc.people)){const RS=['S10005-0000000706','S10005-0000000517','S10005-0000000704'];const c=doc.people.filter(e=>!RS.includes(e.id)&&/^[SPM](?:[\/.].*)?$/.test(String((e.c||[])[i]||''))).length;if(c>0){x.all_salper=c;x.src='jadwal'}}}catch(e2){}
         if(WAD===d)WSP=x}}catch(e){}}
     if(SB){try{const {data}=await SB.from('store_report_manual').select('*').eq('store_code',STORE).eq('report_date',d).maybeSingle();
-      if(WAD===d&&data){WAK.forEach(([id,c])=>{$(id).value=data[c]==null?'':data[c]});const ex=data.extra||{};CLK.forEach(id=>{$(id).value=ex[id]==null?'':ex[id]});['clTt','clIt','clBt','rgMr','rgMn','rgP2','rgO2'].forEach(id=>{$(id).value=''})}}catch(e){}}
+      if(WAD===d&&data){WAK.forEach(([id,c])=>{$(id).value=data[c]==null?'':data[c]});const ex=data.extra||{};CLK.forEach(id=>{$(id).value=ex[id]==null?'':ex[id]});['clTt','clIt','clBt','rgMr','rgP2','rgO2'].forEach(id=>{$(id).value=''})}}catch(e){}}
   }
   if(WSP){$('rgSa').value=WSP.all_salper;$('rgS2').value=WSP.salper_gt2;$('rgSa').disabled=$('rgS2').disabled=true;$('rgSa').title=$('rgS2').title=(WSP.src==='jadwal'?'All salper: salesperson terjadwal masuk (jadwal project salesperson). >2 kategori: dari penjualan harian':'Otomatis dari data penjualan salesperson harian')}else{$('rgSa').title=$('rgS2').title='Belum ada data salesperson tanggal ini, isi manual'}
   {const k=KB.get(d)||{},ph=(id,x)=>{$(id).placeholder=x!=null?'budget '+en(x):''};ph('waQt',k.pq);ph('clTt',k.tr);ph('clIt',k.iv);ph('clBt',k.bs)}
