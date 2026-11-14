@@ -278,6 +278,44 @@ function renderRank(){
 }
 
 const ZLAB={'1':'Flooring and wall','2':'Bathroom & Plumbing','3':'App, Kitchen & Houseware, Electrical','4':'Building, Doors, Hardware','5':'Paint & sundries, Tools'};
+const MB=[
+  {h:'>100%',t:'≥100%',f:a=>a>=1},
+  {h:'95% sd 100%',t:'95% sd <100%',f:a=>a>=.95&&a<1},
+  {h:'85% sd 95%',t:'85% sd <95%',f:a=>a>=.85&&a<.95},
+  {h:'75% sd 85%',t:'75% sd <85%',f:a=>a>=.75&&a<.85},
+  {h:'50% sd 75%',t:'50% sd <75%',f:a=>a>=.5&&a<.75},
+  {h:'<50%',t:'<50%',f:a=>a<.5}];
+const MTD_STORE='Percetakan Negara-PCN';
+const isPBp=p=>String(p.brand||'').toUpperCase()==='PRIVATE BRAND';
+const mtdBand=p=>{ const a=p.sales/p.target; return MB.findIndex(b=>b.f(a)); };
+const mtdPc=v=>(v*100).toFixed(1).replace('.',',')+'%';
+function mtdAgg(l){ const n=l.length, c=MB.map(()=>0); l.forEach(p=>c[mtdBand(p)]++); return {n,c,pc:c.map(v=>n?v/n:0)}; }
+function mtdSets(){ const mem=P.filter(p=>p.hasSch && p.target>0); return [['SALPER MTD  ALL STAFF EKSTERNAL & PB','all',mem],['SALPER MTD  ALL PRIVATE BRAND ( ONLY PB )','pb',mem.filter(isPBp)]]; }
+function renderMtd(){
+  const body=$('mtd-body'), sub=$('mtd-sub'), note=$('mtd-note');
+  if(!SCH.people.length){ body.innerHTML='<p class="note">Unggah file jadwal &amp; target untuk menampilkan summary ini.</p>'; sub.textContent=''; note.hidden=true; return; }
+  note.hidden=false;
+  sub.textContent=(M.days? (M.days===1? 'Daily · '+fd(M.from,{day:'numeric',month:'short',year:'numeric'}) : fd(M.from,{day:'numeric',month:'short'})+' sampai '+fd(M.to,{day:'numeric',month:'short',year:'numeric'})+' · '+M.days+' hari') : 'tidak ada data')+' · achievement penjualan terhadap target';
+  note.textContent='Hanya salesperson yang ada di jadwal dan punya target. Kelompok memakai batas bawah: ≥100%, 95–<100%, 85–<95%, 75–<85%, 50–<75%, <50%. Klik angka untuk melihat daftar salesperson. Cont = porsi terhadap total salper.';
+  const sets=mtdSets().map(s=>[s[0],s[1],mtdAgg(s[2])]);
+  const head2=sets.map((s,i)=>'<th class="tt'+(i+1)+'">Total<br>Salper</th>'+MB.map(b=>'<th>'+b.h.replace(' sd ','<br>sd<br>')+'</th><th class="ct">Cont</th>').join('')).join('<th class="sp"></th>');
+  const cells=(a,k)=>'<td class="tt cl" data-s="'+k+'" data-b="all">'+a.n+'</td>'+MB.map((b,i)=>'<td class="cl" data-s="'+k+'" data-b="b'+i+'">'+a.c[i]+'</td><td class="c1">'+mtdPc(a.pc[i])+'</td>').join('');
+  const line=(first,cls)=>'<tr class="'+cls+'">'+first+sets.map(s=>cells(s[2],s[1])).join('<td class="sp"></td>')+'</tr>';
+  body.innerHTML='<table class="mtd"><thead><tr><th class="mn" rowspan="2">No</th><th class="ms" rowspan="2">Store Name</th>'+
+    '<th class="g1" colspan="13">'+esc(sets[0][0])+'</th><th class="sp" rowspan="2"></th><th class="g2" colspan="13">'+esc(sets[1][0])+'</th></tr><tr>'+head2+'</tr></thead><tbody>'+
+    line('<td>1</td><td class="l">'+esc(MTD_STORE)+'</td>','')+
+    line('<td class="l" colspan="2">TOTAL</td>','tot')+'</tbody></table>';
+}
+function openMtd(set,bk,from){
+  let l=P.filter(p=>p.hasSch&&p.target>0); if(set==='pb') l=l.filter(isPBp);
+  const cnt=mtdAgg(l).c, bi=(bk&&bk!=='all')?+bk.slice(1):-1, cl=['gd','gd','am','am','bd','bd'];
+  const f=(bi>=0? l.filter(p=>mtdBand(p)===bi) : l).slice().sort((a,b)=>b.sales/b.target-a.sales/a.target);
+  const rows=f.map((p,i)=>{ const b=mtdBand(p); return kRow(p,['<td class="num mut">'+(i+1)+'</td>','<td>'+esc(p.id)+'</td>','<td>'+esc(p.name)+'</td>','<td>'+esc(p.zona||'–')+'</td>','<td>'+esc(p.brand?title(p.brand):'–')+'</td>',kNum(rp(p.target)),kNum(rp(p.sales)),'<td class="num rt '+cl[b]+'">'+pct(p.sales/p.target)+'</td>','<td class="'+cl[b]+'">'+MB[b].t+'</td>']); });
+  kShow('Daftar salesperson · Summary MTD · '+(set==='pb'?'Private Brand':'Semua staff')+(bi>=0?' · '+MB[bi].t:''),
+    [['Total salper',String(l.length)]].concat(MB.map((b,i)=>[b.t,String(cnt[i])])),
+    rows.length? kTbl([['#'],['Sales ID'],['Salesperson'],['Zonasi'],['Master brand'],['Target',1],['Penjualan',1],['Achievement',1],['Kelompok']],rows)+'<p class="note" style="padding:8px 4px">Klik salah satu baris untuk melihat detail item. Urut dari capaian tertinggi.</p>' : '<p class="note" style="padding:14px 4px">Tidak ada salesperson pada kelompok ini.</p>',from);
+}
+$('mtd-body').addEventListener('click',e=>{ const c=e.target.closest('td.cl'); if(c) openMtd(c.dataset.s,c.dataset.b,c); });
 function mppSummary(list){
   const zs=[...new Set(SCH.people.map(e=>e.zona).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'id',{numeric:true}));
   const agg=l=>{ const n=l.length, s=l.reduce((a,p)=>a+p.sales,0), tg=l.reduce((a,p)=>a+p.target,0), rc=l.reduce((a,p)=>a+p.receipts,0), wd=l.reduce((a,p)=>a+(p.wd||0),0);
@@ -624,7 +662,7 @@ function renderTopBrand(){
   else t.innerHTML='<table class="pt"><thead><tr><th>Master brand</th><th class="rt">Qty</th><th class="rt">Value</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+esc(title(r.k))+'</td><td class="num rt">'+fmtN.format(r.q)+'</td><td class="num rt">'+rp(r.s)+'</td></tr>').join('')+'</tbody></table>';
   const n=$('tb-note'); n.hidden=!M.mbMiss; n.textContent=M.mbMiss? M.mbMiss+' tanggal belum memuat data master brand. Unggah ulang laporan tanggal tersebut agar ikut terhitung.':'';
 }
-function all(){ renderSub(); renderKPI(); renderRank(); renderProt(); renderTopBrand(); renderMPP(); renderTable(); renderLow(); renderFoot(); }
+function all(){ renderSub(); renderKPI(); renderRank(); renderProt(); renderTopBrand(); renderMPP(); renderMtd(); renderTable(); renderLow(); renderFoot(); }
 document.querySelectorAll('[data-role]').forEach(b=>b.addEventListener('click',()=>{ S.role=b.dataset.role; document.querySelectorAll('[data-role]').forEach(x=>x.setAttribute('aria-pressed',x===b)); all(); }));
 document.querySelectorAll('[data-m]').forEach(b=>b.addEventListener('click',()=>{ S.m=b.dataset.m; document.querySelectorAll('[data-m]').forEach(x=>x.setAttribute('aria-pressed',x===b)); renderRank(); }));
 $('topn').addEventListener('change',e=>{ S.topn=parseInt(e.target.value,10); renderRank(); });
@@ -807,6 +845,50 @@ $('ps').addEventListener('click',()=>shotDetail('copy'));
 $('ps-dl').addEventListener('click',()=>shotDetail('save'));
 $('mpp-copy').addEventListener('click',()=>shotAction(mppBlob,mppName(),'copy',bMpp));
 $('mpp-dl').addEventListener('click',()=>shotAction(mppBlob,mppName(),'save',bMpp));
+// ---- Gambar summary MTD (dua blok ditumpuk agar tetap terbaca di WhatsApp)
+function mtdCanvas(){
+  const sets=mtdSets().map((s,i)=>[s[0].replace(/\s+/g,' '),i?'#1b9ad2':'#b8860b',mtdAgg(s[2])]);
+  const FONT="'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif", DISP="'Schibsted Grotesk','Public Sans',system-ui,sans-serif";
+  const px=28, S2=2, cols=[['No',44,'c'],['Store Name',230,'l'],['Total\nSalper',86,'c']];
+  MB.forEach(b=>{ cols.push([b.h.replace(' sd ','\nsd\n'),92,'c']); cols.push(['Cont',78,'c']); });
+  const W=px*2+cols.reduce((a,k)=>a+k[1],0), blockH=34+62+38+40+22, H=84+blockH*2+30;
+  const c=document.createElement('canvas'); c.width=W*S2; c.height=H*S2; const g=c.getContext('2d'); g.scale(S2,S2);
+  g.fillStyle='#fff'; g.fillRect(0,0,W,H); g.textBaseline='middle';
+  g.fillStyle='#0e1a2b'; g.font='700 24px '+DISP; g.textAlign='left'; g.fillText('Summary MTD Salesperson',px,30);
+  const per = M.days? (M.days===1? 'Daily · '+fd(M.from,{day:'numeric',month:'long',year:'numeric'}) : fd(M.from,{day:'numeric',month:'short'})+' sampai '+fd(M.to,{day:'numeric',month:'short',year:'numeric'})+' ('+M.days+' hari)') : '';
+  g.fillStyle='#4a576b'; g.font='400 14px '+FONT; g.fillText(MTD_STORE+' · '+per+' · achievement penjualan terhadap target',px,58);
+  let y=78;
+  const al=k=>k[2]==='l'?'left':'center', tx=(k,x)=>k[2]==='l'?x+12:x+k[1]/2;
+  sets.forEach(s=>{
+    g.fillStyle=s[1]; g.fillRect(px,y,W-px*2,34); g.fillStyle='#fff'; g.font='700 16px '+FONT; g.textAlign='center'; g.fillText(s[0],W/2,y+17); y+=34;
+    let x=px; cols.forEach((k,i)=>{
+      g.fillStyle= i<2?'#0f2547' : i===2? s[1] : (i%2===1?'#e4e7ec':'#f3e27a'); g.fillRect(x,y,k[1],62);
+      g.fillStyle= (i<3)?'#fff':'#0e1a2b'; g.font='700 13px '+FONT; g.textAlign=al(k);
+      const ls=k[0].split('\n'), lh=15, y0=y+31-(ls.length-1)*lh/2; ls.forEach((t,j)=>g.fillText(t,tx(k,x),y0+j*lh)); x+=k[1]; });
+    y+=62;
+    const a=s[2];
+    [['1',false],['TOTAL',true]].forEach(([lab,isTot])=>{
+      const h=isTot?40:38; x=px;
+      const vals=[isTot?'TOTAL':lab, isTot?'':MTD_STORE, a.n]; MB.forEach((b,i)=>{ vals.push(a.c[i]); vals.push(mtdPc(a.pc[i])); });
+      cols.forEach((k,i)=>{
+        g.fillStyle= isTot? (i<2?'#0f2547': (i>2&&i%2===0?'#f3e27a':'#ffe29a')) : (i>2&&i%2===0?'#fbf3c4':(i===2?'#f3e9c8':'#fff')); g.fillRect(x,y,k[1],h);
+        g.fillStyle= (isTot&&i<2)?'#fff':'#0e1a2b'; g.font=((isTot||i===2)?'700 ':'400 ')+'15px '+FONT; g.textAlign=al(k);
+        if(isTot&&i===1){ g.textAlign='left'; g.fillText('TOTAL',px+12,y+h/2); }
+        else if(!(isTot&&i===0)) g.fillText(String(vals[i]),tx(k,x),y+h/2);
+        x+=k[1]; });
+      g.fillStyle='#d5d9e2'; g.fillRect(px,y+h-1,W-px*2,1); y+=h; });
+    y+=22;
+  });
+  g.fillStyle='#7a8699'; g.font='400 12px '+FONT; g.textAlign='left';
+  g.fillText('Dibuat '+new Date().toLocaleString('id-ID',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})+' · batas bawah kelompok: ≥100%, 95%, 85%, 75%, 50% · Cont = porsi terhadap total salper',px,y+4);
+  return c;
+}
+const mtdBlob=async()=>{ try{ await document.fonts.ready; }catch(e){} return toBlob(mtdCanvas()); };
+const mtdName=()=>'summary-mtd-'+(M.from||'data')+(M.to&&M.to!==M.from?'_'+M.to:'')+'.png';
+const bMtd=[$('mtd-copy'),$('mtd-dl')];
+$('mtd-copy').addEventListener('click',()=>shotAction(mtdBlob,mtdName(),'copy',bMtd));
+$('mtd-dl').addEventListener('click',()=>shotAction(mtdBlob,mtdName(),'save',bMtd));
+
 
 let canWrite=false;
 const dF=$('d-from'), dT=$('d-to');
