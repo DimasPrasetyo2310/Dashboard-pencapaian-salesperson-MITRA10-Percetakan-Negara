@@ -361,6 +361,17 @@ table.rgt .rneg{color:#c0392b;font-weight:700}table.rgt td.tot .rneg{color:#ff9b
   <section class="kpis" id="kpis" aria-label="Ringkasan utama"></section>
   <div class="note" id="lyNote" hidden></div>
 
+  <section class="card" id="kcCard">
+    <div class="tg-head">
+      <div><h2>KPI Commercial</h2><p class="tg-period" id="kcSub">Pilih minggu (Minggu sampai Sabtu, Sabtu cut off). Pembanding growth adalah tanggal yang sama tahun lalu.</p></div>
+      <div class="tg-tools no-shot">
+        <div class="field"><label for="kcWeek">Minggu</label><select id="kcWeek"></select></div>
+        <button type="button" class="btn primary" id="kcShot">Salin gambar</button>
+      </div>
+    </div>
+    <div id="kcView"></div>
+  </section>
+
   <section class="card" id="tgCard">
     <div class="tg-head">
       <div><h2>Target vs actual · MITRA10 Percetakan Negara</h2><p class="tg-period" id="tgPeriod"></p></div>
@@ -440,16 +451,6 @@ table.rgt .rneg{color:#c0392b;font-weight:700}table.rgt td.tot .rneg{color:#ff9b
     <div class="rgview" id="rgView"></div>
   </section>
 
-  <section class="card" id="kcCard">
-    <div class="tg-head">
-      <div><h2>KPI Commercial</h2><p class="tg-period" id="kcSub">Pilih minggu (Minggu sampai Sabtu, Sabtu cut off). Pembanding growth adalah tanggal yang sama tahun lalu.</p></div>
-      <div class="tg-tools no-shot">
-        <div class="field"><label for="kcWeek">Minggu</label><select id="kcWeek"></select></div>
-        <button type="button" class="btn primary" id="kcShot">Salin gambar</button>
-      </div>
-    </div>
-    <div id="kcView"></div>
-  </section>
 
   <section class="card">
     <h2>Rekap harian</h2>
