@@ -336,15 +336,30 @@ async function parseFile(f){
   ok.skipped=bad;
   return ok;
 }
+/* Unggah per potongan: 3 jalur paralel, otomatis coba ulang bila koneksi putus ("Failed to fetch") */
 async function upsertChunks(table,rows,conflict){
-  for(let i=0;i<rows.length;i+=500){
-    const {error}=await SB.from(table).upsert(rows.slice(i,i+500),{onConflict:conflict});
-    if(error) throw error;
-  }
+  const SZ=1000, chunks=[]; for(let i=0;i<rows.length;i+=SZ) chunks.push(rows.slice(i,i+SZ));
+  let next=0;
+  const worker=async()=>{
+    while(next<chunks.length){
+      const part=chunks[next++];
+      for(let t=0;;t++){
+        let error=null;
+        try{({error}=await SB.from(table).upsert(part,{onConflict:conflict}))}catch(e){error=e}
+        if(!error) break;
+        const m=(error&&error.message)||String(error);
+        const net=/failed to fetch|network|load failed|timeout|fetch/i.test(m)||(error&&error.status>=500);
+        if(!net||t>=4) throw error;
+        await new Promise(r=>setTimeout(r,1500*(t+1)));
+      }
+    }
+  };
+  await Promise.all(Array.from({length:Math.min(3,chunks.length)},worker));
 }
 function explain(err){
   const m=(err&&err.message)||String(err);
   if(/row-level security|permission denied/i.test(m)) return 'peran Anda tidak boleh mengubah data (hanya admin dan editor)';
+  if(/failed to fetch|network|load failed/i.test(m)) return 'koneksi ke server terputus berkali-kali. Periksa internet lalu unggah ulang file ini (jangan tutup atau pindah tab saat mengunggah)';
   return m;
 }
 
