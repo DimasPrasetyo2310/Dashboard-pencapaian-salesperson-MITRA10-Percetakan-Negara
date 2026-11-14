@@ -336,6 +336,27 @@ async function parseFile(f){
   ok.skipped=bad;
   return ok;
 }
+/* Lewati tanggal yang isinya sama persis dengan database (total kategori, brand, source, jumlah item dan arsip) agar unggahan harian cepat */
+async function unchangedDates(r){
+  const dates=[...new Set(r.rows.map(x=>x.sale_date))];
+  const sm=(a,k)=>a.reduce((t,x)=>t+(+x[k]||0),0), by=(a)=>{const m={};a.forEach(x=>{(m[x.sale_date]=m[x.sale_date]||[]).push(x)});return m};
+  const fc=by(r.rows), fi=by(r.items||[]), fb=by(r.brands||[]), fdm=by(r.dims||[]), fx=by(r.cube||[]);
+  const same=new Set();
+  let nx=0;
+  const one=async d=>{
+    try{
+      const q=(t,c)=>SB.from(t).select(c).eq('store_code',STORE).eq('sale_date',d).limit(1000);
+      const cnt=t=>SB.from(t).select('sale_date',{count:'exact',head:true}).eq('store_code',STORE).eq('sale_date',d);
+      const [c,b,m,ci,cx]=await Promise.all([q('store_day_category','sales'),q('store_day_brand','sales'),q('store_day_dim','dim,sales'),cnt('store_day_item'),cnt('store_day_detail')]);
+      if(c.error||b.error||m.error||ci.error||cx.error) return;
+      const ds=(m.data||[]).filter(x=>x.dim==='source'), fds=(fdm[d]||[]).filter(x=>x.dim==='source');
+      const ok=Math.abs(sm(c.data,'sales')-sm(fc[d]||[],'sales'))<2 && Math.abs(sm(b.data,'sales')-sm(fb[d]||[],'sales'))<2 && Math.abs(sm(ds,'sales')-sm(fds,'sales'))<2 && (ci.count||0)===(fi[d]||[]).length && (cx.count||0)===(fx[d]||[]).length && c.data.length===(fc[d]||[]).length;
+      if(ok) same.add(d);
+    }catch(e){}
+  };
+  const q2=[...dates]; await Promise.all(Array.from({length:5},async()=>{while(q2.length) await one(q2.shift())}));
+  return same;
+}
 /* Unggah per potongan: 3 jalur paralel, otomatis coba ulang bila koneksi putus ("Failed to fetch") */
 async function upsertChunks(table,rows,conflict){
   const SZ=1000, chunks=[]; for(let i=0;i<rows.length;i+=SZ) chunks.push(rows.slice(i,i+SZ));
@@ -354,7 +375,7 @@ async function upsertChunks(table,rows,conflict){
       }
     }
   };
-  await Promise.all(Array.from({length:Math.min(3,chunks.length)},worker));
+  await Promise.all(Array.from({length:Math.min(4,chunks.length)},worker));
 }
 function explain(err){
   const m=(err&&err.message)||String(err);
@@ -503,7 +524,11 @@ async function doUpload(files){
       else if(r.kind==='budget'){await upsertChunks('store_budget_monthly',r.rows,'store_code,year,month,category');parts.push('Budget '+r.year+': '+r.rows.length+' angka bulanan')}
       else if(r.kind==='kpibudget'){await upsertChunks('store_budget_kpi_daily',r.rows,'store_code,budget_date');parts.push('Budget traffic, invoice, basket, protection '+r.month+': '+r.rows.length+' hari')}
       else if(r.kind==='phasing'){await upsertChunks('store_budget_phasing',r.rows,'store_code,phase_date');parts.push('Budget harian '+r.month+': '+r.rows.length+' hari')}
-      else{await upsertChunks('store_day_category',r.rows,'store_code,sale_date,category');parts.push('Detail penjualan: '+nf.format(r.n)+' baris, '+new Set(r.rows.map(x=>x.sale_date)).size+' hari');
+      else{
+        const same=await unchangedDates(r), keep=x=>!same.has(x.sale_date), total=new Set(r.rows.map(x=>x.sale_date)).size;
+        if(same.size) {r.rows=r.rows.filter(keep);r.items=(r.items||[]).filter(keep);r.cube=(r.cube||[]).filter(keep);r.dims=(r.dims||[]).filter(keep);r.brands=(r.brands||[]).filter(keep)}
+        if(!r.rows.length){parts.push('Detail penjualan: semua '+total+' hari sudah sama dengan database, tidak ada yang perlu disimpan');continue}
+        await upsertChunks('store_day_category',r.rows,'store_code,sale_date,category');parts.push('Detail penjualan: '+nf.format(r.n)+' baris, '+total+' hari'+(same.size?' ('+same.size+' hari tidak berubah dilewati, '+new Set(r.rows.map(x=>x.sale_date)).size+' hari diperbarui)':''));
         if(r.items&&r.items.length){await upsertChunks('store_day_item',r.items,'store_code,sale_date,category,master_brand,item_no');parts.push('Detail item: '+nf.format(r.items.length)+' data')}
         if(r.cube&&r.cube.length){await upsertChunks('store_day_detail',r.cube,'store_code,sale_date,category,sub_category,func,sub_func,master_brand,brand,source_type,master_type_brand');parts.push('Arsip detail lengkap: '+nf.format(r.cube.length)+' data')}
         if(r.dims&&r.dims.length){await upsertChunks('store_day_dim',r.dims,'store_code,sale_date,dim,dim_value');parts.push('Source type dan master type brand: '+nf.format(r.dims.length)+' data')}
