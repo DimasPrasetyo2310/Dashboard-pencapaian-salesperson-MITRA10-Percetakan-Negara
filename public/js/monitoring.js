@@ -179,16 +179,7 @@ function renderTarget(rows){
   const pbA=dsum('typebrand','Private Brand',set), pbL=dsum('typebrand','Private Brand',lyset);
   const pjCard=hasDim?tile('Sales Project · kontribusi',(nav?dec(pjA/nav*100,1):'0,0')+'%',rp(pjA)+(pjB?' vs budget '+rp(pjB)+' ('+dec(pjA/pjB*100,1)+'%)':' · budget belum ada'),'pj'):tile('Sales Project','–','Unggah laporan detail penjualan','pj');
   const pbCard=hasDim?(pbL?tile('Private Brand vs '+lyYear(dates[0]),(pbA/pbL-1>=0?'▲ ':'▼ ')+dec(Math.abs(pbA/pbL-1)*100,1)+'%',rp(pbA)+' vs '+rp(pbL)+' tahun lalu · kontribusi '+(nav?dec(pbA/nav*100,1):'0,0')+'%','pb'):tile('Private Brand',rp(pbA),'kontribusi '+(nav?dec(pbA/nav*100,1):'0,0')+'% · data tahun lalu belum ada','pb')):tile('Private Brand','–','Unggah laporan detail penjualan','pb');
-  box.innerHTML=`<div class="tg-top">
-    <div class="tg-main sum" data-sum="ach" tabindex="0" role="button" title="Klik untuk rincian per hari"><span class="l">Pencapaian vs budget periode</span><span class="big ${cls}">${dec(ach*100,1)}%</span>
-      <div class="pbar" role="img" aria-label="Pencapaian ${dec(ach*100,1)} persen"><i class="${cls}" style="width:${Math.min(ach,1)*100}%"></i></div>
-      <span class="s">${rp(nav)} dari budget ${rp(bTot)} · ${ach>=1?'lebih':'kurang'} ${rp(Math.abs(nav-bTot))}</span></div>
-    ${tile('Target '+MON[m-1]+' '+y,rp(mTarget),'target bulan penuh, exclude tax','tgt')}
-    ${pjCard}
-    ${pbCard}
-    ${lySum?tile('Sales vs '+lyYear(dates[0]),(nav/lySum-1>=0?'▲ ':'▼ ')+dec(Math.abs(nav/lySum-1)*100,1)+'%',rp(lySum)+' tahun lalu','ly'):''}
-  </div>
-  <div class="tbl"><table class="tgt"><thead><tr class="grp"><th colspan="2"></th><th colspan="7" class="r">Periode terpilih</th><th colspan="8" class="r msep">MTD · 1 – ${fd(last)}</th></tr><tr><th data-tg="0">Zonasi</th><th data-tg="1">Kategori</th><th data-tg="2" class="r">Budget periode</th><th data-tg="3" class="r">Actual</th><th data-tg="4" class="c">Achievement</th><th class="c">Ach zona</th><th data-tg="5" class="r">Selisih</th><th data-tg="6" class="r">Tahun lalu</th><th data-tg="7" class="r">vs tahun lalu</th><th data-tg="8" class="r msep">Budget MTD</th><th data-tg="9" class="r">Actual MTD</th><th data-tg="10" class="c">Achievement MTD</th><th class="c">Ach zona MTD</th><th data-tg="11" class="r">Selisih MTD</th><th data-tg="12" class="r">MTD tahun lalu</th><th data-tg="13" class="r">vs tahun lalu</th><th data-tg="14" class="r">Selisih vs tahun lalu MTD</th></tr></thead><tbody>${trs}</tbody>
+  box.innerHTML=`<div class="tbl"><table class="tgt"><thead><tr class="grp"><th colspan="2"></th><th colspan="7" class="r">Periode terpilih</th><th colspan="8" class="r msep">MTD · 1 – ${fd(last)}</th></tr><tr><th data-tg="0">Zonasi</th><th data-tg="1">Kategori</th><th data-tg="2" class="r">Budget periode</th><th data-tg="3" class="r">Actual</th><th data-tg="4" class="c">Achievement</th><th class="c">Ach zona</th><th data-tg="5" class="r">Selisih</th><th data-tg="6" class="r">Tahun lalu</th><th data-tg="7" class="r">vs tahun lalu</th><th data-tg="8" class="r msep">Budget MTD</th><th data-tg="9" class="r">Actual MTD</th><th data-tg="10" class="c">Achievement MTD</th><th class="c">Ach zona MTD</th><th data-tg="11" class="r">Selisih MTD</th><th data-tg="12" class="r">MTD tahun lalu</th><th data-tg="13" class="r">vs tahun lalu</th><th data-tg="14" class="r">Selisih vs tahun lalu MTD</th></tr></thead><tbody>${trs}</tbody>
   <tfoot><tr><td colspan="2">Total</td><td class="r num">${fu(bT)}</td><td class="r num">${fu(aT)}</td><td class="r num">${bT?dec(aT/bT*100,1)+'%':'–'}</td><td class="r num"></td><td class="r num">${sel(aT-bT)}</td><td class="r num">${lT?fu(lT):'–'}</td><td class="r num">${lT?lyp(aT,lT):'–'}</td>${mcell(sum(list.map(c=>actM[c]||0)),sum(list.map(c=>budM[c]||0)),sum(list.map(c=>lycM[c]||0)),'<td class="r num"></td>')}</tr></tfoot></table></div>`;
   tgMark();
 }
@@ -1293,3 +1284,13 @@ $('logout').addEventListener('click',signOut);$('boot-out').addEventListener('cl
   }
 })();
 })();
+
+/* Tampilan layar penuh untuk tabel Target vs actual */
+function tgFull(on){
+  const c=$('tgCard'); if(!c) return;
+  const x=on==null?!c.classList.contains('tgfull'):on;
+  c.classList.toggle('tgfull',x); document.body.classList.toggle('tgfull-on',x);
+  $('tgFull').textContent=x?'Tutup layar penuh':'Layar penuh';
+  if(x) c.scrollTop=0;
+}
+if($('tgFull')){$('tgFull').addEventListener('click',()=>tgFull());document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('tgCard').classList.contains('tgfull'))tgFull(false)})}
