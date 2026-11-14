@@ -461,7 +461,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('ckPanel')&&!$('c
 
 $('upBtn').addEventListener('click',()=>$('file').click());
 /* Penanda sedang diunggah: satu orang per waktu, kunci berlaku 10 menit dan diperpanjang selama proses */
-let ME='', LOCKBUSY=null, lockTimer=null;
+let ME='', LOCKBUSY=null, lockTimer=null, UPLOADING=false;
 const LOCKMIN=10, tmx=iso=>new Date(iso).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}).replace('.',':');
 function showLock(l){
   LOCKBUSY=l&&l.user_email!==ME?l:null;
@@ -493,7 +493,11 @@ async function acquireLock(){
 }
 const extendLock=async()=>{try{await SB.from('store_upload_lock').update({expires_at:new Date(Date.now()+LOCKMIN*60000).toISOString()}).eq('store_code',STORE).eq('user_email',ME)}catch(e){}};
 async function releaseLock(){try{clearInterval(lockTimer);if(SB&&!window.__DEMO&&ME)await SB.from('store_upload_lock').delete().eq('store_code',STORE).eq('user_email',ME)}catch(e){}}
-async function pollLock(){showLock(await readLock())}
+async function pollLock(){
+  const l=await readLock();
+  /* Kunci milik sendiri tetapi tidak ada unggahan berjalan di halaman ini = sisa unggahan yang terputus, bersihkan */
+  if(l&&l.user_email===ME&&!UPLOADING){await releaseLock();showLock(null);return}
+  showLock(l)}
 setInterval(()=>{if(!document.hidden&&ME)pollLock()},15000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ME)pollLock()});
 $('file').addEventListener('change',e=>{const f=[...e.target.files]; e.target.value=''; handleFiles(f)});
@@ -509,9 +513,9 @@ async function handleFiles(files){
   if(!window.XLSX){showMsg('Pembaca Excel belum termuat. Muat ulang halaman lalu coba lagi.','err');return}
   const lk=await acquireLock();
   if(!lk.ok){showLock(lk.lock);showMsg('Sedang diunggah oleh '+lk.lock.user_email+' sejak '+tmx(lk.lock.started_at)+'. Tunggu selesai lalu coba lagi.','err');return}
-  showLock({user_email:ME,started_at:new Date().toISOString()});
+  UPLOADING=true; showLock({user_email:ME,started_at:new Date().toISOString()});
   lockTimer=setInterval(extendLock,60000);
-  try{await doUpload(files)}finally{await releaseLock();pollLock()}
+  try{await doUpload(files)}finally{UPLOADING=false;await releaseLock();showLock(null);pollLock()}
 }
 async function doUpload(files){
   showMsg('Membaca '+files.length+' file…','info');
