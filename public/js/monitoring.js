@@ -156,13 +156,14 @@ function renderTarget(rows){
   let list=cats.filter(c=>zn(c)<99&&(bud[c]>0||act[c]>0)).sort((a,b)=>(zn(a)-zn(b))*(TGS.k===0?TGS.dir:1)||base(a,b));
   if(flat){
     const V=c=>{const a=act[c]||0,b=bud[c]||0,l=lyc[c]||0,aM=actM[c]||0,bM=budM[c]||0,lM=lycM[c]||0;
-      return [zn(c),title(c),b||null,a,b?a/b:null,b?a-b:null,l||null,l?a/l:null,bM||null,aM,bM?aM/bM:null,bM?aM-bM:null,lM||null,lM?aM/lM:null][TGS.k]};
+      return [zn(c),title(c),b||null,a,b?a/b:null,b?a-b:null,l||null,l?a/l:null,bM||null,aM,bM?aM/bM:null,bM?aM-bM:null,lM||null,lM?aM/lM:null,lM?aM-lM:null][TGS.k]};
     list=list.map(c=>[c,V(c)]).sort((x,y)=>{const p=x[1],q=y[1];if(p==null||q==null)return p==null&&q==null?base(x[0],y[0]):p==null?1:-1;
       const r=typeof p==='string'?p.localeCompare(q,'id'):p-q;return r*TGS.dir||base(x[0],y[0])}).map(x=>x[0]);
   }
   const zcount={};list.forEach(c=>{zcount[zn(c)]=(zcount[zn(c)]||0)+1});let zprev=null;
   const cell=(a,b,l)=>{const pc=b?a/b:null,cl=pc==null?'':pc>=1?'good':pc>=.9?'warn':'crit';return `<td class="r num">${b?fu(b):'–'}</td><td class="r num">${fu(a)}</td><td class="c num">${pc==null?'–':`<span class="pill ${cl}">${dec(pc*100,1)}%</span>`}</td><td class="r num">${b?sel(a-b):'–'}</td><td class="r num">${l?fu(l):'–'}</td><td class="r num">${l?lyp(a,l):'–'}</td>`};
-  const mcell=(a,b,l)=>cell(a,b,l).replace('<td class="r num">','<td class="r num msep">');
+  const mcell=(a,b,l)=>cell(a,b,l)+`<td class="r num">${l?sel(a-l):'–'}</td>`;
+  const zA=(x,sm)=>{const zs=list.filter(c=>zn(c)===x),a=sum(zs.map(c=>(sm?actM:act)[c]||0)),b=sum(zs.map(c=>(sm?budM:bud)[c]||0)),pc=b?a/b:null,cl=pc==null?'':pc>=1?'good':pc>=.9?'warn':'crit';return pc==null?'–':`<span class="pill ${cl}">${dec(pc*100,1)}%</span>`};
   const mx=x=>mcell(actM[x]||0,budM[x]||0,lycM[x]||0), msum=zs=>mcell(sum(zs.map(x=>actM[x]||0)),sum(zs.map(x=>budM[x]||0)),sum(zs.map(x=>lycM[x]||0)));
   const trs=list.map((c,i)=>{
     const first=flat||zn(c)!==zprev;zprev=zn(c);
@@ -170,7 +171,7 @@ function renderTarget(rows){
     const zs=list.filter(x=>zn(x)===zn(c));
     const sub=last?`<tr class="zt"><td>Total ${zn(c)<99?'Zona '+zn(c):'lainnya'}</td>${cell(sum(zs.map(x=>act[x]||0)),sum(zs.map(x=>bud[x]||0)),sum(zs.map(x=>lyc[x]||0)))}${msum(zs)}</tr>`:'';
     const a=act[c]||0,b=bud[c]||0,pc=b?a/b:null,cl=pc==null?'':pc>=1?'good':pc>=.9?'warn':'crit',l=lyc[c];
-    return `<tr data-cat="${esc(c)}" tabindex="0" title="Klik untuk rincian master brand"${first&&!flat?' class="zs"':''}>${first?`<td class="zona z${zn(c)}" rowspan="${flat?1:zcount[zn(c)]+1}">${zn(c)<99?'Zona '+zn(c):'–'}</td>`:''}<td class="cat">${esc(title(c))}</td><td class="r num">${b?fu(b):'–'}</td><td class="r num">${fu(a)}</td><td class="c num">${pc==null?'–':`<span class="pill ${cl}">${dec(pc*100,1)}%</span>`}</td><td class="r num">${b?sel(a-b):'–'}</td><td class="r num">${l?fu(l):'–'}</td><td class="r num">${l?lyp(a,l):'–'}</td>${mx(c)}</tr>${sub}`}).join('');
+    return `<tr data-cat="${esc(c)}" tabindex="0" title="Klik untuk rincian master brand"${first&&!flat?' class="zs"':''}>${first?`<td class="zona z${zn(c)}" rowspan="${flat?1:zcount[zn(c)]+1}">${zn(c)<99?'Zona '+zn(c):'–'}</td><td class="zach" rowspan="${flat?1:zcount[zn(c)]+1}">${zA(zn(c),0)}</td>`:''}<td class="cat">${esc(title(c))}</td><td class="r num">${b?fu(b):'–'}</td><td class="r num">${fu(a)}</td><td class="c num">${pc==null?'–':`<span class="pill ${cl}">${dec(pc*100,1)}%</span>`}</td><td class="r num">${b?sel(a-b):'–'}</td><td class="r num">${l?fu(l):'–'}</td><td class="r num">${l?lyp(a,l):'–'}</td>${first?`<td class="zach msep" rowspan="${flat?1:zcount[zn(c)]+1}">${zA(zn(c),1)}</td>`:''}${mx(c)}</tr>${sub}`}).join('');
   const aT=sum(list.map(c=>act[c]||0)), bT=sum(list.map(c=>bud[c]||0)), lT=sum(list.map(c=>lyc[c]||0));
   const dsum=(dim,val,ds)=>sum(DIMD.filter(z=>z.dim===dim&&z.v===val&&ds.has(z.d)).map(z=>z.s));
   const lyset=new Set(dates.map(lyDate)), hasDim=DIMD.some(z=>set.has(z.d)&&z.dim==='source');
@@ -187,8 +188,8 @@ function renderTarget(rows){
     ${pbCard}
     ${lySum?tile('Sales vs '+lyYear(dates[0]),(nav/lySum-1>=0?'▲ ':'▼ ')+dec(Math.abs(nav/lySum-1)*100,1)+'%',rp(lySum)+' tahun lalu','ly'):''}
   </div>
-  <div class="tbl"><table class="tgt"><thead><tr class="grp"><th colspan="2"></th><th colspan="6" class="r">Periode terpilih</th><th colspan="6" class="r msep">MTD · 1 – ${fd(last)}</th></tr><tr><th data-tg="0">Zonasi</th><th data-tg="1">Kategori</th><th data-tg="2" class="r">Budget periode</th><th data-tg="3" class="r">Actual</th><th data-tg="4" class="c">Achievement</th><th data-tg="5" class="r">Selisih</th><th data-tg="6" class="r">Tahun lalu</th><th data-tg="7" class="r">vs tahun lalu</th><th data-tg="8" class="r msep">Budget MTD</th><th data-tg="9" class="r">Actual MTD</th><th data-tg="10" class="c">Achievement MTD</th><th data-tg="11" class="r">Selisih MTD</th><th data-tg="12" class="r">MTD tahun lalu</th><th data-tg="13" class="r">vs tahun lalu</th></tr></thead><tbody>${trs}</tbody>
-  <tfoot><tr><td colspan="2">Total</td><td class="r num">${fu(bT)}</td><td class="r num">${fu(aT)}</td><td class="r num">${bT?dec(aT/bT*100,1)+'%':'–'}</td><td class="r num">${sel(aT-bT)}</td><td class="r num">${lT?fu(lT):'–'}</td><td class="r num">${lT?lyp(aT,lT):'–'}</td>${mcell(sum(list.map(c=>actM[c]||0)),sum(list.map(c=>budM[c]||0)),sum(list.map(c=>lycM[c]||0)))}</tr></tfoot></table></div>`;
+  <div class="tbl"><table class="tgt"><thead><tr class="grp"><th colspan="3"></th><th colspan="6" class="r">Periode terpilih</th><th colspan="8" class="r msep">MTD · 1 – ${fd(last)}</th></tr><tr><th data-tg="0">Zonasi</th><th class="c">Ach zona</th><th data-tg="1">Kategori</th><th data-tg="2" class="r">Budget periode</th><th data-tg="3" class="r">Actual</th><th data-tg="4" class="c">Achievement</th><th data-tg="5" class="r">Selisih</th><th data-tg="6" class="r">Tahun lalu</th><th data-tg="7" class="r">vs tahun lalu</th><th class="c msep">Ach zona MTD</th><th data-tg="8" class="r">Budget MTD</th><th data-tg="9" class="r">Actual MTD</th><th data-tg="10" class="c">Achievement MTD</th><th data-tg="11" class="r">Selisih MTD</th><th data-tg="12" class="r">MTD tahun lalu</th><th data-tg="13" class="r">vs tahun lalu</th><th data-tg="14" class="r">Selisih vs tahun lalu MTD</th></tr></thead><tbody>${trs}</tbody>
+  <tfoot><tr><td colspan="3">Total</td><td class="r num">${fu(bT)}</td><td class="r num">${fu(aT)}</td><td class="r num">${bT?dec(aT/bT*100,1)+'%':'–'}</td><td class="r num">${sel(aT-bT)}</td><td class="r num">${lT?fu(lT):'–'}</td><td class="r num">${lT?lyp(aT,lT):'–'}</td><td class="c num msep">${(()=>{const a=sum(list.map(c=>actM[c]||0)),b=sum(list.map(c=>budM[c]||0));return b?dec(a/b*100,1)+'%':'–'})()}</td>${mcell(sum(list.map(c=>actM[c]||0)),sum(list.map(c=>budM[c]||0)),sum(list.map(c=>lycM[c]||0)))}</tr></tfoot></table></div>`;
   tgMark();
 }
 function tgMark(){
